@@ -222,7 +222,6 @@ const AdminInterlocking = () => {
 
     const [usersDirectory, setUsersDirectory] = useState<AdminUserRow[]>([]);
     const [locationsDirectory, setLocationsDirectory] = useState<LocationRow[]>([]);
-    const [rolesDirectory, setRolesDirectory] = useState<RoleRow[]>([]);
 
     const stopRowClick = (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -476,7 +475,7 @@ const AdminInterlocking = () => {
                     })
                     : [];
 
-            setRolesDirectory(roles);
+
             setLocationsDirectory(locations);
             setUsersDirectory(users);
         } finally {
@@ -592,9 +591,6 @@ const AdminInterlocking = () => {
         });
     };
 
-    const activeScenarioChains = useMemo(() => {
-        return getScenarioViewChains(activeScenario);
-    }, [activeScenario, usersById]);
 
     const activeScenarioPeople = useMemo<ScenarioPersonRow[]>(() => {
         if (!activeScenario) return [];
