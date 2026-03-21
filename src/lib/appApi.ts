@@ -1,7 +1,6 @@
 import { supabase } from "./supabaseClient";
 
 // Preferisci una variabile dedicata per l'API applicativa.
-
 // appApi.ts
 
 const BASE = (import.meta.env.VITE_APP_API_URL || "").replace(/\/+$/, "");
@@ -11,8 +10,6 @@ if (!BASE) {
         "❌ Missing VITE_APP_API_URL: frontend must call backend-api"
     );
 }
-
-
 
 async function getAccessToken(): Promise<string> {
     const { data, error } = await supabase.auth.getSession();
@@ -36,8 +33,6 @@ async function apiFetch(path: string, init?: RequestInit) {
 
     const json = await res.json().catch(() => null);
 
-    // 2xx = ok (include 202)
-    // Se il backend ritorna status diversi (OK / accepted / WAIT), non deve essere errore automaticamente.
     if (!res.ok) {
         if (res.status === 429) {
             const retryAfter = res.headers.get("retry-after");
@@ -51,13 +46,9 @@ async function apiFetch(path: string, init?: RequestInit) {
             (typeof json?.error === "string" ? json.error : null) ||
             `HTTP ${res.status}`;
         throw new Error(msg);
-
     }
 
-
-    // Se non c'è JSON, comunque non è un errore per forza (ma qui in genere c'è)
     return json;
-
 }
 
 export const appApi = {
@@ -69,7 +60,12 @@ export const appApi = {
         return { id: json.scenario.id, name: json.scenario.name };
     },
 
-    async insertTestScenarioApplication(params: { scenarioId: string; user_id: string; position_id: string; priority: number; }) {
+    async insertTestScenarioApplication(params: {
+        scenarioId: string;
+        user_id: string;
+        position_id: string;
+        priority: number;
+    }) {
         await apiFetch(`/api/admin/test-scenarios/${params.scenarioId}/applications`, {
             method: "POST",
             body: JSON.stringify({
@@ -79,7 +75,6 @@ export const appApi = {
             }),
         });
     },
-
 
     async initializeTestScenario(scenarioId: string) {
         return apiFetch(`/api/admin/test-scenarios/${scenarioId}/initialize`, {
@@ -102,7 +97,6 @@ export const appApi = {
         });
     },
 
-
     async deactivateUserAndCleanup(userId: string) {
         return apiFetch(`/api/admin/users/${userId}/deactivate`, {
             method: "POST",
@@ -111,10 +105,17 @@ export const appApi = {
     },
 
     async activateMe() {
-        return apiFetch(`/api/users/me/activate`, { method: "POST", body: JSON.stringify({}) });
+        return apiFetch(`/api/users/me/activate`, {
+            method: "POST",
+            body: JSON.stringify({}),
+        });
     },
+
     async deactivateMe() {
-        return apiFetch(`/api/users/me/deactivate`, { method: "POST", body: JSON.stringify({}) });
+        return apiFetch(`/api/users/me/deactivate`, {
+            method: "POST",
+            body: JSON.stringify({}),
+        });
     },
 
     async getMe(): Promise<{ user: { id: string; email?: string }; isAdmin: boolean }> {
@@ -123,7 +124,6 @@ export const appApi = {
 
     async getMyUser(): Promise<any> {
         const json = await apiFetch(`/api/users/me`, { method: "GET" });
-        // json shape: { ok: true, user: {...}, correlationId }
         return json.user;
     },
 
@@ -143,8 +143,8 @@ export const appApi = {
     },
 
     async applyToPositionsBulk(params: {
-        userId: string;                // di solito myUserId
-        positionIds: string[];         // positions.id
+        userId: string;
+        positionIds: string[];
         priority: number;
     }) {
         return apiFetch(`/api/users/${params.userId}/applications/bulk`, {
@@ -168,7 +168,6 @@ export const appApi = {
         });
     },
 
-
     getPositionsMapPayload: async (params?: { viewerUserId?: string; mode?: "from" | "to" }) => {
         const qs = new URLSearchParams();
         if (params?.viewerUserId) qs.set("viewerUserId", params.viewerUserId);
@@ -182,7 +181,6 @@ export const appApi = {
     async adminWarmupNeo4j() {
         return apiFetch(`/api/admin/graph/warmup`, { method: "GET" });
     },
-
 
     async syncGraph() {
         return apiFetch(`/api/admin/sync-graph`, {
@@ -219,7 +217,10 @@ export const appApi = {
     },
 
     async adminGraphSummary() {
-        return apiFetch(`/api/admin/graph/summary`, { method: "POST", body: JSON.stringify({}) });
+        return apiFetch(`/api/admin/graph/summary`, {
+            method: "POST",
+            body: JSON.stringify({}),
+        });
     },
 
     async adminGetLocations() {
@@ -234,7 +235,6 @@ export const appApi = {
         });
         return json.user;
     },
-
 
     async adminGetRoles() {
         const json = await apiFetch(`/api/admin/roles`, { method: "GET" });
@@ -263,11 +263,11 @@ export const appApi = {
         return apiFetch(`/api/admin/users/${userId}`, { method: "DELETE" });
     },
 
-
     // ✅ Public: locations per Register (NO supabase.from in FE)
     async publicGetLocations(): Promise<{ id: string; name: string }[]> {
         const res = await fetch(`${BASE}/api/public/locations`, { method: "GET" });
         const json = await res.json().catch(() => null);
+
         if (!res.ok) {
             const msg =
                 json?.error ||
@@ -275,6 +275,7 @@ export const appApi = {
                 `HTTP ${res.status}`;
             throw new Error(msg);
         }
+
         return json.locations ?? [];
     },
 
@@ -286,7 +287,11 @@ export const appApi = {
         });
     },
 
-    async adminCreateLocation(params: { name: string; latitude?: number | null; longitude?: number | null }) {
+    async adminCreateLocation(params: {
+        name: string;
+        latitude?: number | null;
+        longitude?: number | null;
+    }) {
         const json = await apiFetch(`/api/admin/locations`, {
             method: "POST",
             body: JSON.stringify(params),
@@ -315,7 +320,9 @@ export const appApi = {
     },
 
     async adminGetScenarioApplications(scenarioId: string) {
-        const json = await apiFetch(`/api/admin/test-scenarios/${scenarioId}/applications`, { method: "GET" });
+        const json = await apiFetch(`/api/admin/test-scenarios/${scenarioId}/applications`, {
+            method: "GET",
+        });
         return json.applications ?? [];
     },
 
@@ -331,15 +338,54 @@ export const appApi = {
     },
 
     async adminDeleteScenarioApplication(scenarioId: string, appId: string) {
-        return apiFetch(`/api/admin/test-scenarios/${scenarioId}/applications/${appId}`, { method: "DELETE" });
+        return apiFetch(`/api/admin/test-scenarios/${scenarioId}/applications/${appId}`, {
+            method: "DELETE",
+        });
     },
-
 
     async adminDeleteAllScenarioApplications(scenarioId: string) {
-        return apiFetch(`/api/admin/test-scenarios/${scenarioId}/applications`, { method: "DELETE" });
+        return apiFetch(`/api/admin/test-scenarios/${scenarioId}/applications`, {
+            method: "DELETE",
+        });
     },
 
+    /* =========================
+       INTERLOCKING SCENARIOS
+       ========================= */
 
+    async adminListInterlockingScenarios() {
+        const json = await apiFetch(`/api/admin/interlocking-scenarios`, {
+            method: "GET",
+        });
+        return { scenarios: json.scenarios ?? [] };
+    },
 
-}
+    async adminSaveInterlockingScenario(payload: {
+        scenario_code: string;
+        generated_at: string;
+        strategy: string;
+        max_len: number;
+        total_chains: number;
+        unique_people: number;
+        coverage: number | null;
+        avg_length: number | null;
+        max_length: number | null;
+        avg_priority: number | null;
+        build_nodes: number | null;
+        build_relationships: number | null;
+        chains_json: any[];
+        optimal_chains_json: any[] | null;
+    }) {
+        return apiFetch(`/api/admin/interlocking-scenarios`, {
+            method: "POST",
+            body: JSON.stringify(payload),
+        });
+    },
 
+    async adminDeleteInterlockingScenarios(payload: { ids: string[] }) {
+        return apiFetch(`/api/admin/interlocking-scenarios`, {
+            method: "DELETE",
+            body: JSON.stringify(payload),
+        });
+    },
+};
