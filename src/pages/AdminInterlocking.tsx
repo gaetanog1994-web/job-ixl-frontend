@@ -110,20 +110,19 @@ type ScenarioLocationMarker = {
 const pageStyle: React.CSSProperties = {
     padding: "26px",
     background:
-        "radial-gradient(circle at top left, rgba(34,41,92,0.55) 0%, rgba(9,11,24,1) 34%, rgba(6,8,18,1) 100%)",
+        "#F9FAFB",
     minHeight: "100%",
-    color: "#F4F7FF",
+    color: "#111827",
     fontFamily:
         'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
 };
 
 const panelStyle: React.CSSProperties = {
     background:
-        "linear-gradient(180deg, rgba(18,22,45,0.96) 0%, rgba(14,18,37,0.98) 100%)",
-    border: "1px solid rgba(138,150,255,0.10)",
+        "#FFFFFF",
+    border: "1px solid #E5E7EB",
     borderRadius: "24px",
-    boxShadow:
-        "0 10px 30px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.03)",
+    boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
     overflow: "hidden",
     position: "relative",
 };
@@ -136,19 +135,19 @@ const sectionTitleStyle: React.CSSProperties = {
     margin: 0,
     fontSize: "15px",
     fontWeight: 600,
-    color: "#F3F5FF",
+    color: "#111827",
 };
 
 const sectionSubtitleStyle: React.CSSProperties = {
     marginTop: "4px",
     fontSize: "12px",
-    color: "rgba(214,218,255,0.56)",
+    color: "#6B7280",
 };
 
 const ghostButtonStyle: React.CSSProperties = {
-    border: "1px solid rgba(255,255,255,0.07)",
-    background: "rgba(255,255,255,0.04)",
-    color: "#EFF2FF",
+    border: "1px solid #E5E7EB",
+    background: "#FFFFFF",
+    color: "#374151",
     borderRadius: "12px",
     padding: "10px 14px",
     cursor: "pointer",
@@ -162,12 +161,12 @@ const tabButtonBaseStyle: React.CSSProperties = {
     fontSize: "13px",
     fontWeight: 600,
     cursor: "pointer",
-    border: "1px solid rgba(255,255,255,0.07)",
+    border: "1px solid #E5E7EB",
 };
 
 const subtleCardStyle: React.CSSProperties = {
-    background: "rgba(255,255,255,0.025)",
-    border: "1px solid rgba(255,255,255,0.06)",
+    background: "#F9FAFB",
+    border: "1px solid #E5E7EB",
     borderRadius: "18px",
 };
 
@@ -216,20 +215,16 @@ const AdminInterlocking = () => {
     const [activeScenarioId, setActiveScenarioId] = useState<string | null>(null);
     const [rightPanelTab, setRightPanelTab] = useState<RightPanelTab>("MAP");
     const [focusedPersonId, setFocusedPersonId] = useState<string | null>(null);
+    const [focusedLocationId, setFocusedLocationId] = useState<string | null>(null);
     const [expandedBox, setExpandedBox] = useState<ExpandableBoxKey>(null);
     const [analyticsMetric, setAnalyticsMetric] =
         useState<AnalyticsMetric>("unique_people");
+    const [showNewSimPanel, setShowNewSimPanel] = useState(false);
 
     const [usersDirectory, setUsersDirectory] = useState<AdminUserRow[]>([]);
     const [locationsDirectory, setLocationsDirectory] = useState<LocationRow[]>([]);
 
-    const stopRowClick = (e: React.MouseEvent) => {
-        e.stopPropagation();
-    };
 
-    const stopAllBoxPropagation = (e: React.MouseEvent) => {
-        e.stopPropagation();
-    };
 
     const toggleExpand = (key: ExpandableBoxKey) => {
         setExpandedBox((prev) => (prev === key ? null : key));
@@ -245,10 +240,13 @@ const AdminInterlocking = () => {
             ...panelStyle,
             minHeight: expanded ? undefined : minHeight,
             position: expanded ? "fixed" : "relative",
-            inset: expanded ? "24px" : undefined,
+            top: expanded ? "64px" : undefined,
+            left: expanded ? "24px" : undefined,
+            right: expanded ? "24px" : undefined,
+            bottom: expanded ? "24px" : undefined,
             zIndex: expanded ? 80 : 1,
             width: expanded ? "calc(100vw - 48px)" : undefined,
-            height: expanded ? "calc(100vh - 48px)" : undefined,
+            height: expanded ? "calc(100vh - 88px)" : undefined,
             borderRadius: expanded ? "28px" : "24px",
         };
     };
@@ -682,10 +680,10 @@ const AdminInterlocking = () => {
                 longitude: Number(l.longitude),
                 peopleCount: 0,
                 peopleNames: [],
-                isFocused: false,
-                colorMode: "default-green" as const,
+                isFocused: focusedLocationId === l.id,
+                colorMode: focusedLocationId === l.id ? "focused-gold" as const : "default-green" as const,
             }));
-    }, [locationsDirectory]);
+    }, [locationsDirectory, focusedLocationId]);
 
     const displayedMapMarkers = useMemo(() => {
         return activeScenario ? activeScenarioLocationMarkers : globalLocationMarkers;
@@ -865,6 +863,7 @@ const AdminInterlocking = () => {
     const clearScenarioSelection = () => {
         setActiveScenarioId(null);
         setFocusedPersonId(null);
+        setFocusedLocationId(null);
     };
 
     const exportScenarioCsv = (scenario: SavedScenario) => {
@@ -921,11 +920,15 @@ const AdminInterlocking = () => {
                     width: "34px",
                     height: "34px",
                     borderRadius: "12px",
-                    background: "rgba(255,255,255,0.04)",
-                    border: "1px solid rgba(255,255,255,0.08)",
-                    color: "#F4F7FF",
+                    background: "#FFFFFF",
+                    border: "1px solid #E5E7EB",
+                    color: "#111827",
                     cursor: "pointer",
                     fontSize: "15px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    lineHeight: 1,
                 }}
                 title={isExpanded ? "Comprimi" : "Espandi"}
             >
@@ -941,30 +944,17 @@ const AdminInterlocking = () => {
                     style={{
                         position: "fixed",
                         inset: 0,
-                        background: "rgba(2,3,10,0.52)",
+                        background: "rgba(255,255,255,0.7)",
                         backdropFilter: "blur(4px)",
                         zIndex: 70,
                     }}
                 />
             )}
 
-            <div
-                style={{
-                    position: "relative",
-                    zIndex: 71,
-                    display: "grid",
-                    gap: "20px",
-                }}
-            >
+            <div style={{ position: "relative", zIndex: 71, display: "grid", gap: "20px" }}>
+                {/* ── Page header ── */}
                 <div style={{ marginBottom: "2px" }}>
-                    <div
-                        style={{
-                            fontSize: "31px",
-                            fontWeight: 700,
-                            letterSpacing: "-0.02em",
-                            color: "#F7F8FF",
-                        }}
-                    >
+                    <div style={{ fontSize: "31px", fontWeight: 700, letterSpacing: "-0.02em", color: "#111827" }}>
                         Interlocking Analytics
                     </div>
                     <div style={{ ...sectionSubtitleStyle, fontSize: "13px", marginTop: "6px" }}>
@@ -972,1219 +962,438 @@ const AdminInterlocking = () => {
                     </div>
                 </div>
 
+                {/* ── Row 1: Simulazioni (left 55%) + World Map (right 45%) ── */}
                 <div
-                    style={{
-                        display: "grid",
-                        gridTemplateColumns: "1fr 1fr",
-                        gap: "20px",
-                        alignItems: "start",
-                    }}
-                    onClick={stopAllBoxPropagation}
+                    style={{ display: "grid", gridTemplateColumns: "1.1fr 0.9fr", gap: "20px", alignItems: "stretch" }}
+                    onClick={(e) => e.stopPropagation()}
                 >
-                    <div style={{ display: "grid", gap: "20px" }}>
-                        <div style={getBoxShellStyle("controls", 280)}>
-                            <div style={innerPanelPadding}>
-                                <div
-                                    style={{
-                                        display: "flex",
-                                        justifyContent: "space-between",
-                                        gap: "12px",
-                                        alignItems: "flex-start",
-                                        marginBottom: "16px",
-                                    }}
-                                >
-                                    <div>
-                                        <h4 style={sectionTitleStyle}>Build & Strategy</h4>
-                                        <div style={sectionSubtitleStyle}>
-                                            Configura la simulazione e genera nuovi scenari
-                                        </div>
-                                    </div>
-                                    {renderExpandButton("controls")}
+                    {/* ══ Simulazioni e scenari ══ */}
+                    <div style={getBoxShellStyle("scenarios", 560)}>
+                        <div style={innerPanelPadding}>
+                            {/* Header */}
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px", marginBottom: "14px" }}>
+                                <div>
+                                    <h4 style={sectionTitleStyle}>Simulazioni e scenari</h4>
+                                    <div style={sectionSubtitleStyle}>Click sulla riga per attivare scenario, mappa e analytics</div>
                                 </div>
-
-                                <div
-                                    style={{
-                                        display: "grid",
-                                        gridTemplateColumns: "1fr 1fr",
-                                        gap: "14px",
-                                    }}
-                                >
-                                    <div
-                                        style={{
-                                            ...subtleCardStyle,
-                                            padding: "16px",
-                                        }}
-                                    >
-                                        <label
-                                            style={{
-                                                display: "grid",
-                                                gap: "8px",
-                                                fontSize: "12px",
-                                                color: "rgba(225,229,255,0.72)",
-                                            }}
-                                        >
-                                            Strategia
-                                            <select
-                                                value={strategy}
-                                                onChange={(e) =>
-                                                    setStrategy(e.target.value as UiStrategy)
-                                                }
-                                                style={{
-                                                    background: "rgba(255,255,255,0.04)",
-                                                    color: "#F4F7FF",
-                                                    border: "1px solid rgba(255,255,255,0.08)",
-                                                    borderRadius: "12px",
-                                                    padding: "10px 12px",
-                                                    outline: "none",
-                                                }}
-                                            >
-                                                <option value="NONE">Nessuna</option>
-                                                <option value="MAX_IMPACT">Massimo impatto</option>
-                                                <option value="QUALITY_FIRST">
-                                                    Qualità delle scelte
-                                                </option>
-                                            </select>
-                                        </label>
-                                    </div>
-
-                                    <div
-                                        style={{
-                                            ...subtleCardStyle,
-                                            padding: "16px",
-                                        }}
-                                    >
-                                        <label
-                                            style={{
-                                                display: "grid",
-                                                gap: "8px",
-                                                fontSize: "12px",
-                                                color: "rgba(225,229,255,0.72)",
-                                            }}
-                                        >
-                                            MaxLen
-                                            <select
-                                                value={maxLen}
-                                                onChange={(e) => setMaxLen(Number(e.target.value))}
-                                                style={{
-                                                    background: "rgba(255,255,255,0.04)",
-                                                    color: "#F4F7FF",
-                                                    border: "1px solid rgba(255,255,255,0.08)",
-                                                    borderRadius: "12px",
-                                                    padding: "10px 12px",
-                                                    outline: "none",
-                                                }}
-                                            >
-                                                {[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15].map(
-                                                    (n) => (
-                                                        <option key={n} value={n}>
-                                                            {n}
-                                                        </option>
-                                                    )
-                                                )}
-                                            </select>
-                                        </label>
-                                    </div>
-                                </div>
-
-                                <div
-                                    style={{
-                                        marginTop: "16px",
-                                        display: "flex",
-                                        gap: "10px",
-                                        flexWrap: "wrap",
-                                    }}
-                                >
-                                    <button
-                                        onClick={handleBuildGraph}
-                                        disabled={loadingGraph}
-                                        style={{
-                                            ...ghostButtonStyle,
-                                            background:
-                                                "linear-gradient(180deg, rgba(27,30,52,1) 0%, rgba(20,23,42,1) 100%)",
-                                            minWidth: "150px",
-                                        }}
-                                    >
-                                        {loadingGraph
-                                            ? "Costruzione in corso…"
-                                            : "Prepara simulazione"}
+                                <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                                    <button onClick={toggleSelectionMode} style={ghostButtonStyle}>
+                                        {selectionMode ? "Annulla" : "Seleziona"}
                                     </button>
-
-                                    <button
-                                        onClick={handleAnalyzeScenarios}
-                                        disabled={loadingAnalyze}
-                                        style={{
-                                            ...ghostButtonStyle,
-                                            background:
-                                                "linear-gradient(180deg, rgba(72,22,82,0.95) 0%, rgba(38,17,64,0.95) 100%)",
-                                            border: "1px solid rgba(255,70,178,0.22)",
-                                            minWidth: "150px",
-                                        }}
-                                    >
-                                        {loadingAnalyze ? "Analisi in corso…" : "Analizza scenari"}
-                                    </button>
-                                </div>
-
-                                <div
-                                    style={{
-                                        marginTop: "16px",
-                                        display: "grid",
-                                        gridTemplateColumns: "1fr 1fr",
-                                        gap: "14px",
-                                    }}
-                                >
-                                    <div
-                                        style={{
-                                            ...subtleCardStyle,
-                                            padding: "14px 16px",
-                                            border: "1px solid rgba(84,255,123,0.18)",
-                                            background:
-                                                "linear-gradient(180deg, rgba(22,44,35,0.95) 0%, rgba(14,28,24,0.95) 100%)",
-                                        }}
-                                    >
-                                        <div style={{ fontSize: "12px", color: "#92F7B0" }}>
-                                            Simulazione pronta
-                                        </div>
-                                        <div
-                                            style={{
-                                                marginTop: "8px",
-                                                fontSize: "26px",
-                                                fontWeight: 700,
-                                                color: "#F4FFF6",
-                                            }}
-                                        >
-                                            {buildResult?.nodes ?? "—"}
-                                        </div>
-                                        <div style={{ ...sectionSubtitleStyle, marginTop: "2px" }}>
-                                            Persone nel grafo
-                                        </div>
-                                        <div style={{ ...sectionSubtitleStyle, marginTop: "10px" }}>
-                                            Candidature: {buildResult?.relationships ?? "—"}
-                                        </div>
-                                    </div>
-
-                                    <div
-                                        style={{
-                                            ...subtleCardStyle,
-                                            padding: "14px 16px",
-                                            border: error
-                                                ? "1px solid rgba(255,86,86,0.18)"
-                                                : "1px solid rgba(118,138,255,0.12)",
-                                            background: error
-                                                ? "linear-gradient(180deg, rgba(54,21,28,0.95) 0%, rgba(29,14,18,0.95) 100%)"
-                                                : "linear-gradient(180deg, rgba(17,22,42,0.95) 0%, rgba(13,17,32,0.95) 100%)",
-                                        }}
-                                    >
-                                        <div
-                                            style={{
-                                                fontSize: "12px",
-                                                color: error ? "#FFB3B3" : "#B9C4FF",
-                                            }}
-                                        >
-                                            Stato operativo
-                                        </div>
-                                        <div
-                                            style={{
-                                                marginTop: "8px",
-                                                fontSize: "20px",
-                                                fontWeight: 700,
-                                                color: "#F4F7FF",
-                                            }}
-                                        >
-                                            {error ? "Attenzione" : "Ready"}
-                                        </div>
-                                        <div
-                                            style={{
-                                                ...sectionSubtitleStyle,
-                                                marginTop: "8px",
-                                                color: error
-                                                    ? "rgba(255,190,190,0.8)"
-                                                    : "rgba(214,218,255,0.56)",
-                                            }}
-                                        >
-                                            {error ?? "Nessun errore attivo"}
-                                        </div>
-                                    </div>
+                                    {selectionMode && (
+                                        <>
+                                            <button onClick={handleSelectAll} style={ghostButtonStyle}>
+                                                {allSelected ? "Deseleziona tutto" : "Seleziona tutto"}
+                                            </button>
+                                            <button onClick={handleDeleteSelected} disabled={selectedScenarioIds.length === 0 || deleting} style={ghostButtonStyle}>
+                                                {deleting ? "Eliminazione…" : "Elimina"}
+                                            </button>
+                                        </>
+                                    )}
+                                    {renderExpandButton("scenarios")}
                                 </div>
                             </div>
-                        </div>
 
-                        <div style={getBoxShellStyle("scenarios", 470)}>
-                            <div style={innerPanelPadding}>
-                                <div
+                            {/* ── Nuova simulazione panel ── */}
+                            <div style={{ marginBottom: "14px" }}>
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); setShowNewSimPanel((prev) => !prev); }}
                                     style={{
-                                        display: "flex",
-                                        justifyContent: "space-between",
-                                        alignItems: "flex-start",
-                                        gap: "12px",
-                                        marginBottom: "14px",
+                                        display: "flex", alignItems: "center", gap: "6px",
+                                        padding: "9px 16px", borderRadius: "12px",
+                                        border: "1px solid #E8511A",
+                                        background: showNewSimPanel ? "#FEF2EB" : "#FFFFFF",
+                                        color: "#E8511A", fontSize: "13px", fontWeight: 600, cursor: "pointer",
                                     }}
                                 >
-                                    <div>
-                                        <h4 style={sectionTitleStyle}>Simulazioni e scenari</h4>
-                                        <div style={sectionSubtitleStyle}>
-                                            Click sulla riga per attivare scenario, mappa e analytics
+                                    <span style={{ fontSize: "16px", lineHeight: 1 }}>+</span> Nuova simulazione
+                                </button>
+
+                                {showNewSimPanel && (
+                                    <div
+                                        style={{
+                                            marginTop: "10px", padding: "16px",
+                                            background: "#F9FAFB", border: "1px solid #E5E7EB",
+                                            borderRadius: "16px", display: "grid", gap: "14px",
+                                        }}
+                                        onClick={(e) => e.stopPropagation()}
+                                    >
+                                        {/* Step 1: build */}
+                                        <div style={{ display: "flex", gap: "12px", alignItems: "center", flexWrap: "wrap" }}>
+                                            <button
+                                                onClick={handleBuildGraph}
+                                                disabled={loadingGraph}
+                                                style={{
+                                                    ...ghostButtonStyle,
+                                                    background: buildResult ? "#ECFDF5" : "#FFFFFF",
+                                                    border: buildResult ? "1px solid #A7F3D0" : "1px solid #E5E7EB",
+                                                    color: buildResult ? "#065F46" : "#374151",
+                                                    fontWeight: 600, minWidth: "185px",
+                                                }}
+                                            >
+                                                {loadingGraph ? "Preparazione…" : buildResult ? "✓ Simulazione pronta" : "Prepara simulazione"}
+                                            </button>
+                                            {buildResult && (
+                                                <div style={{ fontSize: "13px", color: "#059669" }}>
+                                                    <strong>{buildResult.nodes}</strong> persone · <strong>{buildResult.relationships}</strong> candidature
+                                                </div>
+                                            )}
                                         </div>
-                                    </div>
 
-                                    <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                                        <button onClick={toggleSelectionMode} style={ghostButtonStyle}>
-                                            {selectionMode ? "Annulla" : "Seleziona"}
-                                        </button>
+                                        {/* Step 2: strategy + maxLen + analyze (locked until build ready) */}
+                                        <div
+                                            style={{
+                                                display: "grid", gridTemplateColumns: "1fr 1fr auto",
+                                                gap: "12px", alignItems: "end",
+                                                opacity: buildResult ? 1 : 0.38,
+                                                pointerEvents: buildResult ? "auto" : "none",
+                                                transition: "opacity 0.3s",
+                                            }}
+                                        >
+                                            <label style={{ display: "grid", gap: "6px", fontSize: "12px", color: "#4B5563" }}>
+                                                Strategia
+                                                <select value={strategy} onChange={(e) => setStrategy(e.target.value as UiStrategy)}
+                                                    style={{ background: "#FFF", color: "#111827", border: "1px solid #E5E7EB", borderRadius: "10px", padding: "9px 12px", outline: "none", fontSize: "13px" }}>
+                                                    <option value="NONE">Nessuna</option>
+                                                    <option value="MAX_IMPACT">Massimo impatto</option>
+                                                    <option value="QUALITY_FIRST">Qualità delle scelte</option>
+                                                </select>
+                                            </label>
+                                            <label style={{ display: "grid", gap: "6px", fontSize: "12px", color: "#4B5563" }}>
+                                                MaxLen
+                                                <select value={maxLen} onChange={(e) => setMaxLen(Number(e.target.value))}
+                                                    style={{ background: "#FFF", color: "#111827", border: "1px solid #E5E7EB", borderRadius: "10px", padding: "9px 12px", outline: "none", fontSize: "13px" }}>
+                                                    {[2,3,4,5,6,7,8,9,10,11,12,13,14,15].map((n) => <option key={n} value={n}>{n}</option>)}
+                                                </select>
+                                            </label>
+                                            <button
+                                                onClick={handleAnalyzeScenarios}
+                                                disabled={loadingAnalyze || !buildResult}
+                                                style={{ ...ghostButtonStyle, background: "#6366F1", color: "#FFFFFF", border: "1px solid #4F46E5", fontWeight: 600, whiteSpace: "nowrap" }}
+                                            >
+                                                {loadingAnalyze ? "Analisi…" : "Analizza scenari"}
+                                            </button>
+                                        </div>
 
-                                        {selectionMode && (
-                                            <>
-                                                <button onClick={handleSelectAll} style={ghostButtonStyle}>
-                                                    {allSelected
-                                                        ? "Deseleziona tutto"
-                                                        : "Seleziona tutto"}
-                                                </button>
-                                                <button
-                                                    onClick={handleDeleteSelected}
-                                                    disabled={
-                                                        selectedScenarioIds.length === 0 || deleting
-                                                    }
-                                                    style={ghostButtonStyle}
-                                                >
-                                                    {deleting ? "Eliminazione…" : "Elimina"}
-                                                </button>
-                                            </>
+                                        {error && (
+                                            <div style={{ fontSize: "12px", color: "#B91C1C", padding: "8px 12px", background: "#FEF2F2", borderRadius: "8px", border: "1px solid #FECACA" }}>
+                                                {error}
+                                            </div>
                                         )}
-
-                                        {renderExpandButton("scenarios")}
                                     </div>
-                                </div>
+                                )}
+                            </div>
 
-                                <div
-                                    style={{
-                                        display: "grid",
-                                        gridTemplateColumns:
-                                            "44px 1fr 1.25fr 0.8fr 0.8fr 0.8fr 0.9fr 0.8fr 1.1fr 1fr 70px 44px",
-                                        gap: "8px",
-                                        padding: "0 8px 10px 8px",
-                                        fontSize: "10px",
-                                        color: "rgba(214,218,255,0.55)",
-                                        textTransform: "uppercase",
-                                        letterSpacing: "0.08em",
-                                        alignItems: "center",
-                                    }}
-                                >
-                                    <div />
-                                    <div>ID</div>
-                                    <div>Data e ora</div>
-                                    <div>Catene</div>
-                                    <div>Persone</div>
-                                    <div>Coverage</div>
-                                    <div>Lung media</div>
-                                    <div>Lung max</div>
-                                    <div>Priorità media</div>
-                                    <div>Strategia</div>
-                                    <div>CSV</div>
-                                    <div />
-                                </div>
+                            {/* ── Table header ── */}
+                            <div
+                                style={{
+                                    display: "grid",
+                                    gridTemplateColumns: "32px 1fr 1.2fr 0.65fr 0.65fr 0.65fr 0.7fr 0.65fr 0.9fr 0.95fr 56px 32px",
+                                    gap: "6px", padding: "9px 10px",
+                                    fontSize: "10px", fontWeight: 700, color: "#92400E",
+                                    textTransform: "uppercase", letterSpacing: "0.06em",
+                                    alignItems: "center", textAlign: "left",
+                                    background: "#FEF3C7", borderRadius: "10px", marginBottom: "8px",
+                                }}
+                            >
+                                <div /><div>ID</div><div>Data e ora</div><div>Catene</div>
+                                <div>Persone</div><div>Cov.</div><div>L.med</div><div>L.max</div>
+                                <div>Priorità</div><div>Strategia</div><div>CSV</div><div />
+                            </div>
 
-                                <div
-                                    style={{
-                                        display: "grid",
-                                        gap: "10px",
-                                        maxHeight: expandedBox === "scenarios" ? "calc(100vh - 150px)" : "520px",
-                                        overflowY: "auto",
-                                        paddingRight: "4px",
-                                    }}
-                                >
-                                    {loadingScenarios ? (
-                                        <div style={{ color: "rgba(255,255,255,0.56)", fontSize: "13px" }}>
-                                            Caricamento scenari...
-                                        </div>
-                                    ) : scenarios.length === 0 ? (
-                                        <div style={{ color: "rgba(255,255,255,0.56)", fontSize: "13px" }}>
-                                            Nessuno scenario disponibile.
-                                        </div>
-                                    ) : (
-                                        scenarios.map((scenario) => {
-                                            const isExpanded = expandedScenarioIds.includes(scenario.id);
-                                            const isSelected = selectedScenarioIds.includes(scenario.id);
-                                            const isActive = activeScenarioId === scenario.id;
+                            {/* ── Scenario rows ── */}
+                            <div style={{ display: "grid", gap: "8px", maxHeight: expandedBox === "scenarios" ? "calc(100vh - 320px)" : "420px", overflowY: "auto", paddingRight: "2px" }}>
+                                {loadingScenarios ? (
+                                    <div style={{ color: "#9CA3AF", fontSize: "13px" }}>Caricamento scenari...</div>
+                                ) : scenarios.length === 0 ? (
+                                    <div style={{ color: "#9CA3AF", fontSize: "13px" }}>Nessuno scenario disponibile.</div>
+                                ) : (
+                                    scenarios.map((scenario) => {
+                                        const isExpSc = expandedScenarioIds.includes(scenario.id);
+                                        const isSelected = selectedScenarioIds.includes(scenario.id);
+                                        const isActive = activeScenarioId === scenario.id;
+                                        const visibleChains =
+                                            scenario.strategy !== "NONE" && scenario.optimal_chains_json && scenario.optimal_chains_json.length > 0
+                                                ? scenario.optimal_chains_json.map((c) => ({ peopleNames: c.nodeIds.map((id) => usersById.get(id)?.full_name ?? id), avgPriority: c.avgPriority ?? null, length: c.length ?? c.nodeIds.length }))
+                                                : scenario.chains_json;
 
-                                            const visibleChains =
-                                                scenario.strategy !== "NONE" &&
-                                                    scenario.optimal_chains_json &&
-                                                    scenario.optimal_chains_json.length > 0
-                                                    ? scenario.optimal_chains_json.map((c) => ({
-                                                        peopleNames: c.nodeIds.map(
-                                                            (id) => usersById.get(id)?.full_name ?? id
-                                                        ),
-                                                        avgPriority: c.avgPriority ?? null,
-                                                        length: c.length ?? c.nodeIds.length,
-                                                    }))
-                                                    : scenario.chains_json;
-
-                                            return (
+                                        return (
+                                            <div
+                                                key={scenario.id}
+                                                onClick={() => handleScenarioRowClick(scenario.id)}
+                                                style={{
+                                                    border: isActive ? "1px solid #6366F1" : "1px solid #E5E7EB",
+                                                    borderRadius: "12px",
+                                                    background: isActive ? "#EFF6FF" : isSelected ? "#F3F4F6" : "#FFFFFF",
+                                                    cursor: "pointer", overflow: "hidden",
+                                                    boxShadow: isActive ? "0 0 0 1px rgba(99,102,241,0.2), 0 4px 6px -1px rgba(0,0,0,0.08)" : "none",
+                                                }}
+                                            >
                                                 <div
-                                                    key={scenario.id}
-                                                    onClick={() => handleScenarioRowClick(scenario.id)}
                                                     style={{
-                                                        border: isActive
-                                                            ? "1px solid rgba(255,78,162,0.55)"
-                                                            : "1px solid rgba(255,255,255,0.06)",
-                                                        borderRadius: "18px",
-                                                        background: isActive
-                                                            ? "linear-gradient(180deg, rgba(44,18,46,0.96) 0%, rgba(26,17,35,0.96) 100%)"
-                                                            : isSelected
-                                                                ? "linear-gradient(180deg, rgba(23,31,58,0.96) 0%, rgba(16,20,35,0.96) 100%)"
-                                                                : "linear-gradient(180deg, rgba(16,20,37,0.96) 0%, rgba(13,17,31,0.96) 100%)",
-                                                        cursor: "pointer",
-                                                        overflow: "hidden",
-                                                        boxShadow: isActive
-                                                            ? "0 0 0 1px rgba(255,78,162,0.12), 0 8px 24px rgba(255,78,162,0.10)"
-                                                            : "none",
+                                                        display: "grid",
+                                                        gridTemplateColumns: "32px 1fr 1.2fr 0.65fr 0.65fr 0.65fr 0.7fr 0.65fr 0.9fr 0.95fr 56px 32px",
+                                                        gap: "6px", alignItems: "center",
+                                                        padding: "11px 10px", fontSize: "12px", textAlign: "left",
                                                     }}
                                                 >
-                                                    <div
-                                                        style={{
-                                                            display: "grid",
-                                                            gridTemplateColumns:
-                                                                "44px 1fr 1.25fr 0.8fr 0.8fr 0.8fr 0.9fr 0.8fr 1.1fr 1fr 70px 44px",
-                                                            gap: "8px",
-                                                            alignItems: "center",
-                                                            padding: "14px 10px",
-                                                            fontSize: "13px",
-                                                        }}
-                                                    >
-                                                        <div style={{ display: "flex", justifyContent: "center" }}>
-                                                            {selectionMode ? (
-                                                                <input
-                                                                    type="checkbox"
-                                                                    checked={isSelected}
-                                                                    onClick={stopRowClick}
-                                                                    onChange={() =>
-                                                                        toggleScenarioSelected(scenario.id)
-                                                                    }
-                                                                />
-                                                            ) : null}
+                                                    <div style={{ display: "flex", justifyContent: "center" }}>
+                                                        {selectionMode ? (
+                                                            <input type="checkbox" checked={isSelected}
+                                                                onClick={(e) => e.stopPropagation()}
+                                                                onChange={() => toggleScenarioSelected(scenario.id)} />
+                                                        ) : null}
+                                                    </div>
+                                                    <div style={{ fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{scenario.scenario_code}</div>
+                                                    <div style={{ color: "#6B7280", fontSize: "11px" }}>{formatDateTime(scenario.generated_at)}</div>
+                                                    <div>{scenario.total_chains}</div>
+                                                    <div>{scenario.unique_people}</div>
+                                                    <div>{formatNumber(scenario.coverage, 1)}%</div>
+                                                    <div>{formatNumber(scenario.avg_length, 2)}</div>
+                                                    <div>{scenario.max_length ?? "—"}</div>
+                                                    <div>{formatNumber(scenario.avg_priority, 2)}</div>
+                                                    <div style={{ color: "#6B7280", fontSize: "11px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{getStrategyLabel(scenario.strategy)}</div>
+                                                    <div>
+                                                        <button onClick={(e) => { e.stopPropagation(); exportScenarioCsv(scenario); }}
+                                                            style={{ ...ghostButtonStyle, padding: "5px 8px", fontSize: "11px" }}>CSV</button>
+                                                    </div>
+                                                    <div>
+                                                        <button onClick={(e) => { e.stopPropagation(); toggleExpanded(scenario.id); }}
+                                                            title={isExpSc ? "Comprimi" : "Espandi"}
+                                                            style={{ ...ghostButtonStyle, padding: "5px 8px", fontSize: "11px" }}>
+                                                            {isExpSc ? "↓" : "→"}
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                {isExpSc && (
+                                                    <div style={{ borderTop: "1px solid #E5E7EB", background: "#F9FAFB", padding: "10px 12px 14px" }}
+                                                        onClick={(e) => e.stopPropagation()}>
+                                                        <div style={{ display: "grid", gridTemplateColumns: "80px 1fr 120px 100px", gap: "8px", padding: "0 0 10px 0", fontSize: "10px", color: "#6B7280", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                                                            <div>ID catena</div><div>Persone coinvolte</div><div>Priorità</div><div>Lunghezza</div>
                                                         </div>
-
-                                                        <div>{scenario.scenario_code}</div>
-                                                        <div>{formatDateTime(scenario.generated_at)}</div>
-                                                        <div>{scenario.total_chains}</div>
-                                                        <div>{scenario.unique_people}</div>
-                                                        <div>{formatNumber(scenario.coverage, 1)}%</div>
-                                                        <div>{formatNumber(scenario.avg_length, 2)}</div>
-                                                        <div>{scenario.max_length ?? "—"}</div>
-                                                        <div>{formatNumber(scenario.avg_priority, 2)}</div>
-                                                        <div>{getStrategyLabel(scenario.strategy)}</div>
-
-                                                        <div>
-                                                            <button
-                                                                onClick={(e) => {
-                                                                    stopRowClick(e);
-                                                                    exportScenarioCsv(scenario);
-                                                                }}
-                                                                style={{
-                                                                    ...ghostButtonStyle,
-                                                                    padding: "8px 10px",
-                                                                    fontSize: "12px",
-                                                                }}
-                                                            >
-                                                                CSV
-                                                            </button>
-                                                        </div>
-
-                                                        <div>
-                                                            <button
-                                                                onClick={(e) => {
-                                                                    stopRowClick(e);
-                                                                    toggleExpanded(scenario.id);
-                                                                }}
-                                                                title={isExpanded ? "Comprimi" : "Espandi"}
-                                                                style={{
-                                                                    ...ghostButtonStyle,
-                                                                    padding: "8px 10px",
-                                                                    fontSize: "12px",
-                                                                }}
-                                                            >
-                                                                {isExpanded ? "↓" : "→"}
-                                                            </button>
+                                                        <div style={{ display: "grid", gap: "8px" }}>
+                                                            {visibleChains.length === 0 ? (
+                                                                <div style={{ color: "#9CA3AF", fontSize: "13px" }}>Nessuna catena disponibile.</div>
+                                                            ) : (
+                                                                visibleChains.map((chain: any, index: number) => (
+                                                                    <div key={index} style={{ display: "grid", gridTemplateColumns: "80px 1fr 120px 100px", gap: "8px", alignItems: "center", padding: "10px 0", borderTop: "1px solid #E5E7EB", fontSize: "13px" }}>
+                                                                        <div>{index + 1}</div>
+                                                                        <div>{Array.isArray(chain.peopleNames) ? chain.peopleNames.join(" → ") : "—"}</div>
+                                                                        <div>{typeof chain.avgPriority === "number" ? chain.avgPriority.toFixed(2) : "—"}</div>
+                                                                        <div>{chain.length ?? "—"}</div>
+                                                                    </div>
+                                                                ))
+                                                            )}
                                                         </div>
                                                     </div>
-
-                                                    {isExpanded && (
-                                                        <div
-                                                            style={{
-                                                                borderTop: "1px solid rgba(255,255,255,0.06)",
-                                                                background: "rgba(0,0,0,0.14)",
-                                                                padding: "10px 12px 14px 12px",
-                                                            }}
-                                                            onClick={stopRowClick}
-                                                        >
-                                                            <div
-                                                                style={{
-                                                                    display: "grid",
-                                                                    gridTemplateColumns: "80px 1fr 120px 100px",
-                                                                    gap: "8px",
-                                                                    padding: "0 0 10px 0",
-                                                                    fontSize: "10px",
-                                                                    color: "rgba(214,218,255,0.55)",
-                                                                    textTransform: "uppercase",
-                                                                    letterSpacing: "0.08em",
-                                                                }}
-                                                            >
-                                                                <div>ID catena</div>
-                                                                <div>Persone coinvolte</div>
-                                                                <div>Priorità</div>
-                                                                <div>Lunghezza</div>
-                                                            </div>
-
-                                                            <div style={{ display: "grid", gap: "8px" }}>
-                                                                {visibleChains.length === 0 ? (
-                                                                    <div
-                                                                        style={{
-                                                                            color: "rgba(255,255,255,0.56)",
-                                                                            fontSize: "13px",
-                                                                        }}
-                                                                    >
-                                                                        Nessuna catena disponibile.
-                                                                    </div>
-                                                                ) : (
-                                                                    visibleChains.map((chain, index) => (
-                                                                        <div
-                                                                            key={index}
-                                                                            style={{
-                                                                                display: "grid",
-                                                                                gridTemplateColumns:
-                                                                                    "80px 1fr 120px 100px",
-                                                                                gap: "8px",
-                                                                                alignItems: "center",
-                                                                                padding: "10px 0",
-                                                                                borderTop:
-                                                                                    "1px solid rgba(255,255,255,0.05)",
-                                                                                fontSize: "13px",
-                                                                            }}
-                                                                        >
-                                                                            <div>{index + 1}</div>
-                                                                            <div>
-                                                                                {Array.isArray(chain.peopleNames)
-                                                                                    ? chain.peopleNames.join(" → ")
-                                                                                    : "—"}
-                                                                            </div>
-                                                                            <div>
-                                                                                {typeof chain.avgPriority ===
-                                                                                    "number"
-                                                                                    ? chain.avgPriority.toFixed(2)
-                                                                                    : "—"}
-                                                                            </div>
-                                                                            <div>{chain.length ?? "—"}</div>
-                                                                        </div>
-                                                                    ))
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            );
-                                        })
-                                    )}
-                                </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })
+                                )}
                             </div>
                         </div>
                     </div>
 
-                    <div style={{ display: "grid", gap: "20px" }}>
-                        <div style={getBoxShellStyle("insights", 570)}>
-                            <div style={innerPanelPadding}>
-                                <div
-                                    style={{
-                                        display: "flex",
-                                        justifyContent: "space-between",
-                                        alignItems: "flex-start",
-                                        gap: "12px",
-                                        marginBottom: "14px",
-                                    }}
-                                >
-                                    <div>
-                                        <h4 style={sectionTitleStyle}>World Map & People</h4>
-                                        <div style={sectionSubtitleStyle}>
-                                            {activeScenario
-                                                ? `Scenario attivo: ${activeScenario.scenario_code}`
-                                                : "Nessuno scenario selezionato: vista globale sedi in verde"}
-                                        </div>
-                                    </div>
-
-                                    <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                                        <button
-                                            onClick={() => setRightPanelTab("MAP")}
-                                            style={
-                                                rightPanelTab === "MAP"
-                                                    ? {
-                                                        ...tabButtonBaseStyle,
-                                                        background:
-                                                            "linear-gradient(180deg, rgba(82,95,255,0.20) 0%, rgba(52,61,121,0.20) 100%)",
-                                                        color: "#F4F7FF",
-                                                        border: "1px solid rgba(103,119,255,0.28)",
-                                                    }
-                                                    : {
-                                                        ...tabButtonBaseStyle,
-                                                        background: "rgba(255,255,255,0.04)",
-                                                        color: "rgba(240,243,255,0.80)",
-                                                    }
-                                            }
-                                        >
-                                            Mappa
-                                        </button>
-
-                                        <button
-                                            onClick={() => setRightPanelTab("PEOPLE")}
-                                            style={
-                                                rightPanelTab === "PEOPLE"
-                                                    ? {
-                                                        ...tabButtonBaseStyle,
-                                                        background:
-                                                            "linear-gradient(180deg, rgba(82,95,255,0.20) 0%, rgba(52,61,121,0.20) 100%)",
-                                                        color: "#F4F7FF",
-                                                        border: "1px solid rgba(103,119,255,0.28)",
-                                                    }
-                                                    : {
-                                                        ...tabButtonBaseStyle,
-                                                        background: "rgba(255,255,255,0.04)",
-                                                        color: "rgba(240,243,255,0.80)",
-                                                    }
-                                            }
-                                        >
-                                            Lista persone
-                                        </button>
-
-                                        {renderExpandButton("insights")}
+                    {/* ══ World Map & People ══ */}
+                    <div style={{ ...getBoxShellStyle("insights", 560), ...(expandedBox !== "insights" ? { overflow: "hidden" } : {}) }}>
+                        <div style={innerPanelPadding}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px", marginBottom: "14px" }}>
+                                <div>
+                                    <h4 style={sectionTitleStyle}>World Map & People</h4>
+                                    <div style={sectionSubtitleStyle}>
+                                        {activeScenario ? `Scenario attivo: ${activeScenario.scenario_code}` : "Vista globale sedi in verde — seleziona uno scenario per dettaglio"}
                                     </div>
                                 </div>
+                                <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                                    <button onClick={() => setRightPanelTab("MAP")}
+                                        style={rightPanelTab === "MAP"
+                                            ? { ...tabButtonBaseStyle, background: "#EFF6FF", color: "#111827", border: "1px solid #6366F1" }
+                                            : { ...tabButtonBaseStyle, background: "#FFFFFF", color: "#4B5563" }}>
+                                        Mappa
+                                    </button>
+                                    <button onClick={() => setRightPanelTab("PEOPLE")}
+                                        style={rightPanelTab === "PEOPLE"
+                                            ? { ...tabButtonBaseStyle, background: "#EFF6FF", color: "#111827", border: "1px solid #6366F1" }
+                                            : { ...tabButtonBaseStyle, background: "#FFFFFF", color: "#4B5563" }}>
+                                        Lista persone
+                                    </button>
+                                    {renderExpandButton("insights")}
+                                </div>
+                            </div>
 
-                                <div
-                                    style={{
-                                        ...subtleCardStyle,
-                                        minHeight: expandedBox === "insights" ? "calc(100vh - 160px)" : "520px",
-                                        display: "grid",
-                                        gridTemplateColumns:
-                                            rightPanelTab === "MAP" ? "1.38fr 0.86fr" : "1fr",
-                                        gap: "0px",
-                                        overflow: "hidden",
-                                    }}
-                                >
-                                    {rightPanelTab === "MAP" ? (
-                                        <>
-                                            <div
-                                                style={{
-                                                    minHeight:
-                                                        expandedBox === "insights"
-                                                            ? "calc(100vh - 160px)"
-                                                            : "520px",
-                                                    background: "#0B0E1B",
-                                                }}
-                                            >
-                                                {displayedMapMarkers.length > 0 ? (
-                                                    <MapContainer
-                                                        center={mapCenter}
-                                                        zoom={6}
-                                                        style={{
-                                                            width: "100%",
-                                                            height:
-                                                                expandedBox === "insights"
-                                                                    ? "calc(100vh - 160px)"
-                                                                    : "520px",
-                                                        }}
-                                                    >
-                                                        <TileLayer
-                                                            attribution='&copy; OpenStreetMap contributors'
-                                                            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                                                        />
-                                                        <FitBounds markers={displayedMapMarkers} />
-                                                        {displayedMapMarkers.map((marker) => {
-                                                            const color =
-                                                                marker.colorMode === "focused-gold"
-                                                                    ? "#FFD34D"
-                                                                    : marker.colorMode === "scenario-red"
-                                                                        ? "#FF4E7A"
-                                                                        : "#65E675";
-
-                                                            const fillColor =
-                                                                marker.colorMode === "focused-gold"
-                                                                    ? "#FFB020"
-                                                                    : marker.colorMode === "scenario-red"
-                                                                        ? "#FF4E7A"
-                                                                        : "#5DE46D";
-
-                                                            const radius =
-                                                                marker.colorMode === "focused-gold"
-                                                                    ? 16
-                                                                    : marker.colorMode === "scenario-red"
-                                                                        ? 10 + Math.min(marker.peopleCount, 6)
-                                                                        : 8;
-
-                                                            return (
-                                                                <CircleMarker
-                                                                    key={marker.locationId}
-                                                                    center={[
-                                                                        marker.latitude,
-                                                                        marker.longitude,
-                                                                    ]}
-                                                                    radius={radius}
-                                                                    pathOptions={{
-                                                                        color,
-                                                                        fillColor,
-                                                                        fillOpacity:
-                                                                            marker.colorMode === "default-green"
-                                                                                ? 0.75
-                                                                                : 0.82,
-                                                                        weight:
-                                                                            marker.colorMode === "focused-gold"
-                                                                                ? 4
-                                                                                : 2,
-                                                                    }}
-                                                                >
-                                                                    <Popup>
-                                                                        <div>
-                                                                            <strong>{marker.locationName}</strong>
-                                                                            {activeScenario ? (
-                                                                                <>
-                                                                                    <div>
-                                                                                        Persone coinvolte:{" "}
-                                                                                        {marker.peopleCount}
-                                                                                    </div>
-                                                                                    <div
-                                                                                        style={{
-                                                                                            marginTop: "6px",
-                                                                                            fontSize: "12px",
-                                                                                        }}
-                                                                                    >
-                                                                                        {marker.peopleNames.join(", ")}
-                                                                                    </div>
-                                                                                </>
-                                                                            ) : (
-                                                                                <div
-                                                                                    style={{
-                                                                                        marginTop: "6px",
-                                                                                        fontSize: "12px",
-                                                                                    }}
-                                                                                >
-                                                                                    Sede disponibile nel perimetro
-                                                                                    aziendale
-                                                                                </div>
-                                                                            )}
-                                                                        </div>
-                                                                    </Popup>
-                                                                </CircleMarker>
-                                                            );
-                                                        })}
-                                                    </MapContainer>
-                                                ) : (
-                                                    <div
-                                                        style={{
-                                                            height:
-                                                                expandedBox === "insights"
-                                                                    ? "calc(100vh - 160px)"
-                                                                    : "520px",
-                                                            display: "flex",
-                                                            alignItems: "center",
-                                                            justifyContent: "center",
-                                                            color: "rgba(255,255,255,0.56)",
-                                                            padding: "20px",
-                                                            textAlign: "center",
-                                                        }}
-                                                    >
-                                                        Nessuna sede geolocalizzata disponibile.
-                                                    </div>
-                                                )}
-                                            </div>
-
-                                            <div
-                                                style={{
-                                                    borderLeft: "1px solid rgba(255,255,255,0.06)",
-                                                    padding: "14px",
-                                                    background:
-                                                        "linear-gradient(180deg, rgba(13,17,32,0.96) 0%, rgba(10,13,26,0.98) 100%)",
-                                                    minHeight:
-                                                        expandedBox === "insights"
-                                                            ? "calc(100vh - 160px)"
-                                                            : "520px",
-                                                    display: "grid",
-                                                    gridTemplateRows: "auto 1fr",
-                                                    gap: "12px",
-                                                }}
-                                            >
-                                                <div>
-                                                    <div style={{ fontWeight: 600, fontSize: "14px" }}>
-                                                        {activeScenario
-                                                            ? "Persone coinvolte"
-                                                            : "Sedi disponibili"}
-                                                    </div>
-                                                    <div style={sectionSubtitleStyle}>
-                                                        {activeScenario
-                                                            ? "Click su una persona per enfatizzare la sede"
-                                                            : "Seleziona uno scenario per attivare il dettaglio persone"}
-                                                    </div>
+                            <div style={{ ...subtleCardStyle, height: expandedBox === "insights" ? "calc(100vh - 210px)" : "450px", display: "grid", gridTemplateColumns: rightPanelTab === "MAP" ? "1.38fr 0.86fr" : "1fr", gap: "0px", overflow: "hidden" }}>
+                                {rightPanelTab === "MAP" ? (
+                                    <>
+                                        <div style={{ height: expandedBox === "insights" ? "calc(100vh - 210px)" : "450px", background: "#F3F4F6", overflow: "hidden" }}>
+                                            {displayedMapMarkers.length > 0 ? (
+                                                <MapContainer center={mapCenter} zoom={6} style={{ width: "100%", height: "100%" }}>
+                                                    <TileLayer attribution='&copy; OpenStreetMap contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                                                    <FitBounds markers={displayedMapMarkers} />
+                                                    {displayedMapMarkers.map((marker) => {
+                                                        const color = marker.colorMode === "focused-gold" ? "#FCD34D" : marker.colorMode === "scenario-red" ? "#F43F5E" : "#34D399";
+                                                        const fillColor = marker.colorMode === "focused-gold" ? "#F59E0B" : marker.colorMode === "scenario-red" ? "#F43F5E" : "#10B981";
+                                                        const radius = marker.colorMode === "focused-gold" ? 16 : marker.colorMode === "scenario-red" ? 10 + Math.min(marker.peopleCount, 6) : 8;
+                                                        return (
+                                                            <CircleMarker key={marker.locationId} center={[marker.latitude, marker.longitude]} radius={radius}
+                                                                pathOptions={{ color, fillColor, fillOpacity: marker.colorMode === "default-green" ? 0.75 : 0.82, weight: marker.colorMode === "focused-gold" ? 4 : 2 }}>
+                                                                <Popup>
+                                                                    <div>
+                                                                        <strong>{marker.locationName}</strong>
+                                                                        {activeScenario ? (
+                                                                            <><div>Persone coinvolte: {marker.peopleCount}</div><div style={{ marginTop: "6px", fontSize: "12px" }}>{marker.peopleNames.join(", ")}</div></>
+                                                                        ) : (
+                                                                            <div style={{ marginTop: "6px", fontSize: "12px" }}>Sede disponibile nel perimetro aziendale</div>
+                                                                        )}
+                                                                    </div>
+                                                                </Popup>
+                                                            </CircleMarker>
+                                                        );
+                                                    })}
+                                                </MapContainer>
+                                            ) : (
+                                                <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#9CA3AF", padding: "20px", textAlign: "center" }}>
+                                                    Nessuna sede geolocalizzata disponibile.
                                                 </div>
+                                            )}
+                                        </div>
 
-                                                <div
-                                                    style={{
-                                                        display: "grid",
-                                                        gap: "8px",
-                                                        alignContent: "start",
-                                                        overflowY: "auto",
-                                                        paddingRight: "4px",
-                                                    }}
-                                                >
-                                                    {activeScenario ? (
-                                                        activeScenarioPeople.length > 0 ? (
-                                                            activeScenarioPeople.map((person) => {
-                                                                const isFocused =
-                                                                    focusedPersonId === person.id;
-
-                                                                return (
-                                                                    <button
-                                                                        key={person.id}
-                                                                        onClick={() =>
-                                                                            setFocusedPersonId((prev) =>
-                                                                                prev === person.id
-                                                                                    ? null
-                                                                                    : person.id
-                                                                            )
-                                                                        }
-                                                                        style={{
-                                                                            textAlign: "left",
-                                                                            padding: "10px 12px",
-                                                                            borderRadius: "12px",
-                                                                            border: isFocused
-                                                                                ? "1px solid rgba(255,211,77,0.40)"
-                                                                                : "1px solid rgba(255,255,255,0.06)",
-                                                                            background: isFocused
-                                                                                ? "rgba(255,211,77,0.10)"
-                                                                                : "rgba(255,255,255,0.025)",
-                                                                            color: "#F1F4FF",
-                                                                            cursor: "pointer",
-                                                                        }}
-                                                                    >
-                                                                        <div
-                                                                            style={{
-                                                                                fontWeight: 600,
-                                                                                fontSize: "13px",
-                                                                                lineHeight: 1.2,
-                                                                            }}
-                                                                        >
-                                                                            {person.name}
-                                                                        </div>
-                                                                        <div
-                                                                            style={{
-                                                                                marginTop: "4px",
-                                                                                fontSize: "11px",
-                                                                                color:
-                                                                                    "rgba(214,218,255,0.62)",
-                                                                            }}
-                                                                        >
-                                                                            {person.role !== "—"
-                                                                                ? person.role
-                                                                                : "Ruolo non disponibile"}
-                                                                        </div>
-                                                                        <div
-                                                                            style={{
-                                                                                marginTop: "2px",
-                                                                                fontSize: "11px",
-                                                                                color:
-                                                                                    "rgba(214,218,255,0.52)",
-                                                                            }}
-                                                                        >
-                                                                            {person.locationName}
-                                                                        </div>
-                                                                    </button>
-                                                                );
-                                                            })
-                                                        ) : (
-                                                            <div
-                                                                style={{
-                                                                    color: "rgba(255,255,255,0.56)",
-                                                                    fontSize: "13px",
-                                                                }}
-                                                            >
-                                                                Nessuna persona disponibile.
-                                                            </div>
-                                                        )
-                                                    ) : globalLocationMarkers.length > 0 ? (
-                                                        globalLocationMarkers.map((loc) => (
-                                                            <div
-                                                                key={loc.locationId}
-                                                                style={{
-                                                                    padding: "10px 12px",
-                                                                    borderRadius: "12px",
-                                                                    border:
-                                                                        "1px solid rgba(255,255,255,0.06)",
-                                                                    background:
-                                                                        "rgba(255,255,255,0.025)",
-                                                                    color: "#F1F4FF",
-                                                                    fontSize: "13px",
-                                                                }}
-                                                            >
-                                                                {loc.locationName}
-                                                            </div>
-                                                        ))
-                                                    ) : (
-                                                        <div
-                                                            style={{
-                                                                color: "rgba(255,255,255,0.56)",
-                                                                fontSize: "13px",
-                                                            }}
-                                                        >
-                                                            Nessuna sede disponibile.
-                                                        </div>
-                                                    )}
+                                        <div style={{ borderLeft: "1px solid #E5E7EB", padding: "14px", background: "#FFFFFF", height: expandedBox === "insights" ? "calc(100vh - 210px)" : "450px", display: "grid", gridTemplateRows: "auto 1fr", gap: "12px", overflow: "hidden" }}>
+                                            <div>
+                                                <div style={{ fontWeight: 600, fontSize: "14px" }}>{activeScenario ? "Persone coinvolte" : "Sedi disponibili"}</div>
+                                                <div style={sectionSubtitleStyle}>
+                                                    {activeScenario ? "Click su una persona per enfatizzare la sede" : "Seleziona uno scenario per il dettaglio persone"}
                                                 </div>
                                             </div>
-                                        </>
-                                    ) : (
-                                        <div
-                                            style={{
-                                                overflow: "hidden",
-                                                minHeight:
-                                                    expandedBox === "insights"
-                                                        ? "calc(100vh - 160px)"
-                                                        : "520px",
-                                            }}
-                                        >
-                                            <div
-                                                style={{
-                                                    display: "grid",
-                                                    gridTemplateColumns:
-                                                        "1.2fr 1fr 1fr 1fr 0.8fr",
-                                                    gap: "10px",
-                                                    padding: "14px 16px",
-                                                    fontSize: "10px",
-                                                    color: "rgba(214,218,255,0.55)",
-                                                    textTransform: "uppercase",
-                                                    letterSpacing: "0.08em",
-                                                    borderBottom:
-                                                        "1px solid rgba(255,255,255,0.06)",
-                                                }}
-                                            >
-                                                <div>Nome</div>
-                                                <div>Ruolo</div>
-                                                <div>Sede</div>
-                                                <div>Responsabile</div>
-                                                <div>PBP</div>
-                                            </div>
-
-                                            <div
-                                                style={{
-                                                    maxHeight:
-                                                        expandedBox === "insights"
-                                                            ? "calc(100vh - 210px)"
-                                                            : "460px",
-                                                    overflowY: "auto",
-                                                }}
-                                            >
+                                            <div style={{ display: "grid", gap: "8px", alignContent: "start", overflowY: "auto", paddingRight: "4px" }}>
                                                 {activeScenario ? (
                                                     activeScenarioPeople.length > 0 ? (
-                                                        activeScenarioPeople.map((person) => (
-                                                            <div
-                                                                key={person.id}
-                                                                style={{
-                                                                    display: "grid",
-                                                                    gridTemplateColumns:
-                                                                        "1.2fr 1fr 1fr 1fr 0.8fr",
-                                                                    gap: "10px",
-                                                                    padding: "14px 16px",
-                                                                    borderBottom:
-                                                                        "1px solid rgba(255,255,255,0.05)",
-                                                                    fontSize: "13px",
-                                                                    background:
-                                                                        focusedPersonId === person.id
-                                                                            ? "rgba(255,211,77,0.10)"
-                                                                            : "transparent",
-                                                                }}
-                                                            >
-                                                                <div>{person.name}</div>
-                                                                <div>{person.role}</div>
-                                                                <div>{person.locationName}</div>
-                                                                <div>{person.responsible}</div>
-                                                                <div>{person.pbp}</div>
-                                                            </div>
-                                                        ))
+                                                        activeScenarioPeople.map((person) => {
+                                                            const isFocused = focusedPersonId === person.id;
+                                                            return (
+                                                                <button key={person.id}
+                                                                    onClick={() => setFocusedPersonId((prev) => prev === person.id ? null : person.id)}
+                                                                    style={{ textAlign: "left", padding: "10px 12px", borderRadius: "12px", border: isFocused ? "1px solid #FCD34D" : "1px solid #E5E7EB", background: isFocused ? "#FEF3C7" : "#FFFFFF", color: "#111827", cursor: "pointer" }}>
+                                                                    <div style={{ fontWeight: 600, fontSize: "13px", lineHeight: 1.2 }}>{person.name}</div>
+                                                                    <div style={{ marginTop: "4px", fontSize: "11px", color: "#6B7280" }}>{person.role !== "—" ? person.role : "Ruolo non disponibile"}</div>
+                                                                    <div style={{ marginTop: "2px", fontSize: "11px", color: "#9CA3AF" }}>{person.locationName}</div>
+                                                                </button>
+                                                            );
+                                                        })
                                                     ) : (
-                                                        <div
-                                                            style={{
-                                                                padding: "20px",
-                                                                color: "rgba(255,255,255,0.56)",
-                                                                fontSize: "13px",
-                                                            }}
-                                                        >
-                                                            Nessuna persona disponibile per lo scenario selezionato.
-                                                        </div>
+                                                        <div style={{ color: "#9CA3AF", fontSize: "13px" }}>Nessuna persona disponibile.</div>
                                                     )
+                                                ) : globalLocationMarkers.length > 0 ? (
+                                                    globalLocationMarkers.map((loc) => {
+                                                        const isLocFocused = focusedLocationId === loc.locationId;
+                                                        return (
+                                                            <button key={loc.locationId}
+                                                                onClick={() => setFocusedLocationId((prev) => prev === loc.locationId ? null : loc.locationId)}
+                                                                style={{ textAlign: "left", padding: "10px 12px", borderRadius: "12px", border: isLocFocused ? "1px solid #FCD34D" : "1px solid #E5E7EB", background: isLocFocused ? "#FEF3C7" : "#FFFFFF", color: "#111827", fontSize: "13px", cursor: "pointer", width: "100%" }}>
+                                                                {loc.locationName}
+                                                            </button>
+                                                        );
+                                                    })
                                                 ) : (
-                                                    <div
-                                                        style={{
-                                                            padding: "20px",
-                                                            color: "rgba(255,255,255,0.56)",
-                                                            fontSize: "13px",
-                                                        }}
-                                                    >
-                                                        Seleziona uno scenario per vedere la tabella delle persone coinvolte.
-                                                    </div>
+                                                    <div style={{ color: "#9CA3AF", fontSize: "13px" }}>Nessuna sede disponibile.</div>
+                                                )}
+                                                {!activeScenario && focusedLocationId && (
+                                                    <button onClick={() => setFocusedLocationId(null)}
+                                                        style={{ marginTop: "4px", fontSize: "11px", color: "#6B7280", background: "none", border: "none", cursor: "pointer", textDecoration: "underline", padding: 0 }}>
+                                                        Deseleziona sede
+                                                    </button>
                                                 )}
                                             </div>
                                         </div>
-                                    )}
-                                </div>
+                                    </>
+                                ) : (
+                                    <div style={{ overflow: "hidden", height: expandedBox === "insights" ? "calc(100vh - 210px)" : "450px", display: "grid", gridTemplateRows: "auto 1fr" }}>
+                                        <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr 1fr 1fr 0.8fr", gap: "10px", padding: "14px 16px", fontSize: "10px", color: "#6B7280", textTransform: "uppercase", letterSpacing: "0.08em", borderBottom: "1px solid #E5E7EB" }}>
+                                            <div>Nome</div><div>Ruolo</div><div>Sede</div><div>Responsabile</div><div>PBP</div>
+                                        </div>
+                                        <div style={{ overflowY: "auto", height: "100%" }}>
+                                            {activeScenario ? (
+                                                activeScenarioPeople.length > 0 ? (
+                                                    activeScenarioPeople.map((person) => (
+                                                        <div key={person.id} style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr 1fr 1fr 0.8fr", gap: "10px", padding: "14px 16px", borderBottom: "1px solid #E5E7EB", fontSize: "13px", background: focusedPersonId === person.id ? "#FEF3C7" : "transparent" }}>
+                                                            <div>{person.name}</div><div>{person.role}</div><div>{person.locationName}</div><div>{person.responsible}</div><div>{person.pbp}</div>
+                                                        </div>
+                                                    ))
+                                                ) : (
+                                                    <div style={{ padding: "20px", color: "#9CA3AF", fontSize: "13px" }}>Nessuna persona disponibile per lo scenario selezionato.</div>
+                                                )
+                                            ) : (
+                                                <div style={{ padding: "20px", color: "#9CA3AF", fontSize: "13px" }}>Seleziona uno scenario per vedere la tabella delle persone coinvolte.</div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
 
-                                <div
-                                    style={{
-                                        marginTop: "12px",
-                                        display: "flex",
-                                        gap: "16px",
-                                        flexWrap: "wrap",
-                                        fontSize: "12px",
-                                        color: "rgba(214,218,255,0.58)",
-                                    }}
-                                >
-                                    <div>Scenario attivo: {activeScenario?.scenario_code ?? "—"}</div>
-                                    <div>
-                                        Persone coinvolte:{" "}
-                                        {activeScenario ? activeScenarioPeople.length : "—"}
-                                    </div>
-                                    <div>
-                                        Sedi evidenziate: {displayedMapMarkers.length}
-                                    </div>
-                                    <div>
-                                        Reference data:{" "}
-                                        {loadingReferenceData ? "caricamento..." : "ok"}
-                                    </div>
-                                </div>
+                            <div style={{ marginTop: "10px", display: "flex", gap: "16px", flexWrap: "wrap", fontSize: "12px", color: "#9CA3AF" }}>
+                                <div>Scenario attivo: {activeScenario?.scenario_code ?? "—"}</div>
+                                <div>Persone coinvolte: {activeScenario ? activeScenarioPeople.length : "—"}</div>
+                                <div>Sedi evidenziate: {displayedMapMarkers.length}</div>
+                                <div>Reference data: {loadingReferenceData ? "caricamento..." : "ok"}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* ── Row 2: Analytics — full width ── */}
+                <div style={getBoxShellStyle("analytics", 280)} onClick={(e) => e.stopPropagation()}>
+                    <div style={innerPanelPadding}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px", marginBottom: "16px" }}>
+                            <div>
+                                <h4 style={sectionTitleStyle}>Analytics</h4>
+                                <div style={sectionSubtitleStyle}>Andamento scenari in base alla metrica selezionata</div>
+                            </div>
+                            <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                                <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "12px", color: "#6B7280" }}>
+                                    Scegli analisi:
+                                    <select value={analyticsMetric} onChange={(e) => setAnalyticsMetric(e.target.value as AnalyticsMetric)}
+                                        style={{ background: "#FFFFFF", color: "#111827", border: "1px solid #E5E7EB", borderRadius: "12px", padding: "10px 12px", outline: "none" }}>
+                                        <option value="avg_length">Lung media</option>
+                                        <option value="unique_people">Persone coinvolte</option>
+                                        <option value="total_chains">Num catene</option>
+                                        <option value="coverage">Coverage</option>
+                                        <option value="avg_priority">Priorità media</option>
+                                    </select>
+                                </label>
+                                {renderExpandButton("analytics")}
                             </div>
                         </div>
 
-                        <div style={getBoxShellStyle("analytics", 300)}>
-                            <div style={innerPanelPadding}>
-                                <div
-                                    style={{
-                                        display: "flex",
-                                        justifyContent: "space-between",
-                                        alignItems: "flex-start",
-                                        gap: "12px",
-                                        marginBottom: "16px",
-                                    }}
-                                >
-                                    <div>
-                                        <h4 style={sectionTitleStyle}>Analytics</h4>
-                                        <div style={sectionSubtitleStyle}>
-                                            Andamento scenari in base alla metrica selezionata
-                                        </div>
-                                    </div>
-
-                                    <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                                        <label
-                                            style={{
-                                                display: "flex",
-                                                alignItems: "center",
-                                                gap: "8px",
-                                                fontSize: "12px",
-                                                color: "rgba(214,218,255,0.72)",
-                                            }}
-                                        >
-                                            Scegli analisi:
-                                            <select
-                                                value={analyticsMetric}
-                                                onChange={(e) =>
-                                                    setAnalyticsMetric(
-                                                        e.target.value as AnalyticsMetric
-                                                    )
-                                                }
-                                                style={{
-                                                    background: "rgba(255,255,255,0.04)",
-                                                    color: "#F4F7FF",
-                                                    border: "1px solid rgba(255,255,255,0.08)",
-                                                    borderRadius: "12px",
-                                                    padding: "10px 12px",
-                                                    outline: "none",
-                                                }}
-                                            >
-                                                <option value="avg_length">Lung media</option>
-                                                <option value="unique_people">
-                                                    Persone coinvolte
-                                                </option>
-                                                <option value="total_chains">Num catene</option>
-                                                <option value="coverage">Coverage</option>
-                                                <option value="avg_priority">Priorità media</option>
-                                            </select>
-                                        </label>
-
-                                        {renderExpandButton("analytics")}
-                                    </div>
+                        <div style={{ ...subtleCardStyle, padding: "16px 18px 12px 18px", minHeight: expandedBox === "analytics" ? "calc(100vh - 160px)" : "200px", display: "grid", gridTemplateRows: "auto 1fr auto", gap: "12px" }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                <div>
+                                    <div style={{ fontSize: "13px", color: "#6B7280" }}>Metrica attiva</div>
+                                    <div style={{ marginTop: "4px", fontSize: "22px", fontWeight: 700, color: "#111827" }}>{getAnalyticsMetricLabel(analyticsMetric)}</div>
                                 </div>
+                                <div style={{ fontSize: "12px", color: "#6B7280" }}>{analyticsSeries.length} scenari</div>
+                            </div>
 
-                                <div
-                                    style={{
-                                        ...subtleCardStyle,
-                                        padding: "16px 18px 12px 18px",
-                                        minHeight:
-                                            expandedBox === "analytics"
-                                                ? "calc(100vh - 160px)"
-                                                : "240px",
-                                        display: "grid",
-                                        gridTemplateRows: "auto 1fr auto",
-                                        gap: "12px",
-                                    }}
-                                >
-                                    <div
-                                        style={{
-                                            display: "flex",
-                                            justifyContent: "space-between",
-                                            alignItems: "center",
-                                        }}
-                                    >
-                                        <div>
-                                            <div
-                                                style={{
-                                                    fontSize: "13px",
-                                                    color: "rgba(214,218,255,0.72)",
-                                                }}
-                                            >
-                                                Metrica attiva
+                            <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.max(analyticsSeries.length, 1)}, minmax(28px, 1fr))`, gap: "14px", alignItems: "end", minHeight: expandedBox === "analytics" ? "380px" : "120px", paddingTop: "16px", borderTop: "1px solid #E5E7EB" }}>
+                                {analyticsSeries.length > 0 ? (
+                                    analyticsSeries.map((item) => (
+                                        <div key={item.id} style={{ display: "grid", gap: "10px", alignItems: "end", cursor: "pointer" }}
+                                            onClick={(e) => { e.stopPropagation(); setActiveScenarioId((prev) => prev === item.id ? null : item.id); setFocusedPersonId(null); }}
+                                            title={`${item.label} • ${formatNumber(item.value, analyticsMetric === "avg_length" || analyticsMetric === "avg_priority" || analyticsMetric === "coverage" ? 2 : 0)}`}>
+                                            <div style={{ height: expandedBox === "analytics" ? "300px" : "100px", display: "flex", alignItems: "end", justifyContent: "center" }}>
+                                                <div style={{ width: "100%", maxWidth: "34px", height: `${item.heightPct}%`, minHeight: "16px", borderRadius: "14px 14px 8px 8px", background: item.isActive ? "#E8511A" : "#F5C4B0", boxShadow: item.isActive ? "0 4px 6px -1px rgba(232,81,26,0.4)" : "none" }} />
                                             </div>
-                                            <div
-                                                style={{
-                                                    marginTop: "4px",
-                                                    fontSize: "24px",
-                                                    fontWeight: 700,
-                                                    color: "#F5F7FF",
-                                                }}
-                                            >
-                                                {getAnalyticsMetricLabel(analyticsMetric)}
-                                            </div>
+                                            <div style={{ textAlign: "center", fontSize: "11px", color: item.isActive ? "#111827" : "#6B7280" }}>{item.shortLabel}</div>
                                         </div>
+                                    ))
+                                ) : (
+                                    <div style={{ color: "#9CA3AF", fontSize: "13px" }}>Nessuno scenario disponibile.</div>
+                                )}
+                            </div>
 
-                                        <div
-                                            style={{
-                                                fontSize: "12px",
-                                                color: "rgba(214,218,255,0.56)",
-                                            }}
-                                        >
-                                            {analyticsSeries.length} scenari
-                                        </div>
-                                    </div>
-
-                                    <div
-                                        style={{
-                                            display: "grid",
-                                            gridTemplateColumns: `repeat(${Math.max(
-                                                analyticsSeries.length,
-                                                1
-                                            )}, minmax(28px, 1fr))`,
-                                            gap: "14px",
-                                            alignItems: "end",
-                                            minHeight:
-                                                expandedBox === "analytics" ? "420px" : "170px",
-                                            paddingTop: "16px",
-                                            borderTop: "1px solid rgba(255,255,255,0.04)",
-                                        }}
-                                    >
-                                        {analyticsSeries.length > 0 ? (
-                                            analyticsSeries.map((item) => (
-                                                <div
-                                                    key={item.id}
-                                                    style={{
-                                                        display: "grid",
-                                                        gap: "10px",
-                                                        alignItems: "end",
-                                                        cursor: "pointer",
-                                                    }}
-                                                    onClick={() => {
-                                                        setActiveScenarioId(item.id);
-                                                        setFocusedPersonId(null);
-                                                    }}
-                                                    title={`${item.label} • ${formatNumber(
-                                                        item.value,
-                                                        analyticsMetric === "avg_length" ||
-                                                            analyticsMetric === "avg_priority" ||
-                                                            analyticsMetric === "coverage"
-                                                            ? 2
-                                                            : 0
-                                                    )}`}
-                                                >
-                                                    <div
-                                                        style={{
-                                                            height:
-                                                                expandedBox === "analytics"
-                                                                    ? "340px"
-                                                                    : "150px",
-                                                            display: "flex",
-                                                            alignItems: "end",
-                                                            justifyContent: "center",
-                                                        }}
-                                                    >
-                                                        <div
-                                                            style={{
-                                                                width: "100%",
-                                                                maxWidth: "34px",
-                                                                height: `${item.heightPct}%`,
-                                                                minHeight: "16px",
-                                                                borderRadius: "14px 14px 8px 8px",
-                                                                background: item.isActive
-                                                                    ? "linear-gradient(180deg, #FF4E7A 0%, #FF7F50 100%)"
-                                                                    : "linear-gradient(180deg, rgba(105,118,255,0.82) 0%, rgba(77,91,179,0.48) 100%)",
-                                                                boxShadow: item.isActive
-                                                                    ? "0 10px 24px rgba(255,78,122,0.28)"
-                                                                    : "0 6px 18px rgba(90,104,255,0.16)",
-                                                            }}
-                                                        />
-                                                    </div>
-
-                                                    <div
-                                                        style={{
-                                                            textAlign: "center",
-                                                            fontSize: "11px",
-                                                            color: item.isActive
-                                                                ? "#FFFFFF"
-                                                                : "rgba(214,218,255,0.62)",
-                                                        }}
-                                                    >
-                                                        {item.shortLabel}
-                                                    </div>
-                                                </div>
-                                            ))
-                                        ) : (
-                                            <div style={{ color: "rgba(255,255,255,0.56)", fontSize: "13px" }}>
-                                                Nessuno scenario disponibile.
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    <div
-                                        style={{
-                                            display: "flex",
-                                            justifyContent: "space-between",
-                                            gap: "12px",
-                                            flexWrap: "wrap",
-                                            fontSize: "12px",
-                                            color: "rgba(214,218,255,0.56)",
-                                            borderTop: "1px solid rgba(255,255,255,0.04)",
-                                            paddingTop: "10px",
-                                        }}
-                                    >
-                                        <div>
-                                            Scenario attivo: {activeScenario?.scenario_code ?? "—"}
-                                        </div>
-                                        <div>
-                                            Valore attivo:{" "}
-                                            {activeScenario
-                                                ? formatNumber(
-                                                    getScenarioMetricValue(
-                                                        activeScenario,
-                                                        analyticsMetric
-                                                    ),
-                                                    analyticsMetric === "avg_length" ||
-                                                        analyticsMetric === "avg_priority" ||
-                                                        analyticsMetric === "coverage"
-                                                        ? 2
-                                                        : 0
-                                                )
-                                                : "—"}
-                                        </div>
-                                    </div>
-                                </div>
+                            <div style={{ display: "flex", justifyContent: "space-between", gap: "12px", flexWrap: "wrap", fontSize: "12px", color: "#6B7280", borderTop: "1px solid #E5E7EB", paddingTop: "10px" }}>
+                                <div>Scenario attivo: {activeScenario?.scenario_code ?? "—"}</div>
+                                <div>Valore attivo: {activeScenario ? formatNumber(getScenarioMetricValue(activeScenario, analyticsMetric), analyticsMetric === "avg_length" || analyticsMetric === "avg_priority" || analyticsMetric === "coverage" ? 2 : 0) : "—"}</div>
                             </div>
                         </div>
                     </div>
@@ -2195,3 +1404,5 @@ const AdminInterlocking = () => {
 };
 
 export default AdminInterlocking;
+
+
