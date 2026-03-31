@@ -609,8 +609,11 @@ const AdminInterlocking = () => {
 
         return uniqueUserIds.map((userId) => {
             const user = usersById.get(userId);
-            const location =
-                user?.location_id ? locationsById.get(user.location_id) ?? null : null;
+            let location = user?.location_id ? locationsById.get(user.location_id) ?? null : null;
+            
+            if (!location && user?.location_name) {
+                location = locationsDirectory.find(l => l.name?.toLowerCase() === user.location_name?.toLowerCase()) ?? null;
+            }
 
             return {
                 id: userId,
@@ -630,33 +633,39 @@ const AdminInterlocking = () => {
         const grouped = new Map<string, ScenarioLocationMarker>();
 
         for (const person of activeScenarioPeople) {
+            const locationKey = person.locationId || person.locationName;
+            
             if (
-                !person.locationId ||
+                !locationKey ||
                 person.latitude === null ||
                 person.longitude === null
             ) {
                 continue;
             }
 
-            const existing = grouped.get(person.locationId);
+            const existing = grouped.get(locationKey);
             if (existing) {
                 existing.peopleCount += 1;
                 existing.peopleNames.push(person.name);
-                existing.isFocused =
-                    existing.isFocused || focusedPersonId === person.id;
-                existing.colorMode =
-                    focusedPersonId === person.id ? "focused-gold" : "scenario-red";
+                
+                const isCurrentlyFocused = focusedPersonId === person.id;
+                existing.isFocused = existing.isFocused || isCurrentlyFocused;
+                
+                if (existing.isFocused) {
+                    existing.colorMode = "focused-gold";
+                } else {
+                    existing.colorMode = "scenario-red";
+                }
             } else {
-                grouped.set(person.locationId, {
-                    locationId: person.locationId,
+                grouped.set(locationKey, {
+                    locationId: locationKey,
                     locationName: person.locationName,
                     latitude: person.latitude,
                     longitude: person.longitude,
                     peopleCount: 1,
                     peopleNames: [person.name],
                     isFocused: focusedPersonId === person.id,
-                    colorMode:
-                        focusedPersonId === person.id ? "focused-gold" : "scenario-red",
+                    colorMode: focusedPersonId === person.id ? "focused-gold" : "scenario-red",
                 });
             }
         }

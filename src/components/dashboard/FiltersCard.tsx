@@ -1,0 +1,148 @@
+import React from "react";
+import type { MapLocation } from "../PositionsMap";
+
+export interface MapFilters {
+  locationName: string; // sede → fly to + open popup
+  roleName: string;     // ruolo → highlight matching markers
+}
+
+interface FiltersCardProps {
+  filters: MapFilters;
+  onFiltersChange: (f: MapFilters) => void;
+  mapLocations: MapLocation[];
+}
+
+const FiltersCard: React.FC<FiltersCardProps> = ({
+  filters,
+  onFiltersChange,
+  mapLocations,
+}) => {
+  // Unique location names from map data
+  const locationNames = Array.from(
+    new Set(mapLocations.map((l) => l.name).filter(Boolean))
+  ).sort();
+
+  // Unique role names from all location roles
+  const roleNames = Array.from(
+    new Set(
+      mapLocations.flatMap((l) => l.roles.map((r) => r.role_name)).filter(Boolean)
+    )
+  ).sort();
+
+  const hasActiveFilters = filters.locationName !== "" || filters.roleName !== "";
+
+  const reset = () => onFiltersChange({ locationName: "", roleName: "" });
+
+  return (
+    <div className="db-card db-filters-card">
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <span className="db-card-title">Filtri Mappa</span>
+        {hasActiveFilters && (
+          <span
+            style={{
+              fontSize: "10px",
+              fontWeight: 700,
+              color: "var(--brand)",
+              background: "var(--brand-light)",
+              padding: "2px 7px",
+              borderRadius: "10px",
+            }}
+          >
+            ATTIVI
+          </span>
+        )}
+      </div>
+
+      {/* Sede filter → fly to + popup */}
+      <div className="db-filter-group">
+        <label className="db-filter-label" htmlFor="filter-location">
+          📍 Cerca sede
+        </label>
+        <select
+          id="filter-location"
+          className="db-filter-select"
+          value={filters.locationName}
+          onChange={(e) =>
+            onFiltersChange({ ...filters, locationName: e.target.value })
+          }
+        >
+          <option value="">Tutte le sedi</option>
+          {locationNames.map((name) => (
+            <option key={name} value={name}>
+              {name}
+            </option>
+          ))}
+        </select>
+        {filters.locationName && (
+          <div
+            style={{
+              fontSize: "11px",
+              color: "var(--available-color)",
+              marginTop: "4px",
+              fontWeight: 500,
+            }}
+          >
+            ✓ La mappa zoomerà su "{filters.locationName}"
+          </div>
+        )}
+      </div>
+
+      {/* Ruolo filter → highlight markers */}
+      <div className="db-filter-group">
+        <label className="db-filter-label" htmlFor="filter-role">
+          🎯 Filtra per ruolo
+        </label>
+        <select
+          id="filter-role"
+          className="db-filter-select"
+          value={filters.roleName}
+          onChange={(e) =>
+            onFiltersChange({ ...filters, roleName: e.target.value })
+          }
+        >
+          <option value="">Tutti i ruoli</option>
+          {roleNames.map((name) => (
+            <option key={name} value={name}>
+              {name}
+            </option>
+          ))}
+        </select>
+        {filters.roleName && (
+          <div
+            style={{
+              fontSize: "11px",
+              color: "#2563eb",
+              marginTop: "4px",
+              fontWeight: 500,
+            }}
+          >
+            ✓ Sedi con "{filters.roleName}" evidenziate
+          </div>
+        )}
+      </div>
+
+      {/* Reset */}
+      {hasActiveFilters && (
+        <button className="db-filter-reset" onClick={reset} id="filter-reset-btn">
+          ↺ Azzera filtri mappa
+        </button>
+      )}
+
+      {mapLocations.length === 0 && (
+        <div
+          style={{
+            marginTop: "14px",
+            fontSize: "12px",
+            color: "var(--text-muted)",
+            textAlign: "center",
+            padding: "8px",
+          }}
+        >
+          In attesa dei dati mappa…
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default FiltersCard;

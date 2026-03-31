@@ -67,7 +67,12 @@ type LocationRole = {
     priority?: number;
 };
 
-type MapLocation = {
+type MeLocation = {
+    latitude: number;
+    longitude: number;
+};
+
+export type MapLocation = {
     location_id: string;
     name: string;
     latitude: number;
@@ -75,16 +80,19 @@ type MapLocation = {
     roles: LocationRole[];
 };
 
-type MeLocation = {
-    latitude: number;
-    longitude: number;
-};
-
 type Props = {
     viewerUserId?: string;
     mode?: "from" | "to";
     interaction?: "read" | "write";
     highlightPositionId?: string;
+    /** Fly to this location name and open its popup */
+    filterLocationName?: string;
+    /** Highlight all markers that have at least one role matching this name */
+    filterRoleName?: string;
+    /** Called once after each data load with the full location list */
+    onLocationsLoaded?: (locations: MapLocation[]) => void;
+    /** Called whenever the user successfully applies or withdraws from a role */
+    onApplicationUpdate?: () => void;
 };
 
 /* ---------- COMPONENT ---------- */
@@ -94,6 +102,10 @@ const PositionsMap = ({
     mode = "from",
     interaction = "write",
     highlightPositionId,
+    filterLocationName,
+    filterRoleName,
+    onLocationsLoaded,
+    onApplicationUpdate,
 }: Props) => {
     useEffect(() => {
         console.log("[DEBUG] highlightPositionId =", highlightPositionId);
@@ -149,6 +161,7 @@ const PositionsMap = ({
             setMaxApplications(payload.maxApplications);
             setUsedPriorities(payload.usedPriorities);
             setLocations(payload.locations);
+            onLocationsLoaded?.(payload.locations ?? []);
         } catch (e: any) {
             if (seq !== bootSeq.current) return;
             console.error("[PositionsMap] boot() via backend failed:", e?.message ?? e);
@@ -197,6 +210,7 @@ const PositionsMap = ({
         });
 
         boot();
+        onApplicationUpdate?.();
     };
 
     const handleWithdrawFromRole = async (role: LocationRole) => {
@@ -215,6 +229,7 @@ const PositionsMap = ({
         }
 
         boot();
+        onApplicationUpdate?.();
     };
 
     /* ---------- HELPERS ---------- */
@@ -233,6 +248,7 @@ const PositionsMap = ({
     const MapHighlighter = () => {
         const map = useMap();
 
+        // ---- highlight by position ID (from AccountPage link) ----
         useEffect(() => {
             if (!highlightPositionId) {
                 setHighlightLocationId(null);
@@ -270,6 +286,33 @@ const PositionsMap = ({
                 setTimeout(() => marker.openPopup(), 150);
             }
         }, [highlightPositionId, locations, map]);
+
+        // ---- filter by location name: fly + open popup ----
+        useEffect(() => {
+            if (!filterLocationName || !locations || locations.length === 0) return;
+
+            const targetLoc = locations.find(
+                (loc) => loc.name.toLowerCase() === filterLocationName.toLowerCase()
+            );
+            if (!targetLoc) return;
+
+            setHighlightLocationId(targetLoc.location_id);
+            autoMoveRef.current = true;
+
+            map.flyTo([targetLoc.latitude, targetLoc.longitude], 12, {
+                animate: true,
+                duration: 1.0,
+            });
+
+            map.once("moveend", () => {
+                autoMoveRef.current = false;
+                const marker = locationMarkerRefs.current[targetLoc.location_id];
+                if (marker && typeof marker.openPopup === "function") {
+                    marker.openPopup();
+                }
+            });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        }, [filterLocationName, map]);
 
         return null;
     };
@@ -310,7 +353,16 @@ const PositionsMap = ({
 
             {/* SEDI */}
             {myStatus !== null &&
-                locations.map((loc) => (
+                locations.map((loc) => {
+                    // When a role filter is active, dim locations that don't match
+                    const roleMatchesFilter =
+                        !filterRoleName ||
+                        loc.roles.some(
+                            (r) => r.role_name.toLowerCase() === filterRoleName.toLowerCase()
+                        );
+                    const locationOpacity = filterRoleName && !roleMatchesFilter ? 0.25 : 1;
+
+                    return (
                     <React.Fragment key={`${loc.location_id}-${myStatus}`}>
                         {highlightLocationId === loc.location_id && (
                             <Circle
@@ -331,11 +383,14 @@ const PositionsMap = ({
                             ref={(ref: L.Marker | null) => {
                                 if (ref) locationMarkerRefs.current[loc.location_id] = ref;
                             }}
+                            opacity={locationOpacity}
                             zIndexOffset={
-                                highlightPositionId &&
-                                    loc.roles.some((r) =>
-                                        r.users.some((u) => u.position_id === highlightPositionId)
-                                    )
+                                (filterRoleName && roleMatchesFilter)
+                                    ? 2000
+                                    : highlightPositionId &&
+                                      loc.roles.some((r) =>
+                                          r.users.some((u) => u.position_id === highlightPositionId)
+                                      )
                                     ? 2000
                                     : 0
                             }
@@ -413,7 +468,8 @@ const PositionsMap = ({
                             </Popup>
                         </Marker>
                     </React.Fragment>
-                ))}
+                    );
+                })}
 
             {/* VIEWER */}
             {meLocation && (

@@ -315,8 +315,9 @@ export const appApi = {
         return apiFetch(`/api/admin/roles/${id}`, { method: "DELETE" });
     },
 
-    async getConfig(): Promise<{ maxApplications: number }> {
-        return apiFetch(`/api/config`, { method: "GET" });
+    async getConfig(): Promise<{ max_applications: number } | null> {
+        const json = await apiFetch(`/api/config`, { method: "GET" });
+        return json.config ?? null;
     },
 
     async adminGetScenarioApplications(scenarioId: string) {

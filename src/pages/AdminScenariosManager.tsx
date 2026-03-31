@@ -228,86 +228,89 @@ const AdminScenariosManager = ({
     };
 
     return (
-        <div>
-            <h4 style={{ marginTop: 0 }}>🧩 Gestione Scenari</h4>
-
-            {error && <div style={{ color: "red", marginBottom: "10px" }}>{error}</div>}
-
-            {view === "list" && (
-                <>
-                    <button onClick={addScenario} disabled={loading}>
-                        ➕ Aggiungi scenario
+        <div className="db-card">
+            <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <h2 style={{ margin: 0, fontSize: "16px", fontWeight: 700, color: "var(--text-primary)" }}>
+                    {view === "list" ? `Scenari (${scenarios.length})` : `Scenario: ${activeScenario?.name}`}
+                </h2>
+                {view === "list" && (
+                    <button className="db-btn" style={{ background: "var(--brand)", color: "white" }} onClick={addScenario} disabled={loading}>
+                        ➕ Nuovo scenario
                     </button>
-
-                    {scenarios.length === 0 ? (
-                        <p style={{ marginTop: "12px" }}>Nessuno scenario definito.</p>
-                    ) : (
-                        <ul style={{ marginTop: "14px" }}>
-                            {scenarios.map((s) => (
-                                <li
-                                    key={s.id}
-                                    style={{ display: "flex", gap: "10px", alignItems: "center" }}
-                                >
-                                    <span style={{ flex: 1 }}>{s.name}</span>
-
-                                    <button onClick={() => openScenario(s)} disabled={loading}>
-                                        Apri
-                                    </button>
-
-                                    <button
-                                        onClick={() => deleteScenario(s.id)}
-                                        disabled={loading}
-                                        title="Elimina scenario"
-                                    >
-                                        ❌
-                                    </button>
-                                </li>
-                            ))}
-                        </ul>
-                    )}
-                </>
-            )}
-
-            {view === "detail" && activeScenario && (
-                <>
-                    <div style={{ display: "flex", gap: "10px", alignItems: "center", marginBottom: "10px" }}>
-                        <button
-                            onClick={async () => {
-                                await reloadScenarios();
-                                setView("list");
-                                setActiveScenario(null);
-                                setApplications([]);
-                                setError(null);
-                            }}
-                            disabled={loading}
-                        >
-                            ⬅ Torna alla lista scenari
+                )}
+                {view === "detail" && (
+                    <div style={{ display: "flex", gap: "8px" }}>
+                        <button className="db-btn db-btn-outline" onClick={async () => {
+                            await reloadScenarios();
+                            setView("list");
+                            setActiveScenario(null);
+                            setApplications([]);
+                            setError(null);
+                        }} disabled={loading}>
+                            ← Indietro
                         </button>
-
-                        <button onClick={renameScenario} disabled={loading}>
+                        <button className="db-btn db-btn-outline" onClick={renameScenario} disabled={loading}>
                             ✏️ Rinomina
                         </button>
-
-                        <button onClick={() => deleteScenario(activeScenario.id)} disabled={loading}>
-                            ❌ Elimina scenario
+                        <button className="db-btn db-btn-danger" onClick={() => { if(activeScenario) deleteScenario(activeScenario.id); }} disabled={loading}>
+                            Elimina scenario
                         </button>
                     </div>
+                )}
+            </div>
 
-                    <h4 style={{ marginTop: "10px" }}>📌 Scenario: {activeScenario.name}</h4>
+            {error && <div style={{ margin: "16px 20px", padding: "10px", background: "#fef2f2", color: "#b91c1c", border: "1px solid #fecaca", borderRadius: "8px", fontSize: "13px" }}>{error}</div>}
 
-                    <div style={{ display: "flex", gap: "10px", margin: "10px 0 16px 0" }}>
-                        <button onClick={deleteAllApplications} disabled={loading}>
-                            🧹 Elimina tutti gli utenti dallo scenario
-                        </button>
-                    </div>
+            {/* LISTA SCENARI */}
+            {view === "list" && (
+                <div style={{ overflowX: "auto" }}>
+                    <table className="db-apps-table" style={{ width: "100%", whiteSpace: "nowrap" }}>
+                        <thead>
+                            <tr>
+                                <th>Nome Scenario</th>
+                                <th align="right">Azioni</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {scenarios.length === 0 && (
+                                <tr>
+                                    <td colSpan={2} style={{ textAlign: "center", padding: "30px", color: "var(--text-muted)" }}>
+                                        Nessuno scenario presente.
+                                    </td>
+                                </tr>
+                            )}
+                            {scenarios.map((s) => (
+                                <tr key={s.id}>
+                                    <td><span style={{ fontWeight: 600 }}>{s.name}</span></td>
+                                    <td align="right">
+                                        <div style={{ display: "flex", gap: "6px", justifyContent: "flex-end" }}>
+                                            <button className="db-btn db-btn-outline" onClick={() => openScenario(s)} disabled={loading}>
+                                                Apri
+                                            </button>
+                                            <button className="db-action-btn db-action-btn-delete" onClick={() => deleteScenario(s.id)} disabled={loading}>
+                                                Elimina
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            )}
 
-                    <div style={{ display: "grid", gap: "8px", maxWidth: "460px" }}>
+            {/* DETTAGLIO SCENARIO */}
+            {view === "detail" && activeScenario && (
+                <>
+                    {/* INSERISCI CANDIDATURA MANUALE */}
+                    <div style={{ padding: "16px 20px", background: "var(--surface)", borderBottom: "1px solid var(--border)", display: "flex", gap: "12px", alignItems: "center", flexWrap: "wrap" }}>
                         <select
+                            className="db-filter-select" style={{ flex: 1, minWidth: "150px" }}
                             value={form.user_id}
                             onChange={(e) => setForm({ ...form, user_id: e.target.value })}
                             disabled={loading}
                         >
-                            <option value="">Utente A</option>
+                            <option value="">Seleziona Utente</option>
                             {users.map((u) => (
                                 <option key={u.id} value={u.id}>
                                     {u.full_name}
@@ -316,11 +319,12 @@ const AdminScenariosManager = ({
                         </select>
 
                         <select
+                            className="db-filter-select" style={{ flex: 1, minWidth: "220px" }}
                             value={form.position_id}
                             onChange={(e) => setForm({ ...form, position_id: e.target.value })}
                             disabled={loading}
                         >
-                            <option value="">Si candida verso</option>
+                            <option value="">Si candida verso la posizione</option>
                             {positions.map((p) => (
                                 <option key={p.id} value={p.id}>
                                     {p.occupant_name} — {p.title}
@@ -328,52 +332,73 @@ const AdminScenariosManager = ({
                             ))}
                         </select>
 
-                        <input
-                            type="number"
-                            min={1}
-                            value={form.priority}
-                            onChange={(e) => setForm({ ...form, priority: Number(e.target.value) })}
-                            disabled={loading}
-                        />
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                            <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-secondary)" }}>Priorità:</span>
+                            <input
+                                className="db-filter-select"
+                                style={{ width: "60px" }}
+                                type="number"
+                                min={1}
+                                value={form.priority}
+                                onChange={(e) => setForm({ ...form, priority: Number(e.target.value) })}
+                                disabled={loading}
+                            />
+                        </div>
 
-                        <button onClick={addApplication} disabled={loading}>
-                            Inserisci candidatura
+                        <button className="db-btn" style={{ background: "var(--brand)", color: "white" }} onClick={addApplication} disabled={loading}>
+                            Inserisci
                         </button>
                     </div>
 
-                    <h4 style={{ marginTop: "20px" }}>📋 Candidature nello scenario</h4>
+                    <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <div style={{ fontSize: "14px", fontWeight: 600, color: "var(--text-primary)" }}>Candidature isolate in questo scenario</div>
+                        {applications.length > 0 && (
+                            <button className="db-btn db-btn-danger" onClick={deleteAllApplications} disabled={loading}>
+                                🧹 Svuota scenario
+                            </button>
+                        )}
+                    </div>
 
-                    {applications.length === 0 ? (
-                        <p>Nessuna candidatura nello scenario.</p>
-                    ) : (
-                        <table width="100%" style={{ marginTop: "10px" }}>
+                    {/* TABELLA CANDIDATURE SCENARIO */}
+                    <div style={{ overflowX: "auto" }}>
+                        <table className="db-apps-table" style={{ width: "100%", whiteSpace: "nowrap" }}>
                             <thead>
                                 <tr>
-                                    <th align="left">Utente</th>
-                                    <th align="left">Target</th>
-                                    <th align="left">Priorità</th>
-                                    <th></th>
+                                    <th>Candidato</th>
+                                    <th>Posizione Target</th>
+                                    <th align="center">Priorità</th>
+                                    <th align="right">Azioni</th>
                                 </tr>
                             </thead>
                             <tbody>
+                                {applications.length === 0 && (
+                                    <tr>
+                                        <td colSpan={4} style={{ textAlign: "center", padding: "30px", color: "var(--text-muted)" }}>
+                                            Nessuna candidatura presente in questo scenario.
+                                        </td>
+                                    </tr>
+                                )}
                                 {applications.map((a) => {
                                     const u = users.find((x) => x.id === a.user_id);
                                     const p = positions.find((x) => x.id === a.position_id);
 
                                     return (
                                         <tr key={a.id}>
-                                            <td>{u?.full_name}</td>
+                                            <td><span style={{ fontWeight: 600 }}>{u?.full_name}</span></td>
                                             <td>
-                                                {p?.occupant_name} — {p?.title}
+                                                {p?.occupant_name && <span style={{ marginRight: "6px", color: "var(--text-secondary)" }}>{p.occupant_name}</span>}
+                                                <span style={{ 
+                                                    padding: "2px 6px", borderRadius: "4px", background: "var(--brand-light)", color: "var(--brand)", fontSize: "11px", fontWeight: 600
+                                                }}>{p?.title}</span>
                                             </td>
-                                            <td>{a.priority}</td>
-                                            <td>
-                                                <button
-                                                    onClick={() => deleteApplication(a.id)}
-                                                    disabled={loading}
-                                                    title="Rimuovi"
-                                                >
-                                                    ❌
+                                            <td align="center">
+                                                <span style={{ 
+                                                    display: "inline-flex", width: 24, height: 24, borderRadius: "6px", alignItems: "center", justifyContent: "center", background: "#f1f5f9", fontWeight: 700, fontSize: "12px", color: "var(--text-primary)"
+                                                }}>{a.priority}</span>
+                                            </td>
+                                            <td align="right">
+                                                <button className="db-action-btn db-action-btn-delete" onClick={() => deleteApplication(a.id)} disabled={loading}>
+                                                    Rimuovi
                                                 </button>
                                             </td>
                                         </tr>
@@ -381,7 +406,7 @@ const AdminScenariosManager = ({
                                 })}
                             </tbody>
                         </table>
-                    )}
+                    </div>
                 </>
             )}
         </div>

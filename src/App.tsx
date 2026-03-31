@@ -1,10 +1,8 @@
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "./lib/AuthContext";
 
-import DashboardPage from "./pages/DashboardPage";
-import AccountPage from "./pages/AccountPage";
+import MobilityDashboard from "./pages/MobilityDashboard";
 
-import AdminHome from "./pages/AdminHome";
 import AdminCandidatures from "./pages/AdminCandidatures";
 import AdminMaps from "./pages/AdminMaps";
 import AdminInterlocking from "./pages/AdminInterlocking";
@@ -16,19 +14,37 @@ import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/RegisterPage";
 import RequireAdmin from "./components/RequireAdmin";
 
-
 function App() {
   const { user, loading } = useAuth();
+  const location = useLocation();
 
   if (loading) {
-    return <p style={{ padding: "20px" }}>Caricamento...</p>;
+    return (
+      <div style={{
+        display: "flex", height: "100vh", alignItems: "center",
+        justifyContent: "center",
+        fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif",
+        color: "#64748b", fontSize: "14px", gap: "10px", background: "#f1f5f9",
+      }}>
+        <div style={{
+          width: 18, height: 18,
+          border: "2px solid #e2e8f0", borderTopColor: "#e8511a",
+          borderRadius: "50%", animation: "spin 0.6s linear infinite",
+        }} />
+        Caricamento…
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
   }
+
+  const isAdminRoute = location.pathname.startsWith("/admin");
 
   return (
     <>
-      {user && <TopBar />}
+      {/* TopBar only for admin routes (dashboard has its own inline topbar) */}
+      {user && isAdminRoute && <TopBar />}
 
-      <div style={{ paddingTop: user ? "60px" : "0" }}>
+      <div style={{ paddingTop: user && isAdminRoute ? "64px" : "0" }}>
         <Routes>
           {/* ---------- PUBLIC ---------- */}
           {!user && (
@@ -44,51 +60,18 @@ function App() {
           {/* ---------- PROTECTED ---------- */}
           {user && (
             <>
-              {/* User */}
-              <Route path="/" element={<DashboardPage />} />
-              <Route path="/account" element={<AccountPage />} />
+              {/* Unified dashboard (replaces DashboardPage + AccountPage) */}
+              <Route path="/" element={<MobilityDashboard />} />
 
-              {/* Admin (guardato) */}
-              <Route
-                path="/admin"
-                element={
-                  <RequireAdmin>
-                    <AdminHome />
-                  </RequireAdmin>
-                }
-              />
-              <Route
-                path="/admin/candidatures"
-                element={
-                  <RequireAdmin>
-                    <AdminCandidatures />
-                  </RequireAdmin>
-                }
-              />
-              <Route
-                path="/admin/maps"
-                element={
-                  <RequireAdmin>
-                    <AdminMaps />
-                  </RequireAdmin>
-                }
-              />
-              <Route
-                path="/admin/interlocking"
-                element={
-                  <RequireAdmin>
-                    <AdminInterlocking />
-                  </RequireAdmin>
-                }
-              />
-              <Route
-                path="/admin/test-users"
-                element={
-                  <RequireAdmin>
-                    <AdminTestUsers />
-                  </RequireAdmin>
-                }
-              />
+              {/* /account → redirect to unified dashboard */}
+              <Route path="/account" element={<Navigate to="/" replace />} />
+
+              {/* Admin (guarded by RequireAdmin) */}
+              <Route path="/admin" element={<Navigate to="/admin/interlocking" replace />} />
+              <Route path="/admin/candidatures" element={<RequireAdmin><AdminCandidatures /></RequireAdmin>} />
+              <Route path="/admin/maps" element={<RequireAdmin><AdminMaps /></RequireAdmin>} />
+              <Route path="/admin/interlocking" element={<RequireAdmin><AdminInterlocking /></RequireAdmin>} />
+              <Route path="/admin/test-users" element={<RequireAdmin><AdminTestUsers /></RequireAdmin>} />
 
               {/* Fallback */}
               <Route path="*" element={<Navigate to="/" replace />} />

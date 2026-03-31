@@ -124,96 +124,77 @@ const AdminLocationsManager = () => {
     ======================= */
 
     return (
-        <div>
-            <h4 style={{ marginTop: 0 }}>🏢 Gestione Sedi</h4>
+        <div className="db-card">
+            <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <h2 style={{ margin: 0, fontSize: "16px", fontWeight: 700, color: "var(--text-primary)" }}>
+                    Sedi Aziendali ({locations.length})
+                </h2>
+            </div>
 
-            {error && <div style={{ color: "red", marginBottom: "10px" }}>{error}</div>}
+            {error && <div style={{ margin: "16px 20px", padding: "10px", background: "#fef2f2", color: "#b91c1c", border: "1px solid #fecaca", borderRadius: "8px", fontSize: "13px" }}>{error}</div>}
 
             {/* ADD FORM */}
-            <div
-                style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
-                    gap: "8px",
-                    maxWidth: "900px",
-                    marginBottom: "16px",
-                }}
-            >
-                <input
-                    placeholder="Nome sede"
-                    value={form.name}
-                    onChange={(e) => setForm({ ...form, name: e.target.value })}
-                />
-                <input
-                    placeholder="Regione"
-                    value={form.region}
-                    onChange={(e) => setForm({ ...form, region: e.target.value })}
-                />
-                <input
-                    placeholder="Provincia"
-                    value={form.province}
-                    onChange={(e) => setForm({ ...form, province: e.target.value })}
-                />
-                <input
-                    placeholder="Latitudine"
-                    value={form.latitude}
-                    onChange={(e) => setForm({ ...form, latitude: e.target.value })}
-                />
-                <input
-                    placeholder="Longitudine"
-                    value={form.longitude}
-                    onChange={(e) => setForm({ ...form, longitude: e.target.value })}
-                />
-                <label style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                    <input
-                        type="checkbox"
-                        checked={form.fixed_location}
-                        onChange={(e) =>
-                            setForm({ ...form, fixed_location: e.target.checked })
-                        }
-                    />
+            <div style={{ padding: "16px 20px", background: "var(--surface)", borderBottom: "1px solid var(--border)", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: "10px", alignItems: "center" }}>
+                <input className="db-filter-select" placeholder="Nome sede*" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+                <input className="db-filter-select" placeholder="Regione" value={form.region} onChange={(e) => setForm({ ...form, region: e.target.value })} />
+                <input className="db-filter-select" placeholder="Provincia" value={form.province} onChange={(e) => setForm({ ...form, province: e.target.value })} />
+                <input className="db-filter-select" placeholder="Latitudine*" value={form.latitude} onChange={(e) => setForm({ ...form, latitude: e.target.value })} />
+                <input className="db-filter-select" placeholder="Longitudine*" value={form.longitude} onChange={(e) => setForm({ ...form, longitude: e.target.value })} />
+                <label style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "13px", color: "var(--text-primary)", fontWeight: 600 }}>
+                    <input type="checkbox" checked={form.fixed_location} onChange={(e) => setForm({ ...form, fixed_location: e.target.checked })} style={{ width: "16px", height: "16px", accentColor: "var(--brand)" }} />
                     Fissa
                 </label>
-
-                <button onClick={addLocation} disabled={loading}>
-                    ➕ Aggiungi sede
+                <button className="db-btn" style={{ background: "var(--brand)", color: "white" }} onClick={addLocation} disabled={loading}>
+                    ➕ Aggiungi
                 </button>
             </div>
 
             {/* LIST */}
-            <table width="100%">
-                <thead>
-                    <tr>
-                        <th align="left">Nome</th>
-                        <th align="left">Regione</th>
-                        <th align="left">Provincia</th>
-                        <th align="left">Lat</th>
-                        <th align="left">Lng</th>
-                        <th align="center">Fissa</th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {locations.map((l) => (
-                        <tr key={l.id}>
-                            <td>{l.name}</td>
-                            <td>{l.region}</td>
-                            <td>{l.province}</td>
-                            <td>{l.latitude}</td>
-                            <td>{l.longitude}</td>
-                            <td align="center">{l.fixed_location ? "✓" : ""}</td>
-                            <td>
-                                <button
-                                    onClick={() => deleteLocation(l.id)}
-                                    disabled={loading}
-                                >
-                                    ❌
-                                </button>
-                            </td>
+            <div style={{ overflowX: "auto" }}>
+                <table className="db-apps-table" style={{ width: "100%", whiteSpace: "nowrap" }}>
+                    <thead>
+                        <tr>
+                            <th>Nome</th>
+                            <th>Regione</th>
+                            <th>Provincia</th>
+                            <th>Latitudine</th>
+                            <th>Longitudine</th>
+                            <th align="center">Sede Fissa</th>
+                            <th>Azioni</th>
                         </tr>
-                    ))}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        {locations.length === 0 && (
+                            <tr>
+                                <td colSpan={7} style={{ textAlign: "center", padding: "30px", color: "var(--text-muted)" }}>
+                                    Nessuna sede configurata.
+                                </td>
+                            </tr>
+                        )}
+                        {locations.map((l) => (
+                            <tr key={l.id}>
+                                <td><span style={{ fontWeight: 600 }}>{l.name}</span></td>
+                                <td>{l.region || "—"}</td>
+                                <td>{l.province || "—"}</td>
+                                <td style={{ color: "var(--text-secondary)" }}>{l.latitude}</td>
+                                <td style={{ color: "var(--text-secondary)" }}>{l.longitude}</td>
+                                <td align="center">
+                                    {l.fixed_location ? (
+                                        <span style={{ color: "#10b981", fontSize: "16px" }}>✓</span>
+                                    ) : (
+                                        <span style={{ color: "var(--border)" }}>—</span>
+                                    )}
+                                </td>
+                                <td>
+                                    <button className="db-action-btn db-action-btn-delete" onClick={() => deleteLocation(l.id)} disabled={loading}>
+                                        Elimina
+                                    </button>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
         </div>
     );
 };

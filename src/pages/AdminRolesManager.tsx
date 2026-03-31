@@ -156,100 +156,127 @@ const AdminRolesManager = () => {
     ======================= */
 
     return (
-        <div>
-            <h4 style={{ marginTop: 0 }}>🧠 Gestione Ruoli</h4>
+        <div className="db-card">
+            <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <h2 style={{ margin: 0, fontSize: "16px", fontWeight: 700, color: "var(--text-primary)" }}>
+                    Ruoli Aziendali ({roles.length})
+                </h2>
+            </div>
 
-            {error && <div style={{ color: "red", marginBottom: "10px" }}>{error}</div>}
+            {error && <div style={{ margin: "16px 20px", padding: "10px", background: "#fef2f2", color: "#b91c1c", border: "1px solid #fecaca", borderRadius: "8px", fontSize: "13px" }}>{error}</div>}
 
             {/* ADD ROLE */}
-            <div style={{ display: "flex", gap: "10px", marginBottom: "16px" }}>
+            <div style={{ padding: "16px 20px", background: "var(--surface)", borderBottom: "1px solid var(--border)", display: "flex", gap: "12px", alignItems: "center" }}>
                 <input
-                    placeholder="Nuovo ruolo"
+                    className="db-filter-select"
+                    style={{ flex: 1, maxWidth: "300px" }}
+                    placeholder="Nome nuovo ruolo"
                     value={newRoleName}
                     onChange={(e) => setNewRoleName(e.target.value)}
                 />
-                <button onClick={addRole}>➕ Aggiungi ruolo</button>
+                <button className="db-btn" style={{ background: "var(--brand)", color: "white" }} onClick={addRole}>
+                    ➕ Aggiungi ruolo
+                </button>
             </div>
 
             {/* ROLES TABLE */}
-            <table width="100%" style={{ borderCollapse: "collapse" }}>
-                <thead>
-                    <tr>
-                        <th align="left">Ruolo</th>
-                        <th align="left">Aggiungi compatibilità</th>
-                        <th align="left">Compatibili</th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {roles.map((r) => {
-                        const compatibilities = compatMap[r.id] ?? [];
-
-                        return (
-                            <tr key={r.id}>
-                                <td>{r.name}</td>
-
-                                <td>
-                                    <div style={{ display: "flex", gap: "6px" }}>
-                                        <select
-                                            value={selectedCompat[r.id] ?? ""}
-                                            onChange={(e) =>
-                                                setSelectedCompat((prev) => ({
-                                                    ...prev,
-                                                    [r.id]: e.target.value,
-                                                }))
-                                            }
-                                        >
-                                            <option value="">Seleziona ruolo</option>
-                                            {roles
-                                                .filter((x) => x.id !== r.id)
-                                                .map((x) => (
-                                                    <option key={x.id} value={x.id}>
-                                                        {x.name}
-                                                    </option>
-                                                ))}
-                                        </select>
-
-                                        <button onClick={() => addCompatibility(r.id)}>
-                                            Inserisci
-                                        </button>
-                                    </div>
-                                </td>
-
-                                <td>
-                                    <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-                                        {compatibilities.map((c) => (
-                                            <span
-                                                key={c.id}
-                                                style={{
-                                                    padding: "4px 8px",
-                                                    border: "1px solid #444",
-                                                    borderRadius: "12px",
-                                                    display: "flex",
-                                                    alignItems: "center",
-                                                    gap: "6px",
-                                                }}
-                                            >
-                                                {c.compatible_role_name}
-                                                <button
-                                                    onClick={() => deleteCompatibility(c.id)}
-                                                    style={{ border: "none", background: "transparent" }}
-                                                >
-                                                    ❌
-                                                </button>
-                                            </span>
-                                        ))}
-                                    </div>
-                                </td>
-
-                                <td width="40">
-                                    <button onClick={() => deleteRole(r.id)}>❌</button>
+            <div style={{ overflowX: "auto" }}>
+                <table className="db-apps-table" style={{ width: "100%", whiteSpace: "wrap" }}>
+                    <thead>
+                        <tr>
+                            <th style={{ width: "20%" }}>Ruolo</th>
+                            <th style={{ width: "30%" }}>Aggiungi compatibilità</th>
+                            <th style={{ width: "40%" }}>Ruoli Compatibili (per incastri)</th>
+                            <th style={{ width: "10%" }} align="right">Azioni</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {roles.length === 0 && (
+                            <tr>
+                                <td colSpan={4} style={{ textAlign: "center", padding: "30px", color: "var(--text-muted)" }}>
+                                    Nessun ruolo presente.
                                 </td>
                             </tr>
-                        );
-                    })}
-                </tbody>
-            </table>
+                        )}
+                        {roles.map((r) => {
+                            const compatibilities = compatMap[r.id] ?? [];
+
+                            return (
+                                <tr key={r.id}>
+                                    <td><span style={{ fontWeight: 600 }}>{r.name}</span></td>
+
+                                    <td>
+                                        <div style={{ display: "flex", gap: "6px" }}>
+                                            <select
+                                                className="db-filter-select"
+                                                style={{ height: "30px", fontSize: "12px", padding: "0 8px", width: "160px" }}
+                                                value={selectedCompat[r.id] ?? ""}
+                                                onChange={(e) =>
+                                                    setSelectedCompat((prev) => ({
+                                                        ...prev,
+                                                        [r.id]: e.target.value,
+                                                    }))
+                                                }
+                                            >
+                                                <option value="">Seleziona ruolo</option>
+                                                {roles
+                                                    .filter((x) => x.id !== r.id && !compatibilities.find(c => c.compatible_role_id === x.id))
+                                                    .map((x) => (
+                                                        <option key={x.id} value={x.id}>
+                                                            {x.name}
+                                                        </option>
+                                                    ))}
+                                            </select>
+
+                                            <button className="db-btn db-btn-outline" style={{ padding: "4px 10px", fontSize: "12px" }} onClick={() => addCompatibility(r.id)} disabled={!selectedCompat[r.id]}>
+                                                Collega
+                                            </button>
+                                        </div>
+                                    </td>
+
+                                    <td>
+                                        <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+                                            {compatibilities.length === 0 && <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>Nessuna compatibilità impostata</span>}
+                                            {compatibilities.map((c) => (
+                                                <span
+                                                    key={c.id}
+                                                    style={{
+                                                        padding: "4px 10px",
+                                                        background: "#eff6ff",
+                                                        color: "#2563eb",
+                                                        border: "1px solid #bfdbfe",
+                                                        borderRadius: "20px",
+                                                        fontSize: "11px",
+                                                        fontWeight: 600,
+                                                        display: "flex",
+                                                        alignItems: "center",
+                                                        gap: "6px",
+                                                    }}
+                                                >
+                                                    {c.compatible_role_name}
+                                                    <button
+                                                        onClick={() => deleteCompatibility(c.id)}
+                                                        style={{ border: "none", background: "transparent", cursor: "pointer", color: "#3b82f6", display: "flex", alignItems: "center", padding: 0 }}
+                                                        title="Rimuovi compatibilità"
+                                                    >
+                                                        ✕
+                                                    </button>
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </td>
+
+                                    <td align="right">
+                                        <button className="db-action-btn db-action-btn-delete" onClick={() => deleteRole(r.id)}>
+                                            Elimina
+                                        </button>
+                                    </td>
+                                </tr>
+                            );
+                        })}
+                    </tbody>
+                </table>
+            </div>
         </div>
     );
 };
