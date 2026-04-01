@@ -119,7 +119,9 @@ const AccountPage: React.FC = () => {
 
                 try {
                     const cfg = await appApi.getConfig();
-                    if (!cancelled && cfg?.maxApplications) setMaxApplications(cfg.maxApplications);
+                    if (!cancelled && cfg?.maxApplications != null) {
+                        setMaxApplications(cfg.maxApplications);
+                    }
                 } catch {
                     // ignore
                 }

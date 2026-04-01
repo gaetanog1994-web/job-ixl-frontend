@@ -67,8 +67,9 @@ const MobilityDashboard: React.FC = () => {
         ]);
         if (cancelled) return;
         if (userInfo.status === "fulfilled") setUserData(userInfo.value);
-        if (cfg.status === "fulfilled" && cfg.value?.max_applications)
-          setMaxApplications(cfg.value.max_applications);
+        if (cfg.status === "fulfilled" && cfg.value?.maxApplications != null) {
+          setMaxApplications(cfg.value.maxApplications);
+        }
         if (apps.status === "fulfilled") setMyApplications(apps.value ?? []);
       } catch (e: any) {
         if (cancelled) return;

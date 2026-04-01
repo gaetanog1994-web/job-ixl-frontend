@@ -315,9 +315,14 @@ export const appApi = {
         return apiFetch(`/api/admin/roles/${id}`, { method: "DELETE" });
     },
 
-    async getConfig(): Promise<{ max_applications: number } | null> {
+    async getConfig(): Promise<{ maxApplications: number } | null> {
         const json = await apiFetch(`/api/config`, { method: "GET" });
-        return json.config ?? null;
+        const cfg = json.config ?? null;
+        if (!cfg) return null;
+
+        return {
+            maxApplications: cfg.max_applications,
+        };
     },
 
     async adminGetScenarioApplications(scenarioId: string) {
