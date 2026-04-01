@@ -610,7 +610,7 @@ const AdminInterlocking = () => {
         return uniqueUserIds.map((userId) => {
             const user = usersById.get(userId);
             let location = user?.location_id ? locationsById.get(user.location_id) ?? null : null;
-            
+
             if (!location && user?.location_name) {
                 location = locationsDirectory.find(l => l.name?.toLowerCase() === user.location_name?.toLowerCase()) ?? null;
             }
@@ -634,7 +634,7 @@ const AdminInterlocking = () => {
 
         for (const person of activeScenarioPeople) {
             const locationKey = person.locationId || person.locationName;
-            
+
             if (
                 !locationKey ||
                 person.latitude === null ||
@@ -647,10 +647,10 @@ const AdminInterlocking = () => {
             if (existing) {
                 existing.peopleCount += 1;
                 existing.peopleNames.push(person.name);
-                
+
                 const isCurrentlyFocused = focusedPersonId === person.id;
                 existing.isFocused = existing.isFocused || isCurrentlyFocused;
-                
+
                 if (existing.isFocused) {
                     existing.colorMode = "focused-gold";
                 } else {
@@ -733,12 +733,20 @@ const AdminInterlocking = () => {
         }));
     }, [scenarios, analyticsMetric, activeScenarioId]);
 
+    const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
     const handleBuildGraph = async () => {
+        if (loadingGraph) return;
+
         try {
             setLoadingGraph(true);
             setError(null);
 
             await appApi.adminWarmupNeo4j();
+
+            // piccolo tempo di assestamento dopo il warmup
+            await sleep(1200);
+
             const json = await appApi.syncGraph();
 
             setBuildResult({
@@ -746,7 +754,19 @@ const AdminInterlocking = () => {
                 relationships: Number(json?.engine?.relationships ?? 0),
             });
         } catch (err: any) {
-            setError(err?.message ?? String(err));
+            const message = err?.message ?? String(err);
+
+            if (message.includes("503")) {
+                setError(
+                    "Il servizio grafo non è ancora pronto. Attendi qualche secondo e riprova."
+                );
+            } else if (message.includes("429")) {
+                setError(
+                    "Troppe richieste ravvicinate. Attendi qualche secondo prima di riprovare."
+                );
+            } else {
+                setError(message);
+            }
         } finally {
             setLoadingGraph(false);
         }
@@ -1072,7 +1092,7 @@ const AdminInterlocking = () => {
                                                 MaxLen
                                                 <select value={maxLen} onChange={(e) => setMaxLen(Number(e.target.value))}
                                                     style={{ background: "#FFF", color: "#111827", border: "1px solid #E5E7EB", borderRadius: "10px", padding: "9px 12px", outline: "none", fontSize: "13px" }}>
-                                                    {[2,3,4,5,6,7,8,9,10,11,12,13,14,15].map((n) => <option key={n} value={n}>{n}</option>)}
+                                                    {[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15].map((n) => <option key={n} value={n}>{n}</option>)}
                                                 </select>
                                             </label>
                                             <button
