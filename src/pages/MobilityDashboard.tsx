@@ -22,7 +22,7 @@ const MobilityDashboard: React.FC = () => {
   const [userData, setUserData] = useState<any>(null);
   const [myApplications, setMyApplications] = useState<any[]>([]);
   const [maxApplications, setMaxApplications] = useState<number>(10);
-  const [isAdmin, setIsAdmin] = useState(false);
+
   const [dataLoading, setDataLoading] = useState(true);
 
   /* ---------- map state ---------- */
@@ -60,14 +60,12 @@ const MobilityDashboard: React.FC = () => {
     const load = async () => {
       setDataLoading(true);
       try {
-        const [meResult, userInfo, cfg, apps] = await Promise.allSettled([
-          appApi.getMe(),
+        const [userInfo, cfg, apps] = await Promise.allSettled([
           appApi.getMyUser(),
           appApi.getConfig(),
           appApi.getMyApplications(),
         ]);
         if (cancelled) return;
-        if (meResult.status === "fulfilled") setIsAdmin(!!meResult.value?.isAdmin);
         if (userInfo.status === "fulfilled") setUserData(userInfo.value);
         if (cfg.status === "fulfilled" && cfg.value?.max_applications)
           setMaxApplications(cfg.value.max_applications);

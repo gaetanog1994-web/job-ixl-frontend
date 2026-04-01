@@ -106,6 +106,7 @@ const GlobalSidebar: React.FC = () => {
           transition: "transform 0.28s cubic-bezier(0.4, 0, 0.2, 1)",
           display: "flex",
           flexDirection: "column",
+          fontFamily: "var(--font, 'Inter', sans-serif)",
           background: "var(--sidebar-bg, #0f172a)",
           boxShadow: isOpen ? "4px 0 24px rgba(0,0,0,0.25)" : "none",
           overflowY: "auto",
@@ -121,16 +122,19 @@ const GlobalSidebar: React.FC = () => {
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div style={{
-              width: 34, height: 34, background: "var(--brand, #e8511a)",
+              width: 36, height: 36, background: "#FFFFFF",
               borderRadius: 9, display: "flex", alignItems: "center",
-              justifyContent: "center", fontSize: 17, flexShrink: 0,
-              boxShadow: "0 2px 8px rgba(232,81,26,0.35)",
-            }}>🔗</div>
+              justifyContent: "center", flexShrink: 0,
+              boxShadow: "0 2px 8px rgba(0,0,0,0.2)",
+              overflow: "hidden"
+            }}>
+              <img src="/jip-logo-icon.jpg" alt="JIP Logo" style={{ width: "80%", height: "80%", objectFit: "contain" }} />
+            </div>
             <div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "#fff", letterSpacing: "0.01em" }}>
-                Job IXL
+              <div style={{ fontSize: 16, fontWeight: 800, color: "#fff", letterSpacing: "0.01em" }}>
+                JIP
               </div>
-              <div style={{ fontSize: 10, color: "var(--sidebar-text, #94a3b8)", marginTop: 1 }}>
+              <div style={{ fontSize: 11, color: "var(--sidebar-text, #94a3b8)", marginTop: 1 }}>
                 Mobility Platform
               </div>
             </div>

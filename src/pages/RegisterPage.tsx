@@ -110,9 +110,10 @@ const RegisterPage: React.FC = () => {
     return (
         <div
             style={{
+                fontFamily: "var(--font, 'Inter', sans-serif)",
                 maxWidth: "400px",
                 margin: "auto",
-                paddingTop: "40px",
+                paddingTop: "60px",
                 position: "relative",
             }}
         >
@@ -120,20 +121,27 @@ const RegisterPage: React.FC = () => {
                 to="/login"
                 style={{
                     position: "absolute",
-                    top: "0",
+                    top: "16px",
                     right: "0",
                     fontSize: "14px",
                     textDecoration: "none",
-                    color: "#4da3ff",
-                    fontWeight: 500,
+                    color: "var(--brand, #e8511a)",
+                    fontWeight: 600,
                 }}
             >
-                Accedi
+                Accedi →
             </Link>
 
-            <h2>Registrazione</h2>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "30px" }}>
+                <div style={{ width: 48, height: 48, background: "#fff", borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 10px rgba(0,0,0,0.08)", overflow: "hidden" }}>
+                    <img src="/jip-logo-icon.jpg" alt="JIP Logo" style={{ width: "75%", height: "75%", objectFit: "contain" }} />
+                </div>
+                <h2 style={{ fontSize: 32, fontWeight: 800, margin: 0, color: "#0f172a", letterSpacing: "0.01em" }}>JIP</h2>
+            </div>
 
-            {error && <p style={{ color: "red" }}>{error}</p>}
+            <h3 style={{ fontSize: 18, color: "#334155", marginBottom: "24px", fontWeight: 600 }}>Crea il tuo account</h3>
+
+            {error && <p style={{ color: "#ef4444", marginBottom: "16px", fontSize: 14 }}>{error}</p>}
 
             <form onSubmit={handleRegister}>
                 <input
@@ -184,8 +192,13 @@ const RegisterPage: React.FC = () => {
                     ))}
                 </select>
 
-                <button type="submit" style={{ width: "100%", padding: "10px" }} disabled={submitting}>
-                    {submitting ? "Registrazione..." : "Registrati"}
+                <button type="submit" style={{ 
+                    width: "100%", padding: "12px", background: "var(--brand, #e8511a)", color: "#fff", 
+                    border: "none", borderRadius: "10px", fontWeight: 600, fontSize: "15px", 
+                    cursor: "pointer", boxShadow: "0 4px 12px rgba(232,81,26,0.3)", marginTop: "10px",
+                    transition: "transform 0.1s" 
+                }} disabled={submitting}>
+                    {submitting ? "Registrazione in corso..." : "Registrati"}
                 </button>
             </form>
         </div>

@@ -76,7 +76,8 @@ const LoginPage: React.FC = () => {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                background: "#1e1e1e",
+                fontFamily: "var(--font, 'Inter', sans-serif)",
+                background: "#0b0f14",
             }}
         >
             <div
@@ -89,9 +90,12 @@ const LoginPage: React.FC = () => {
                     boxShadow: "0 4px 20px rgba(0,0,0,0.4)",
                 }}
             >
-                <h2 style={{ marginBottom: "20px", textAlign: "center" }}>
-                    Login
-                </h2>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "10px", marginBottom: "26px" }}>
+                    <div style={{ width: 44, height: 44, background: "#fff", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.2)", overflow: "hidden" }}>
+                        <img src="/jip-logo-icon.jpg" alt="JIP Logo" style={{ width: "75%", height: "75%", objectFit: "contain" }} />
+                    </div>
+                    <h2 style={{ fontSize: 26, fontWeight: 800, margin: 0, color: "#ffffff", letterSpacing: "0.01em" }}>JIP</h2>
+                </div>
 
                 {error && (
                     <p style={{ color: "#ff6b6b", marginBottom: "12px" }}>
@@ -129,13 +133,17 @@ const LoginPage: React.FC = () => {
                     <button
                         type="submit"
                         style={{
-                            width: "100%",
-                            padding: "10px",
-                            cursor: "pointer",
+                            width: "100%", padding: "12px", background: "var(--brand, #e8511a)", color: "#fff", 
+                            border: "none", borderRadius: "10px", fontWeight: 600, fontSize: "15px", 
+                            cursor: "pointer", boxShadow: "0 4px 12px rgba(232,81,26,0.3)", marginTop: "8px",
+                            transition: "transform 0.1s" 
                         }}
                     >
                         Accedi
                     </button>
+                    <div style={{ textAlign: "center", marginTop: "24px" }}>
+                        <a href="/signup" style={{ color: "#9ca3af", fontSize: "14px", textDecoration: "none" }}>Non hai un account? <span style={{ color: "var(--brand, #e8511a)", fontWeight: 600 }}>Registrati</span></a>
+                    </div>
                 </form>
             </div>
         </div>
