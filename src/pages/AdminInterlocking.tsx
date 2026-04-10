@@ -9,9 +9,11 @@ import {
     MapContainer,
     TileLayer,
     CircleMarker,
+    Marker,
     Popup,
     useMap,
 } from "react-leaflet";
+import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
 type UiStrategy = OptimizationStrategy | "NONE";
@@ -30,6 +32,30 @@ const CHAIN_COLORS = [
 ];
 
 const getChainColor = (index: number) => CHAIN_COLORS[index % CHAIN_COLORS.length];
+
+const createChainCountBadgeIcon = (count: number, color: string) =>
+    L.divIcon({
+        className: "chain-count-badge-icon",
+        html: `
+            <div style="
+                width: 22px;
+                height: 22px;
+                border-radius: 999px;
+                background: ${color};
+                color: #FFFFFF;
+                border: 2px solid #FFFFFF;
+                box-shadow: 0 2px 6px rgba(0,0,0,0.28);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 11px;
+                font-weight: 700;
+                line-height: 1;
+            ">${count}</div>
+        `,
+        iconSize: [22, 22],
+        iconAnchor: [11, 25],
+    });
 
 type AnalyticsMetric =
     | "unique_people"
@@ -1411,6 +1437,7 @@ const AdminInterlocking = () => {
                                                 {displayedMapMarkers.map((marker) => {
                                                     const m = marker as any;
                                                     const inChain: boolean = !!m.__inChain;
+                                                    const chainMemberCount: number = Number(m.__chainMemberCount ?? 0);
                                                     const chainHighlightActive = selectedChainIndex !== null;
 
                                                     let color: string;
@@ -1440,19 +1467,38 @@ const AdminInterlocking = () => {
                                                     }
 
                                                     return (
-                                                        <CircleMarker key={marker.locationId} center={[marker.latitude, marker.longitude]} radius={radius}
-                                                            pathOptions={{ color, fillColor, fillOpacity, weight }}>
-                                                            <Popup>
-                                                                <div>
-                                                                    <strong>{marker.locationName}</strong>
-                                                                    {activeScenario ? (
-                                                                        <><div>Persone coinvolte: {marker.peopleCount}</div><div style={{ marginTop: "6px", fontSize: "12px" }}>{marker.peopleNames.join(", ")}</div></>
-                                                                    ) : (
-                                                                        <div style={{ marginTop: "6px", fontSize: "12px" }}>Sede disponibile nel perimetro aziendale</div>
+                                                        <React.Fragment key={marker.locationId}>
+                                                            <CircleMarker center={[marker.latitude, marker.longitude]} radius={radius}
+                                                                pathOptions={{ color, fillColor, fillOpacity, weight }}>
+                                                                <Popup>
+                                                                    <div>
+                                                                        <strong>{marker.locationName}</strong>
+                                                                        {activeScenario ? (
+                                                                            <>
+                                                                                <div>Persone coinvolte: {marker.peopleCount}</div>
+                                                                                {chainHighlightActive && inChain && (
+                                                                                    <div>Membri della catena in questa sede: {chainMemberCount}</div>
+                                                                                )}
+                                                                                <div style={{ marginTop: "6px", fontSize: "12px" }}>{marker.peopleNames.join(", ")}</div>
+                                                                            </>
+                                                                        ) : (
+                                                                            <div style={{ marginTop: "6px", fontSize: "12px" }}>Sede disponibile nel perimetro aziendale</div>
+                                                                        )}
+                                                                    </div>
+                                                                </Popup>
+                                                            </CircleMarker>
+                                                            {chainHighlightActive && inChain && chainMemberCount > 1 && (
+                                                                <Marker
+                                                                    position={[marker.latitude, marker.longitude]}
+                                                                    icon={createChainCountBadgeIcon(
+                                                                        chainMemberCount,
+                                                                        getChainColor(selectedChainIndex!).marker
                                                                     )}
-                                                                </div>
-                                                            </Popup>
-                                                        </CircleMarker>
+                                                                    interactive={false}
+                                                                    zIndexOffset={1000}
+                                                                />
+                                                            )}
+                                                        </React.Fragment>
                                                     );
                                                 })}
                                             </MapContainer>
@@ -1780,5 +1826,4 @@ const AdminInterlocking = () => {
 };
 
 export default AdminInterlocking;
-
 
