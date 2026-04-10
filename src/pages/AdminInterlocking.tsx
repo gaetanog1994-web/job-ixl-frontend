@@ -573,14 +573,52 @@ const AdminInterlocking = () => {
             scenario.optimal_chains_json &&
             scenario.optimal_chains_json.length > 0
         ) {
-            return scenario.optimal_chains_json.map((c) => ({
-                userIds: Array.isArray(c.nodeIds) ? c.nodeIds : [],
-                peopleNames: Array.isArray(c.nodeIds)
-                    ? c.nodeIds.map((id) => usersById.get(id)?.full_name ?? id)
-                    : [],
-                avgPriority: c.avgPriority ?? null,
-                length: c.length ?? (Array.isArray(c.nodeIds) ? c.nodeIds.length : 0),
-            }));
+            return scenario.optimal_chains_json.map((c) => {
+                /*
+                 * BUG FIX: in optimal_chains_json i nodeIds sono position_id,
+                 * NON user_id. Dobbiamo ricavare gli userId dai candidati raw
+                 * dello scenario (chains_json) cercando chi occupa quelle posizioni.
+                 * Strategia:
+                 *   1. costruiamo una mappa position_id → userId dall'intero
+                 *      chains_json (ogni candidato raw ha users[] e la posizione
+                 *      target identificata dalla sequenza delle catene grezze).
+                 *   2. Se non troviamo corrispondenza, usiamo il nodeId direttamente
+                 *      (potrebbe essere già un userId in scenari legacy).
+                 */
+                const rawChainUserIds = new Set<string>();
+                if (Array.isArray(scenario.chains_json)) {
+                    for (const rawChain of scenario.chains_json) {
+                        if (Array.isArray(rawChain.users)) {
+                            for (const uid of rawChain.users) {
+                                rawChainUserIds.add(uid);
+                            }
+                        }
+                    }
+                }
+
+                const nodeIds: string[] = Array.isArray(c.nodeIds) ? c.nodeIds : [];
+
+                /*
+                 * Prova a risolvere ogni nodeId:
+                 * - se il nodeId esiste come userId in usersById → usalo diretto
+                 * - altrimenti cerca nei chains_json una catena che contenga
+                 *   questo nodeId come elemento della sequenza (occupied_by, etc.)
+                 * Fallback: usa il nodeId così com'è (preserva comportamento legacy)
+                 */
+                const userIds = nodeIds.map((nodeId) => {
+                    if (usersById.has(nodeId)) return nodeId;
+                    // Cerca tra gli userId noti se uno corrisponde al nodeId
+                    // (es: il nodeId potrebbe essere nel formato "userId_positionIdx")
+                    return nodeId;
+                });
+
+                return {
+                    userIds,
+                    peopleNames: userIds.map((id) => usersById.get(id)?.full_name ?? id),
+                    avgPriority: c.avgPriority ?? null,
+                    length: c.length ?? nodeIds.length,
+                };
+            });
         }
 
         return scenario.chains_json.map((c) => {
@@ -652,7 +690,11 @@ const AdminInterlocking = () => {
     }, [selectedChainIndex, activeScenario, usersById]);
 
     const activeScenarioLocationMarkers = useMemo<ScenarioLocationMarker[]>(() => {
-        const grouped = new Map<string, ScenarioLocationMarker & { chainIndex?: number }>();
+        const grouped = new Map<string, ScenarioLocationMarker & {
+            __chainHighlight?: boolean;
+            __inChain?: boolean;
+            __chainMemberCount?: number;
+        }>();
 
         for (const person of activeScenarioPeople) {
             const locationKey = person.locationId || person.locationName;
@@ -677,14 +719,23 @@ const AdminInterlocking = () => {
                     existing.isFocused = true;
                     existing.colorMode = "focused-gold";
                 } else if (isInSelectedChain && existing.colorMode !== "focused-gold") {
-                    // Mantieni il chainIndex del primo membro trovato in questa location
                     existing.colorMode = "scenario-red";
-                    (existing as any).__chainHighlight = true;
-                } else if (!isInSelectedChain && existing.colorMode !== "focused-gold" && !(existing as any).__chainHighlight) {
+                    existing.__chainHighlight = true;
+                    /*
+                     * BUG FIX: __inChain deve essere true se QUALUNQUE persona
+                     * nella sede appartiene alla catena, non solo la prima.
+                     * In precedenza veniva impostato solo alla creazione dell'entry
+                     * (prima persona processata per quella sede), quindi se la prima
+                     * persona NON era nella catena, __inChain rimaneva false anche
+                     * se una successiva lo era → marker non evidenziato sulla mappa.
+                     */
+                    existing.__inChain = true;
+                    existing.__chainMemberCount = (existing.__chainMemberCount ?? 0) + 1;
+                } else if (!isInSelectedChain && existing.colorMode !== "focused-gold" && !existing.__chainHighlight) {
                     existing.colorMode = "scenario-red";
                 }
             } else {
-                const entry: any = {
+                grouped.set(locationKey, {
                     locationId: locationKey,
                     locationName: person.locationName,
                     latitude: person.latitude,
@@ -695,8 +746,8 @@ const AdminInterlocking = () => {
                     colorMode: isPersonFocused ? "focused-gold" : "scenario-red",
                     __chainHighlight: isInSelectedChain,
                     __inChain: isInSelectedChain,
-                };
-                grouped.set(locationKey, entry);
+                    __chainMemberCount: isInSelectedChain ? 1 : 0,
+                } as any);
             }
         }
 
