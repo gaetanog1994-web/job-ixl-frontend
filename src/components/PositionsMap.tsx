@@ -167,6 +167,24 @@ const PositionsMap = ({
     const boot = async () => {
         const seq = ++bootSeq.current;
 
+        const applyDefensiveVisibilityFilter = (
+            rawLocations: MapLocation[] | null | undefined,
+            roleId: string | null | undefined,
+            locationId: string | null | undefined
+        ): MapLocation[] => {
+            const source = Array.isArray(rawLocations) ? rawLocations : [];
+            if (!roleId || !locationId) return source;
+
+            return source
+                .map((loc) => ({
+                    ...loc,
+                    roles: (Array.isArray(loc.roles) ? loc.roles : []).filter(
+                        (role) => !(role.role_id === roleId && loc.location_id === locationId)
+                    ),
+                }))
+                .filter((loc) => loc.roles.length > 0);
+        };
+
         try {
             const payload = await appApi.getPositionsMapPayload({ viewerUserId, mode });
             if (seq !== bootSeq.current) return;
@@ -176,8 +194,13 @@ const PositionsMap = ({
             setMeLocation(payload.meLocation);
             setMaxApplications(payload.maxApplications);
             setUsedPriorities(payload.usedPriorities);
-            setLocations(payload.locations);
-            onLocationsLoaded?.(payload.locations ?? []);
+            const filteredLocations = applyDefensiveVisibilityFilter(
+                payload.locations,
+                payload.viewerRoleId ?? null,
+                payload.viewerLocationId ?? null
+            );
+            setLocations(filteredLocations);
+            onLocationsLoaded?.(filteredLocations);
         } catch (e: any) {
             if (seq !== bootSeq.current) return;
             console.error("[PositionsMap] boot() via backend failed:", e?.message ?? e);
