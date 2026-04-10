@@ -717,6 +717,14 @@ const AdminInterlocking = () => {
         return new Set(chain.userIds);
     }, [selectedChainIndex, activeScenario, usersById]);
 
+    const peopleListToShow = useMemo<ScenarioPersonRow[]>(() => {
+        if (!activeScenario) return [];
+        if (selectedChainIndex !== null) {
+            return activeScenarioPeople.filter((p) => selectedChainUserIds.has(p.id));
+        }
+        return activeScenarioPeople;
+    }, [activeScenario, selectedChainIndex, activeScenarioPeople, selectedChainUserIds]);
+
     const activeScenarioLocationMarkers = useMemo<ScenarioLocationMarker[]>(() => {
         const grouped = new Map<string, ScenarioLocationMarker & {
             __chainHighlight?: boolean;
@@ -1042,6 +1050,27 @@ const AdminInterlocking = () => {
         ]);
 
         downloadCsv(`scenario_${scenario.scenario_code}`, headers, rows);
+    };
+
+    const exportPeopleListCsv = () => {
+        if (!activeScenario) return;
+
+        const headers = ["Nome", "Ruolo", "Sede", "Responsabile", "PBP"];
+        const rows = peopleListToShow.map((person) => [
+            person.name,
+            person.role,
+            person.locationName,
+            person.responsible,
+            person.pbp,
+        ]);
+
+        const scenarioCode = activeScenario.scenario_code || getScenarioCode();
+        const filenameBase =
+            selectedChainIndex !== null
+                ? `people_chain_${selectedChainIndex + 1}_${scenarioCode}`
+                : `people_scenario_${scenarioCode}`;
+
+        downloadCsv(filenameBase, headers, rows);
     };
 
     const renderExpandButton = (key: Exclude<ExpandableBoxKey, null>) => {
@@ -1508,9 +1537,6 @@ const AdminInterlocking = () => {
 
                                     {/* Lista persone: sovrapposta, visibile solo in peopleList mode */}
                                     {viewMode === "peopleList" && activeScenario && (() => {
-                                        const peopleToShow = selectedChainIndex !== null
-                                            ? activeScenarioPeople.filter((p) => selectedChainUserIds.has(p.id))
-                                            : activeScenarioPeople;
                                         const cc = selectedChainIndex !== null ? getChainColor(selectedChainIndex) : null;
                                         return (
                                             <div style={{ position: "absolute", inset: 0, background: "#FFFFFF", display: "grid", gridTemplateRows: "auto auto auto 1fr", overflow: "hidden" }}>
@@ -1521,15 +1547,23 @@ const AdminInterlocking = () => {
                                                             {selectedChainIndex !== null ? `Catena #${selectedChainIndex + 1}` : "Persone dello scenario"}
                                                         </div>
                                                         <div style={{ fontSize: "12px", color: "#6B7280", marginTop: "2px" }}>
-                                                            {peopleToShow.length} {selectedChainIndex !== null ? "persone nella catena" : "persone nello scenario"}
+                                                            {peopleListToShow.length} {selectedChainIndex !== null ? "persone nella catena" : "persone nello scenario"}
                                                         </div>
                                                     </div>
-                                                    <button
-                                                        onClick={() => setViewMode("map")}
-                                                        style={{ ...ghostButtonStyle, display: "flex", alignItems: "center", gap: "6px", fontWeight: 600 }}
-                                                    >
-                                                        ← Torna alla mappa
-                                                    </button>
+                                                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                                        <button
+                                                            onClick={exportPeopleListCsv}
+                                                            style={{ ...ghostButtonStyle, display: "flex", alignItems: "center", gap: "6px", fontWeight: 600 }}
+                                                        >
+                                                            Scarica CSV
+                                                        </button>
+                                                        <button
+                                                            onClick={() => setViewMode("map")}
+                                                            style={{ ...ghostButtonStyle, display: "flex", alignItems: "center", gap: "6px", fontWeight: 600 }}
+                                                        >
+                                                            ← Torna alla mappa
+                                                        </button>
+                                                    </div>
                                                 </div>
 
                                                 {/* Filtro catena attivo */}
@@ -1555,8 +1589,8 @@ const AdminInterlocking = () => {
 
                                                 {/* Righe */}
                                                 <div style={{ overflowY: "auto" }}>
-                                                    {peopleToShow.length > 0 ? (
-                                                        peopleToShow.map((person, i) => (
+                                                    {peopleListToShow.length > 0 ? (
+                                                        peopleListToShow.map((person, i) => (
                                                             <div key={person.id} style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr 1fr 1fr 0.6fr", gap: "10px", padding: "11px 18px", borderBottom: "1px solid #F3F4F6", fontSize: "13px", background: i % 2 === 0 ? "#FFFFFF" : "#FAFAFA" }}>
                                                                 <div style={{ fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{person.name}</div>
                                                                 <div style={{ color: "#374151", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{person.role}</div>
