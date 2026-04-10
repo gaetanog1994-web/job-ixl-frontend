@@ -224,6 +224,7 @@ const AdminInterlocking = () => {
     const [rightPanelTab, setRightPanelTab] = useState<RightPanelTab>("PEOPLE");
     const [focusedPersonId, setFocusedPersonId] = useState<string | null>(null);
     const [selectedChainIndex, setSelectedChainIndex] = useState<number | null>(null);
+    const [viewMode, setViewMode] = useState<"map" | "peopleList">("map");
     const [focusedLocationId, setFocusedLocationId] = useState<string | null>(null);
     const [expandedBox, setExpandedBox] = useState<ExpandableBoxKey>(null);
     const [analyticsMetric, setAnalyticsMetric] =
@@ -917,6 +918,7 @@ const AdminInterlocking = () => {
         setActiveScenarioId(scenarioId);
         setFocusedPersonId(null);
         setSelectedChainIndex(null);
+        setViewMode("map");
     };
 
     const clearScenarioSelection = () => {
@@ -924,6 +926,7 @@ const AdminInterlocking = () => {
         setFocusedPersonId(null);
         setFocusedLocationId(null);
         setSelectedChainIndex(null);
+        setViewMode("map");
     };
 
     const exportScenarioCsv = (scenario: SavedScenario) => {
@@ -1229,21 +1232,61 @@ const AdminInterlocking = () => {
                                                 {isExpSc && (
                                                     <div style={{ borderTop: "1px solid #E5E7EB", background: "#F9FAFB", padding: "10px 12px 14px" }}
                                                         onClick={(e) => e.stopPropagation()}>
-                                                        <div style={{ display: "grid", gridTemplateColumns: "80px 1fr 120px 100px", gap: "8px", padding: "0 0 10px 0", fontSize: "10px", color: "#6B7280", textTransform: "uppercase", letterSpacing: "0.08em" }}>
-                                                            <div>ID catena</div><div>Persone coinvolte</div><div>Priorità</div><div>Lunghezza</div>
+                                                        <div style={{ display: "grid", gridTemplateColumns: "14px 60px 1fr 110px 90px", gap: "8px", padding: "0 0 10px 0", fontSize: "10px", color: "#6B7280", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                                                            <div /><div>ID</div><div>Persone coinvolte</div><div>Priorità</div><div>Lungh.</div>
                                                         </div>
                                                         <div style={{ display: "grid", gap: "8px" }}>
                                                             {visibleChains.length === 0 ? (
                                                                 <div style={{ color: "#9CA3AF", fontSize: "13px" }}>Nessuna catena disponibile.</div>
                                                             ) : (
-                                                                visibleChains.map((chain: any, index: number) => (
-                                                                    <div key={index} style={{ display: "grid", gridTemplateColumns: "80px 1fr 120px 100px", gap: "8px", alignItems: "center", padding: "10px 0", borderTop: "1px solid #E5E7EB", fontSize: "13px" }}>
-                                                                        <div>{index + 1}</div>
-                                                                        <div>{Array.isArray(chain.peopleNames) ? chain.peopleNames.join(" → ") : "—"}</div>
-                                                                        <div>{typeof chain.avgPriority === "number" ? chain.avgPriority.toFixed(2) : "—"}</div>
-                                                                        <div>{chain.length ?? "—"}</div>
-                                                                    </div>
-                                                                ))
+                                                                visibleChains.map((chain: any, index: number) => {
+                                                                    const cc = getChainColor(index);
+                                                                    const isChainActive = selectedChainIndex === index && activeScenarioId === scenario.id;
+                                                                    return (
+                                                                        <div
+                                                                            key={index}
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                // Attiva lo scenario se non lo è già
+                                                                                if (activeScenarioId !== scenario.id) {
+                                                                                    setActiveScenarioId(scenario.id);
+                                                                                    setFocusedPersonId(null);
+                                                                                    setViewMode("map");
+                                                                                }
+                                                                                // Toggle catena selezionata
+                                                                                setSelectedChainIndex((prev) =>
+                                                                                    prev === index && activeScenarioId === scenario.id ? null : index
+                                                                                );
+                                                                            }}
+                                                                            style={{
+                                                                                display: "grid",
+                                                                                gridTemplateColumns: "14px 60px 1fr 110px 90px",
+                                                                                gap: "8px",
+                                                                                alignItems: "center",
+                                                                                padding: "9px 8px",
+                                                                                borderTop: "1px solid #E5E7EB",
+                                                                                fontSize: "13px",
+                                                                                cursor: "pointer",
+                                                                                borderRadius: isChainActive ? "8px" : "0",
+                                                                                background: isChainActive ? cc.bg : "transparent",
+                                                                                border: isChainActive ? `1px solid ${cc.border}` : "none",
+                                                                                transition: "background 0.15s, border 0.15s",
+                                                                            }}
+                                                                        >
+                                                                            <div style={{
+                                                                                width: 10, height: 10, borderRadius: "50%",
+                                                                                background: cc.dot, flexShrink: 0,
+                                                                                boxShadow: isChainActive ? `0 0 0 3px ${cc.dot}40` : "none",
+                                                                            }} />
+                                                                            <div style={{ fontWeight: isChainActive ? 700 : 400 }}>#{index + 1}</div>
+                                                                            <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                                                                {Array.isArray(chain.peopleNames) ? chain.peopleNames.join(" → ") : "—"}
+                                                                            </div>
+                                                                            <div>{typeof chain.avgPriority === "number" ? chain.avgPriority.toFixed(2) : "—"}</div>
+                                                                            <div>{chain.length ?? "—"}</div>
+                                                                        </div>
+                                                                    );
+                                                                })
                                                             )}
                                                         </div>
                                                     </div>
@@ -1267,6 +1310,23 @@ const AdminInterlocking = () => {
                                     </div>
                                 </div>
                                 <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                                    {activeScenario && (
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setViewMode((prev) => prev === "peopleList" ? "map" : "peopleList");
+                                            }}
+                                            style={{
+                                                ...ghostButtonStyle,
+                                                background: viewMode === "peopleList" ? "#EFF6FF" : "#FFFFFF",
+                                                border: viewMode === "peopleList" ? "1px solid #6366F1" : "1px solid #E5E7EB",
+                                                color: viewMode === "peopleList" ? "#4F46E5" : "#374151",
+                                                fontWeight: 600, fontSize: "13px",
+                                            }}
+                                        >
+                                            {viewMode === "peopleList" ? "← Mappa" : "Lista persone"}
+                                        </button>
+                                    )}
                                     {renderExpandButton("insights")}
                                 </div>
                             </div>
@@ -1278,67 +1338,148 @@ const AdminInterlocking = () => {
                             ───────────────────────────────────────────────────────── */}
                             <div style={{ ...subtleCardStyle, height: expandedBox === "insights" ? "calc(100vh - 210px)" : "450px", display: "grid", gridTemplateColumns: "1.38fr 0.86fr", gap: "0px", overflow: "hidden" }}>
 
-                                {/* ── Colonna sinistra: MAPPA (sempre visibile) ── */}
-                                <div style={{ height: expandedBox === "insights" ? "calc(100vh - 210px)" : "450px", background: "#F3F4F6", overflow: "hidden" }}>
-                                    {displayedMapMarkers.length > 0 ? (
-                                        <MapContainer center={mapCenter} zoom={6} style={{ width: "100%", height: "100%" }}>
-                                            <TileLayer attribution='&copy; OpenStreetMap contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                                            <FitBounds markers={displayedMapMarkers} />
-                                            {displayedMapMarkers.map((marker) => {
-                                                const m = marker as any;
-                                                const inChain: boolean = !!m.__inChain;
-                                                const chainHighlightActive = selectedChainIndex !== null;
+                                {/* ── Colonna sinistra: MAPPA + LISTA PERSONE ── */}
+                                {/*
+                                    La MapContainer resta sempre nel DOM (visibility:hidden)
+                                    per evitare remount di Leaflet.
+                                    La lista persone è sovrapposta in position:absolute.
+                                */}
+                                <div style={{ height: expandedBox === "insights" ? "calc(100vh - 210px)" : "450px", overflow: "hidden", position: "relative" }}>
 
-                                                let color: string;
-                                                let fillColor: string;
-                                                let fillOpacity: number;
-                                                let weight: number;
-                                                let radius: number;
+                                    {/* Mappa: sempre montata, nascosta solo in peopleList mode */}
+                                    <div style={{
+                                        position: "absolute", inset: 0,
+                                        background: "#F3F4F6",
+                                        visibility: viewMode === "map" ? "visible" : "hidden",
+                                        pointerEvents: viewMode === "map" ? "auto" : "none",
+                                    }}>
+                                        {displayedMapMarkers.length > 0 ? (
+                                            <MapContainer center={mapCenter} zoom={6} style={{ width: "100%", height: "100%" }}>
+                                                <TileLayer attribution='&copy; OpenStreetMap contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                                                <FitBounds markers={displayedMapMarkers} />
+                                                {displayedMapMarkers.map((marker) => {
+                                                    const m = marker as any;
+                                                    const inChain: boolean = !!m.__inChain;
+                                                    const chainHighlightActive = selectedChainIndex !== null;
 
-                                                if (marker.colorMode === "focused-gold") {
-                                                    color = "#FCD34D"; fillColor = "#F59E0B";
-                                                    fillOpacity = 0.92; weight = 4; radius = 16;
-                                                } else if (chainHighlightActive && inChain) {
-                                                    const cc = getChainColor(selectedChainIndex!);
-                                                    color = cc.marker; fillColor = cc.marker;
-                                                    fillOpacity = 0.88; weight = 3;
-                                                    radius = 12 + Math.min(marker.peopleCount, 5);
-                                                } else if (chainHighlightActive && !inChain) {
-                                                    color = "#D1D5DB"; fillColor = "#E5E7EB";
-                                                    fillOpacity = 0.45; weight = 1; radius = 7;
-                                                } else if (marker.colorMode === "scenario-red") {
-                                                    color = "#F43F5E"; fillColor = "#F43F5E";
-                                                    fillOpacity = 0.82; weight = 2;
-                                                    radius = 10 + Math.min(marker.peopleCount, 6);
-                                                } else {
-                                                    color = "#34D399"; fillColor = "#10B981";
-                                                    fillOpacity = 0.75; weight = 2; radius = 8;
-                                                }
+                                                    let color: string;
+                                                    let fillColor: string;
+                                                    let fillOpacity: number;
+                                                    let weight: number;
+                                                    let radius: number;
 
-                                                return (
-                                                    <CircleMarker key={marker.locationId} center={[marker.latitude, marker.longitude]} radius={radius}
-                                                        pathOptions={{ color, fillColor, fillOpacity, weight }}>
-                                                        <Popup>
-                                                            <div>
-                                                                <strong>{marker.locationName}</strong>
-                                                                {activeScenario ? (
-                                                                    <><div>Persone coinvolte: {marker.peopleCount}</div><div style={{ marginTop: "6px", fontSize: "12px" }}>{marker.peopleNames.join(", ")}</div></>
-                                                                ) : (
-                                                                    <div style={{ marginTop: "6px", fontSize: "12px" }}>Sede disponibile nel perimetro aziendale</div>
-                                                                )}
+                                                    if (marker.colorMode === "focused-gold") {
+                                                        color = "#FCD34D"; fillColor = "#F59E0B";
+                                                        fillOpacity = 0.92; weight = 4; radius = 16;
+                                                    } else if (chainHighlightActive && inChain) {
+                                                        const cc = getChainColor(selectedChainIndex!);
+                                                        color = cc.marker; fillColor = cc.marker;
+                                                        fillOpacity = 0.88; weight = 3;
+                                                        radius = 12 + Math.min(marker.peopleCount, 5);
+                                                    } else if (chainHighlightActive && !inChain) {
+                                                        color = "#D1D5DB"; fillColor = "#E5E7EB";
+                                                        fillOpacity = 0.45; weight = 1; radius = 7;
+                                                    } else if (marker.colorMode === "scenario-red") {
+                                                        color = "#F43F5E"; fillColor = "#F43F5E";
+                                                        fillOpacity = 0.82; weight = 2;
+                                                        radius = 10 + Math.min(marker.peopleCount, 6);
+                                                    } else {
+                                                        color = "#34D399"; fillColor = "#10B981";
+                                                        fillOpacity = 0.75; weight = 2; radius = 8;
+                                                    }
+
+                                                    return (
+                                                        <CircleMarker key={marker.locationId} center={[marker.latitude, marker.longitude]} radius={radius}
+                                                            pathOptions={{ color, fillColor, fillOpacity, weight }}>
+                                                            <Popup>
+                                                                <div>
+                                                                    <strong>{marker.locationName}</strong>
+                                                                    {activeScenario ? (
+                                                                        <><div>Persone coinvolte: {marker.peopleCount}</div><div style={{ marginTop: "6px", fontSize: "12px" }}>{marker.peopleNames.join(", ")}</div></>
+                                                                    ) : (
+                                                                        <div style={{ marginTop: "6px", fontSize: "12px" }}>Sede disponibile nel perimetro aziendale</div>
+                                                                    )}
+                                                                </div>
+                                                            </Popup>
+                                                        </CircleMarker>
+                                                    );
+                                                })}
+                                            </MapContainer>
+                                        ) : (
+                                            <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#9CA3AF", padding: "20px", textAlign: "center" }}>
+                                                Nessuna sede geolocalizzata disponibile.
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Lista persone: sovrapposta, visibile solo in peopleList mode */}
+                                    {viewMode === "peopleList" && activeScenario && (() => {
+                                        const peopleToShow = selectedChainIndex !== null
+                                            ? activeScenarioPeople.filter((p) => selectedChainUserIds.has(p.id))
+                                            : activeScenarioPeople;
+                                        const cc = selectedChainIndex !== null ? getChainColor(selectedChainIndex) : null;
+                                        return (
+                                            <div style={{ position: "absolute", inset: 0, background: "#FFFFFF", display: "grid", gridTemplateRows: "auto auto auto 1fr", overflow: "hidden" }}>
+                                                {/* Header */}
+                                                <div style={{ padding: "14px 18px", borderBottom: "1px solid #E5E7EB", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
+                                                    <div>
+                                                        <div style={{ fontWeight: 700, fontSize: "15px", color: "#111827" }}>
+                                                            {selectedChainIndex !== null ? `Catena #${selectedChainIndex + 1}` : "Persone dello scenario"}
+                                                        </div>
+                                                        <div style={{ fontSize: "12px", color: "#6B7280", marginTop: "2px" }}>
+                                                            {peopleToShow.length} {selectedChainIndex !== null ? "persone nella catena" : "persone nello scenario"}
+                                                        </div>
+                                                    </div>
+                                                    <button
+                                                        onClick={() => setViewMode("map")}
+                                                        style={{ ...ghostButtonStyle, display: "flex", alignItems: "center", gap: "6px", fontWeight: 600 }}
+                                                    >
+                                                        ← Torna alla mappa
+                                                    </button>
+                                                </div>
+
+                                                {/* Filtro catena attivo */}
+                                                {cc && (
+                                                    <div style={{ padding: "8px 18px", background: cc.bg, borderBottom: `1px solid ${cc.border}60`, display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
+                                                        <span style={{ fontSize: "12px", fontWeight: 600, color: cc.border, display: "flex", alignItems: "center", gap: 6 }}>
+                                                            <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: cc.dot }} />
+                                                            Filtro catena #{selectedChainIndex! + 1} attivo
+                                                        </span>
+                                                        <button
+                                                            onClick={() => setSelectedChainIndex(null)}
+                                                            style={{ fontSize: "11px", color: "#6B7280", background: "none", border: "none", cursor: "pointer", textDecoration: "underline", padding: 0 }}
+                                                        >
+                                                            Rimuovi filtro
+                                                        </button>
+                                                    </div>
+                                                )}
+
+                                                {/* Intestazioni colonne */}
+                                                <div style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr 1fr 1fr 0.6fr", gap: "10px", padding: "9px 18px", fontSize: "10px", color: "#6B7280", textTransform: "uppercase", letterSpacing: "0.08em", borderBottom: "1px solid #E5E7EB", background: "#F9FAFB", flexShrink: 0 }}>
+                                                    <div>Nome</div><div>Ruolo</div><div>Sede</div><div>Responsabile</div><div>PBP</div>
+                                                </div>
+
+                                                {/* Righe */}
+                                                <div style={{ overflowY: "auto" }}>
+                                                    {peopleToShow.length > 0 ? (
+                                                        peopleToShow.map((person, i) => (
+                                                            <div key={person.id} style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr 1fr 1fr 0.6fr", gap: "10px", padding: "11px 18px", borderBottom: "1px solid #F3F4F6", fontSize: "13px", background: i % 2 === 0 ? "#FFFFFF" : "#FAFAFA" }}>
+                                                                <div style={{ fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{person.name}</div>
+                                                                <div style={{ color: "#374151", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{person.role}</div>
+                                                                <div style={{ color: "#374151", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{person.locationName}</div>
+                                                                <div style={{ color: "#374151", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{person.responsible}</div>
+                                                                <div style={{ color: "#374151" }}>{person.pbp}</div>
                                                             </div>
-                                                        </Popup>
-                                                    </CircleMarker>
-                                                );
-                                            })}
-                                        </MapContainer>
-                                    ) : (
-                                        <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#9CA3AF", padding: "20px", textAlign: "center" }}>
-                                            Nessuna sede geolocalizzata disponibile.
-                                        </div>
-                                    )}
-                                </div>
+                                                        ))
+                                                    ) : (
+                                                        <div style={{ padding: "20px 18px", color: "#9CA3AF", fontSize: "13px" }}>Nessuna persona trovata.</div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    })()}
 
+                                </div>
                                 {/* ── Colonna destra: tab PEOPLE / CHAINS ── */}
                                 <div style={{ borderLeft: "1px solid #E5E7EB", background: "#FFFFFF", height: expandedBox === "insights" ? "calc(100vh - 210px)" : "450px", display: "grid", gridTemplateRows: "auto 1fr", overflow: "hidden" }}>
 
