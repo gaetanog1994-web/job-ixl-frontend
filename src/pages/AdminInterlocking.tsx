@@ -743,22 +743,17 @@ const AdminInterlocking = () => {
                 existing.peopleCount += 1;
                 existing.peopleNames.push(person.name);
 
+                if (isInSelectedChain) {
+                    existing.__inChain = true;
+                    existing.__chainHighlight = true;
+                    existing.__chainMemberCount = (existing.__chainMemberCount ?? 0) + 1;
+                }
+
                 if (isPersonFocused) {
                     existing.isFocused = true;
                     existing.colorMode = "focused-gold";
                 } else if (isInSelectedChain && existing.colorMode !== "focused-gold") {
                     existing.colorMode = "scenario-red";
-                    existing.__chainHighlight = true;
-                    /*
-                     * BUG FIX: __inChain deve essere true se QUALUNQUE persona
-                     * nella sede appartiene alla catena, non solo la prima.
-                     * In precedenza veniva impostato solo alla creazione dell'entry
-                     * (prima persona processata per quella sede), quindi se la prima
-                     * persona NON era nella catena, __inChain rimaneva false anche
-                     * se una successiva lo era → marker non evidenziato sulla mappa.
-                     */
-                    existing.__inChain = true;
-                    existing.__chainMemberCount = (existing.__chainMemberCount ?? 0) + 1;
                 } else if (!isInSelectedChain && existing.colorMode !== "focused-gold" && !existing.__chainHighlight) {
                     existing.colorMode = "scenario-red";
                 }
