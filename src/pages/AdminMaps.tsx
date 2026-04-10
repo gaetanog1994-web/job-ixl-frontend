@@ -166,7 +166,12 @@ const AdminMaps = () => {
 
             <div style={{ flex: 1, position: "relative" }}>
               {selectedUserId ? (
-                <PositionsMap viewerUserId={selectedUserId} mode={mode} interaction="read" />
+                <PositionsMap
+                  viewerUserId={selectedUserId}
+                  mode={mode}
+                  interaction="read"
+                  visualMode="adminActiveMaps"
+                />
               ) : (
                 <div style={{
                   position: "absolute", inset: 0,

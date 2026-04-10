@@ -95,6 +95,7 @@ type Props = {
     viewerUserId?: string;
     mode?: "from" | "to";
     interaction?: "read" | "write";
+    visualMode?: "default" | "adminActiveMaps";
     highlightPositionId?: string;
     /** Fly to this location name and open its popup */
     filterLocationName?: string;
@@ -112,6 +113,7 @@ const PositionsMap = ({
     viewerUserId,
     mode = "from",
     interaction = "write",
+    visualMode = "default",
     highlightPositionId,
     filterLocationName,
     filterRoleName,
@@ -245,15 +247,29 @@ const PositionsMap = ({
 
     /* ---------- HELPERS ---------- */
 
-    const getLocationIcon = (roles: LocationRole[]) => {
-        if (myStatus === "inactive") return icons.grey;
+    const getLocationMarkerState = (roles: LocationRole[]) => {
+        if (myStatus === "inactive") return "inactive" as const;
 
         const hasApplied = roles.some((r) => r.applied);
         const hasAvailable = roles.some((r) => !r.applied);
 
-        if (hasApplied && hasAvailable) return icons.yellow;
-        if (hasApplied) return icons.red;
+        if (hasApplied && hasAvailable) return "partial" as const; // giallo
+        if (hasApplied) return "candidate" as const; // rosso
+        return "available" as const; // verde
+    };
+
+    const getLocationIcon = (state: "available" | "candidate" | "partial" | "inactive") => {
+        if (state === "inactive") return icons.grey;
+        if (state === "partial") return icons.yellow;
+        if (state === "candidate") return icons.red;
         return icons.green;
+    };
+
+    const getMarkerBaseZIndex = (state: "available" | "candidate" | "partial" | "inactive") => {
+        if (state === "candidate") return 1400; // rosso sempre sopra al verde
+        if (state === "partial") return 1300; // giallo sempre sopra al verde
+        if (state === "inactive") return 700;
+        return 200; // verde in background
     };
 
     const MapHighlighter = () => {
@@ -365,6 +381,7 @@ const PositionsMap = ({
             {/* SEDI */}
             {myStatus !== null &&
                 locations.map((loc) => {
+                    const markerState = getLocationMarkerState(loc.roles);
                     // When a role filter is active, dim locations that don't match
                     const roleMatchesFilter =
                         !filterRoleName ||
@@ -372,6 +389,22 @@ const PositionsMap = ({
                             (r) => r.role_name.toLowerCase() === filterRoleName.toLowerCase()
                         );
                     const locationOpacity = filterRoleName && !roleMatchesFilter ? 0.25 : 1;
+                    const baseOpacity =
+                        visualMode === "adminActiveMaps" && markerState === "available"
+                            ? 0.28
+                            : 1;
+                    const markerOpacity = locationOpacity * baseOpacity;
+                    const isHighlightTarget =
+                        !!highlightPositionId &&
+                        loc.roles.some((r) =>
+                            r.users.some((u) => u.position_id === highlightPositionId)
+                        );
+                    const zIndexOffset = (() => {
+                        const base = getMarkerBaseZIndex(markerState);
+                        if (filterRoleName && roleMatchesFilter) return base + 2000;
+                        if (isHighlightTarget) return base + 2000;
+                        return base;
+                    })();
 
                     return (
                     <React.Fragment key={`${loc.location_id}-${myStatus}`}>
@@ -390,21 +423,12 @@ const PositionsMap = ({
 
                         <Marker
                             position={[loc.latitude, loc.longitude]}
-                            icon={getLocationIcon(loc.roles)}
+                            icon={getLocationIcon(markerState)}
                             ref={(ref: L.Marker | null) => {
                                 if (ref) locationMarkerRefs.current[loc.location_id] = ref;
                             }}
-                            opacity={locationOpacity}
-                            zIndexOffset={
-                                (filterRoleName && roleMatchesFilter)
-                                    ? 2000
-                                    : highlightPositionId &&
-                                      loc.roles.some((r) =>
-                                          r.users.some((u) => u.position_id === highlightPositionId)
-                                      )
-                                    ? 2000
-                                    : 0
-                            }
+                            opacity={markerOpacity}
+                            zIndexOffset={zIndexOffset}
                         >
                             <Popup>
                                 <b>
