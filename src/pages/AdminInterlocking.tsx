@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { solveOptimalChains } from "../lib/optimalChainsSolver";
 import type {
     ChainCandidate,
@@ -15,7 +15,22 @@ import {
 import "leaflet/dist/leaflet.css";
 
 type UiStrategy = OptimizationStrategy | "NONE";
-type RightPanelTab = "MAP" | "PEOPLE";
+type RightPanelTab = "MAP" | "PEOPLE" | "CHAINS";
+
+/** Palette colori per le prime 8 catene (border, bg, dot) */
+const CHAIN_COLORS = [
+    { border: "#16A34A", bg: "#F0FDF4", dot: "#22C55E", marker: "#22C55E" },  // verde
+    { border: "#CA8A04", bg: "#FEFCE8", dot: "#EAB308", marker: "#EAB308" },  // giallo
+    { border: "#DC2626", bg: "#FEF2F2", dot: "#EF4444", marker: "#EF4444" },  // rosso
+    { border: "#7C3AED", bg: "#F5F3FF", dot: "#8B5CF6", marker: "#8B5CF6" },  // viola
+    { border: "#0284C7", bg: "#F0F9FF", dot: "#38BDF8", marker: "#38BDF8" },  // azzurro
+    { border: "#6B7280", bg: "#F9FAFB", dot: "#9CA3AF", marker: "#9CA3AF" },  // grigio
+    { border: "#DB2777", bg: "#FDF2F8", dot: "#EC4899", marker: "#EC4899" },  // fucsia
+    { border: "#EA580C", bg: "#FFF7ED", dot: "#F97316", marker: "#F97316" },  // arancione
+];
+
+const getChainColor = (index: number) => CHAIN_COLORS[index % CHAIN_COLORS.length];
+
 type AnalyticsMetric =
     | "unique_people"
     | "total_chains"
@@ -215,6 +230,7 @@ const AdminInterlocking = () => {
     const [activeScenarioId, setActiveScenarioId] = useState<string | null>(null);
     const [rightPanelTab, setRightPanelTab] = useState<RightPanelTab>("MAP");
     const [focusedPersonId, setFocusedPersonId] = useState<string | null>(null);
+    const [selectedChainIndex, setSelectedChainIndex] = useState<number | null>(null);
     const [focusedLocationId, setFocusedLocationId] = useState<string | null>(null);
     const [expandedBox, setExpandedBox] = useState<ExpandableBoxKey>(null);
     const [analyticsMetric, setAnalyticsMetric] =
@@ -629,8 +645,20 @@ const AdminInterlocking = () => {
         });
     }, [activeScenario, usersById, locationsById]);
 
+    /**
+     * Set degli userId appartenenti alla catena selezionata.
+     * Usato sia per colorare i marker sia per enfatizzare la lista persone.
+     */
+    const selectedChainUserIds = useMemo<Set<string>>(() => {
+        if (selectedChainIndex === null || !activeScenario) return new Set();
+        const chains = getScenarioViewChains(activeScenario);
+        const chain = chains[selectedChainIndex];
+        if (!chain) return new Set();
+        return new Set(chain.userIds);
+    }, [selectedChainIndex, activeScenario, usersById]);
+
     const activeScenarioLocationMarkers = useMemo<ScenarioLocationMarker[]>(() => {
-        const grouped = new Map<string, ScenarioLocationMarker>();
+        const grouped = new Map<string, ScenarioLocationMarker & { chainIndex?: number }>();
 
         for (const person of activeScenarioPeople) {
             const locationKey = person.locationId || person.locationName;
@@ -643,35 +671,43 @@ const AdminInterlocking = () => {
                 continue;
             }
 
+            const isInSelectedChain = selectedChainIndex !== null && selectedChainUserIds.has(person.id);
+            const isPersonFocused = focusedPersonId === person.id;
+
             const existing = grouped.get(locationKey);
             if (existing) {
                 existing.peopleCount += 1;
                 existing.peopleNames.push(person.name);
 
-                const isCurrentlyFocused = focusedPersonId === person.id;
-                existing.isFocused = existing.isFocused || isCurrentlyFocused;
-
-                if (existing.isFocused) {
+                if (isPersonFocused) {
+                    existing.isFocused = true;
                     existing.colorMode = "focused-gold";
-                } else {
+                } else if (isInSelectedChain && existing.colorMode !== "focused-gold") {
+                    // Mantieni il chainIndex del primo membro trovato in questa location
+                    existing.colorMode = "scenario-red";
+                    (existing as any).__chainHighlight = true;
+                } else if (!isInSelectedChain && existing.colorMode !== "focused-gold" && !(existing as any).__chainHighlight) {
                     existing.colorMode = "scenario-red";
                 }
             } else {
-                grouped.set(locationKey, {
+                const entry: any = {
                     locationId: locationKey,
                     locationName: person.locationName,
                     latitude: person.latitude,
                     longitude: person.longitude,
                     peopleCount: 1,
                     peopleNames: [person.name],
-                    isFocused: focusedPersonId === person.id,
-                    colorMode: focusedPersonId === person.id ? "focused-gold" : "scenario-red",
-                });
+                    isFocused: isPersonFocused,
+                    colorMode: isPersonFocused ? "focused-gold" : "scenario-red",
+                    __chainHighlight: isInSelectedChain,
+                    __inChain: isInSelectedChain,
+                };
+                grouped.set(locationKey, entry);
             }
         }
 
         return Array.from(grouped.values());
-    }, [activeScenarioPeople, focusedPersonId]);
+    }, [activeScenarioPeople, focusedPersonId, selectedChainIndex, selectedChainUserIds]);
 
     const globalLocationMarkers = useMemo<ScenarioLocationMarker[]>(() => {
         return locationsDirectory
@@ -887,12 +923,14 @@ const AdminInterlocking = () => {
     const handleScenarioRowClick = (scenarioId: string) => {
         setActiveScenarioId(scenarioId);
         setFocusedPersonId(null);
+        setSelectedChainIndex(null);
     };
 
     const clearScenarioSelection = () => {
         setActiveScenarioId(null);
         setFocusedPersonId(null);
         setFocusedLocationId(null);
+        setSelectedChainIndex(null);
     };
 
     const exportScenarioCsv = (scenario: SavedScenario) => {
@@ -1246,7 +1284,16 @@ const AdminInterlocking = () => {
                                         style={rightPanelTab === "PEOPLE"
                                             ? { ...tabButtonBaseStyle, background: "#EFF6FF", color: "#111827", border: "1px solid #6366F1" }
                                             : { ...tabButtonBaseStyle, background: "#FFFFFF", color: "#4B5563" }}>
-                                        Lista persone
+                                        Persone
+                                    </button>
+                                    <button
+                                        onClick={() => { setRightPanelTab("CHAINS"); }}
+                                        style={rightPanelTab === "CHAINS"
+                                            ? { ...tabButtonBaseStyle, background: "#EFF6FF", color: "#111827", border: "1px solid #6366F1" }
+                                            : { ...tabButtonBaseStyle, background: "#FFFFFF", color: "#4B5563" }}
+                                        title={!activeScenario ? "Seleziona uno scenario per vedere le catene" : undefined}
+                                    >
+                                        Catene trovate{activeScenario ? ` (${getScenarioViewChains(activeScenario).length})` : ""}
                                     </button>
                                     {renderExpandButton("insights")}
                                 </div>
@@ -1255,18 +1302,49 @@ const AdminInterlocking = () => {
                             <div style={{ ...subtleCardStyle, height: expandedBox === "insights" ? "calc(100vh - 210px)" : "450px", display: "grid", gridTemplateColumns: rightPanelTab === "MAP" ? "1.38fr 0.86fr" : "1fr", gap: "0px", overflow: "hidden" }}>
                                 {rightPanelTab === "MAP" ? (
                                     <>
+                                        {/* ── MAP area ── */}
                                         <div style={{ height: expandedBox === "insights" ? "calc(100vh - 210px)" : "450px", background: "#F3F4F6", overflow: "hidden" }}>
                                             {displayedMapMarkers.length > 0 ? (
                                                 <MapContainer center={mapCenter} zoom={6} style={{ width: "100%", height: "100%" }}>
                                                     <TileLayer attribution='&copy; OpenStreetMap contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                                                     <FitBounds markers={displayedMapMarkers} />
                                                     {displayedMapMarkers.map((marker) => {
-                                                        const color = marker.colorMode === "focused-gold" ? "#FCD34D" : marker.colorMode === "scenario-red" ? "#F43F5E" : "#34D399";
-                                                        const fillColor = marker.colorMode === "focused-gold" ? "#F59E0B" : marker.colorMode === "scenario-red" ? "#F43F5E" : "#10B981";
-                                                        const radius = marker.colorMode === "focused-gold" ? 16 : marker.colorMode === "scenario-red" ? 10 + Math.min(marker.peopleCount, 6) : 8;
+                                                        const m = marker as any;
+                                                        const inChain: boolean = !!m.__inChain;
+                                                        const chainHighlightActive = selectedChainIndex !== null;
+
+                                                        // Calcola colore marker
+                                                        let color: string;
+                                                        let fillColor: string;
+                                                        let fillOpacity: number;
+                                                        let weight: number;
+                                                        let radius: number;
+
+                                                        if (marker.colorMode === "focused-gold") {
+                                                            color = "#FCD34D"; fillColor = "#F59E0B";
+                                                            fillOpacity = 0.92; weight = 4; radius = 16;
+                                                        } else if (chainHighlightActive && inChain) {
+                                                            const cc = getChainColor(selectedChainIndex!);
+                                                            color = cc.marker; fillColor = cc.marker;
+                                                            fillOpacity = 0.88; weight = 3;
+                                                            radius = 12 + Math.min(marker.peopleCount, 5);
+                                                        } else if (chainHighlightActive && !inChain) {
+                                                            // de-enfatizzato
+                                                            color = "#D1D5DB"; fillColor = "#E5E7EB";
+                                                            fillOpacity = 0.45; weight = 1;
+                                                            radius = 7;
+                                                        } else if (marker.colorMode === "scenario-red") {
+                                                            color = "#F43F5E"; fillColor = "#F43F5E";
+                                                            fillOpacity = 0.82; weight = 2;
+                                                            radius = 10 + Math.min(marker.peopleCount, 6);
+                                                        } else {
+                                                            color = "#34D399"; fillColor = "#10B981";
+                                                            fillOpacity = 0.75; weight = 2; radius = 8;
+                                                        }
+
                                                         return (
                                                             <CircleMarker key={marker.locationId} center={[marker.latitude, marker.longitude]} radius={radius}
-                                                                pathOptions={{ color, fillColor, fillOpacity: marker.colorMode === "default-green" ? 0.75 : 0.82, weight: marker.colorMode === "focused-gold" ? 4 : 2 }}>
+                                                                pathOptions={{ color, fillColor, fillOpacity, weight }}>
                                                                 <Popup>
                                                                     <div>
                                                                         <strong>{marker.locationName}</strong>
@@ -1288,6 +1366,7 @@ const AdminInterlocking = () => {
                                             )}
                                         </div>
 
+                                        {/* ── Persone coinvolte (colonna destra della MAP) ── */}
                                         <div style={{ borderLeft: "1px solid #E5E7EB", padding: "14px", background: "#FFFFFF", height: expandedBox === "insights" ? "calc(100vh - 210px)" : "450px", display: "grid", gridTemplateRows: "auto 1fr", gap: "12px", overflow: "hidden" }}>
                                             <div>
                                                 <div style={{ fontWeight: 600, fontSize: "14px" }}>{activeScenario ? "Persone coinvolte" : "Sedi disponibili"}</div>
@@ -1300,10 +1379,20 @@ const AdminInterlocking = () => {
                                                     activeScenarioPeople.length > 0 ? (
                                                         activeScenarioPeople.map((person) => {
                                                             const isFocused = focusedPersonId === person.id;
+                                                            const isInChain = selectedChainIndex !== null && selectedChainUserIds.has(person.id);
+                                                            const chainActive = selectedChainIndex !== null;
+                                                            const cc = selectedChainIndex !== null ? getChainColor(selectedChainIndex) : null;
                                                             return (
                                                                 <button key={person.id}
                                                                     onClick={() => setFocusedPersonId((prev) => prev === person.id ? null : person.id)}
-                                                                    style={{ textAlign: "left", padding: "10px 12px", borderRadius: "12px", border: isFocused ? "1px solid #FCD34D" : "1px solid #E5E7EB", background: isFocused ? "#FEF3C7" : "#FFFFFF", color: "#111827", cursor: "pointer" }}>
+                                                                    style={{
+                                                                        textAlign: "left", padding: "10px 12px", borderRadius: "12px",
+                                                                        border: isFocused ? "1px solid #FCD34D" : isInChain && cc ? `1px solid ${cc.border}` : "1px solid #E5E7EB",
+                                                                        background: isFocused ? "#FEF3C7" : isInChain && cc ? cc.bg : "#FFFFFF",
+                                                                        color: "#111827", cursor: "pointer",
+                                                                        opacity: chainActive && !isInChain && !isFocused ? 0.45 : 1,
+                                                                        transition: "opacity 0.2s, border 0.2s, background 0.2s",
+                                                                    }}>
                                                                     <div style={{ fontWeight: 600, fontSize: "13px", lineHeight: 1.2 }}>{person.name}</div>
                                                                     <div style={{ marginTop: "4px", fontSize: "11px", color: "#6B7280" }}>{person.role !== "—" ? person.role : "Ruolo non disponibile"}</div>
                                                                     <div style={{ marginTop: "2px", fontSize: "11px", color: "#9CA3AF" }}>{person.locationName}</div>
@@ -1336,7 +1425,9 @@ const AdminInterlocking = () => {
                                             </div>
                                         </div>
                                     </>
-                                ) : (
+
+                                ) : rightPanelTab === "PEOPLE" ? (
+                                    /* ── Tab PEOPLE: tabella completa ── */
                                     <div style={{ overflow: "hidden", height: expandedBox === "insights" ? "calc(100vh - 210px)" : "450px", display: "grid", gridTemplateRows: "auto 1fr" }}>
                                         <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr 1fr 1fr 0.8fr", gap: "10px", padding: "14px 16px", fontSize: "10px", color: "#6B7280", textTransform: "uppercase", letterSpacing: "0.08em", borderBottom: "1px solid #E5E7EB" }}>
                                             <div>Nome</div><div>Ruolo</div><div>Sede</div><div>Responsabile</div><div>PBP</div>
@@ -1354,6 +1445,94 @@ const AdminInterlocking = () => {
                                                 )
                                             ) : (
                                                 <div style={{ padding: "20px", color: "#9CA3AF", fontSize: "13px" }}>Seleziona uno scenario per vedere la tabella delle persone coinvolte.</div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                ) : (
+                                    /* ── Tab CHAINS: lista catene con highlight ── */
+                                    <div style={{ overflow: "hidden", height: expandedBox === "insights" ? "calc(100vh - 210px)" : "450px", display: "grid", gridTemplateRows: "auto 1fr" }}>
+                                        {/* Header tab catene */}
+                                        <div style={{ padding: "12px 16px", borderBottom: "1px solid #E5E7EB", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                                            <div>
+                                                <div style={{ fontWeight: 600, fontSize: "14px" }}>Catene trovate</div>
+                                                <div style={sectionSubtitleStyle}>
+                                                    {activeScenario
+                                                        ? `${getScenarioViewChains(activeScenario).length} catene — click per evidenziare sulla mappa`
+                                                        : "Seleziona uno scenario per vedere le catene"}
+                                                </div>
+                                            </div>
+                                            {selectedChainIndex !== null && (
+                                                <button
+                                                    onClick={() => setSelectedChainIndex(null)}
+                                                    style={{ fontSize: "11px", color: "#6B7280", background: "none", border: "none", cursor: "pointer", textDecoration: "underline", padding: 0 }}
+                                                >
+                                                    Deseleziona catena
+                                                </button>
+                                            )}
+                                        </div>
+
+                                        {/* Lista catene */}
+                                        <div style={{ overflowY: "auto", padding: "12px 14px", display: "grid", gap: "8px", alignContent: "start" }}>
+                                            {!activeScenario ? (
+                                                <div style={{ color: "#9CA3AF", fontSize: "13px", paddingTop: "12px" }}>Seleziona uno scenario per vedere le catene.</div>
+                                            ) : getScenarioViewChains(activeScenario).length === 0 ? (
+                                                <div style={{ color: "#9CA3AF", fontSize: "13px", paddingTop: "12px" }}>Nessuna catena disponibile.</div>
+                                            ) : (
+                                                getScenarioViewChains(activeScenario).map((chain, idx) => {
+                                                    const cc = getChainColor(idx);
+                                                    const isSelected = selectedChainIndex === idx;
+                                                    return (
+                                                        <button
+                                                            key={idx}
+                                                            onClick={() => {
+                                                                setSelectedChainIndex((prev) => prev === idx ? null : idx);
+                                                                // Switch automatico alla mappa per vedere l'highlight
+                                                                setRightPanelTab("MAP");
+                                                            }}
+                                                            style={{
+                                                                textAlign: "left",
+                                                                padding: "10px 12px 10px 15px",
+                                                                borderRadius: "12px",
+                                                                border: isSelected ? `2px solid ${cc.border}` : `1px solid ${cc.border}40`,
+                                                                background: isSelected ? cc.bg : "#FFFFFF",
+                                                                cursor: "pointer",
+                                                                display: "grid",
+                                                                gridTemplateColumns: "12px 1fr",
+                                                                gap: "10px",
+                                                                alignItems: "start",
+                                                                boxShadow: isSelected ? `0 0 0 2px ${cc.border}30` : "none",
+                                                                transition: "all 0.15s",
+                                                                width: "100%",
+                                                            }}
+                                                        >
+                                                            {/* Pallino colore */}
+                                                            <div style={{
+                                                                width: 12, height: 12,
+                                                                borderRadius: "50%",
+                                                                background: cc.dot,
+                                                                marginTop: 3,
+                                                                flexShrink: 0,
+                                                                boxShadow: isSelected ? `0 0 0 3px ${cc.dot}40` : "none",
+                                                            }} />
+                                                            <div>
+                                                                {/* Sequenza nomi */}
+                                                                <div style={{ fontSize: "12px", fontWeight: 600, color: "#111827", lineHeight: 1.4 }}>
+                                                                    {chain.peopleNames.slice(0, 5).join(" → ")}
+                                                                    {chain.peopleNames.length > 5 && ` → +${chain.peopleNames.length - 5}`}
+                                                                </div>
+                                                                {/* Meta */}
+                                                                <div style={{ marginTop: "5px", display: "flex", gap: "10px", fontSize: "11px", color: "#6B7280" }}>
+                                                                    <span>Catena #{idx + 1}</span>
+                                                                    <span>Lung. {chain.length}</span>
+                                                                    {chain.avgPriority != null && (
+                                                                        <span>Priorità media {chain.avgPriority.toFixed(1)}</span>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        </button>
+                                                    );
+                                                })
                                             )}
                                         </div>
                                     </div>
