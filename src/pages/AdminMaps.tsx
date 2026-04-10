@@ -42,14 +42,13 @@ const AdminMaps = () => {
   const rightPanelEntries = useMemo(() => {
     const rows = mapLocations.flatMap((loc) =>
       loc.roles.flatMap((role) =>
-        role.users.map((user) => ({
+        (role.applied ? role.users : []).map((user) => ({
           key: `${user.position_id}-${user.id}`,
           positionId: user.position_id,
           userId: user.id,
           name: user.full_name ?? "—",
           roleName: role.role_name ?? "—",
           locationName: loc.name ?? "—",
-          applied: role.applied === true,
         }))
       )
     );
@@ -61,11 +60,12 @@ const AdminMaps = () => {
       return true;
     });
 
-    return deduped.sort((a, b) => {
-      if (a.applied !== b.applied) return a.applied ? -1 : 1;
-      return a.name.localeCompare(b.name, "it");
-    });
+    return deduped.sort((a, b) => a.name.localeCompare(b.name, "it"));
   }, [mapLocations]);
+
+  const relationLabel = mode === "from"
+    ? "Persone per cui l'utente selezionato si è candidato"
+    : "Persone che si sono candidate verso l'utente selezionato";
 
   return (
     <div style={{
@@ -199,7 +199,7 @@ const AdminMaps = () => {
               </div>
             </div>
 
-            <div style={{ flex: 1, display: "grid", gridTemplateColumns: "1.36fr 0.84fr", minHeight: 0 }}>
+            <div style={{ flex: 1, display: "grid", gridTemplateColumns: "1.75fr 0.42fr", minHeight: 0 }}>
               {selectedUserId ? (
                 <>
                   <div style={{ position: "relative", minHeight: 0 }}>
@@ -209,21 +209,22 @@ const AdminMaps = () => {
                       interaction="read"
                       visualMode="adminActiveMaps"
                       highlightPositionId={selectedPositionId ?? undefined}
+                      suppressAutoFocusOnHighlight={true}
                       onLocationsLoaded={setMapLocations}
                     />
                   </div>
 
                   <div style={{ borderLeft: "1px solid var(--border)", background: "#fff", minHeight: 0, display: "grid", gridTemplateRows: "auto 1fr" }}>
-                    <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)" }}>
-                      <div style={{ fontSize: "14px", fontWeight: 700, color: "var(--text-primary)" }}>
-                        Persone e posizioni rilevanti
+                    <div style={{ padding: "12px 12px", borderBottom: "1px solid var(--border)" }}>
+                      <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--text-primary)" }}>
+                        Persone collegate
                       </div>
-                      <div style={{ fontSize: "12px", color: "var(--text-secondary)", marginTop: "4px" }}>
-                        Clicca una card per evidenziare la sede sulla mappa
+                      <div style={{ fontSize: "11px", color: "var(--text-secondary)", marginTop: "3px", lineHeight: 1.3 }}>
+                        {relationLabel}
                       </div>
                     </div>
 
-                    <div style={{ overflowY: "auto", padding: "10px 12px", display: "grid", gap: "8px", alignContent: "start" }}>
+                    <div style={{ overflowY: "auto", padding: "8px 8px", display: "grid", gap: "7px", alignContent: "start" }}>
                       {rightPanelEntries.length > 0 ? (
                         rightPanelEntries.map((entry) => {
                           const isActive = selectedPositionId === entry.positionId;
@@ -233,29 +234,29 @@ const AdminMaps = () => {
                               onClick={() => setSelectedPositionId(entry.positionId)}
                               style={{
                                 textAlign: "left",
-                                borderRadius: "12px",
+                                borderRadius: "10px",
                                 border: isActive ? "1px solid #6366F1" : "1px solid #E5E7EB",
                                 background: isActive ? "#EEF2FF" : "#FFFFFF",
-                                padding: "10px 11px",
+                                padding: "8px 9px",
                                 cursor: "pointer",
                                 transition: "all 0.15s",
                               }}
                             >
-                              <div style={{ fontWeight: 600, fontSize: "13px", color: "#111827" }}>
+                              <div style={{ fontWeight: 600, fontSize: "12px", color: "#111827", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                 {entry.name}
                               </div>
-                              <div style={{ fontSize: "12px", color: "#4B5563", marginTop: "2px" }}>
+                              <div style={{ fontSize: "11px", color: "#4B5563", marginTop: "2px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                 {entry.roleName}
                               </div>
-                              <div style={{ fontSize: "12px", color: "#6B7280", marginTop: "1px" }}>
+                              <div style={{ fontSize: "11px", color: "#6B7280", marginTop: "1px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                 {entry.locationName}
                               </div>
                             </button>
                           );
                         })
                       ) : (
-                        <div style={{ color: "var(--text-muted)", fontSize: "13px", padding: "10px 2px" }}>
-                          Nessuna posizione rilevante trovata per l’utente selezionato.
+                        <div style={{ color: "var(--text-muted)", fontSize: "12px", padding: "8px 2px", lineHeight: 1.35 }}>
+                          Nessuna persona collegata trovata in modalità {mode === "from" ? "DA" : "VERSO"}.
                         </div>
                       )}
                     </div>

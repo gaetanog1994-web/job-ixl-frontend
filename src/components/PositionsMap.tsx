@@ -97,6 +97,7 @@ type Props = {
     mode?: "from" | "to";
     interaction?: "read" | "write";
     visualMode?: "default" | "adminActiveMaps";
+    suppressAutoFocusOnHighlight?: boolean;
     highlightPositionId?: string;
     /** Fly to this location name and open its popup */
     filterLocationName?: string;
@@ -115,6 +116,7 @@ const PositionsMap = ({
     mode = "from",
     interaction = "write",
     visualMode = "default",
+    suppressAutoFocusOnHighlight = false,
     highlightPositionId,
     filterLocationName,
     filterRoleName,
@@ -306,10 +308,10 @@ const PositionsMap = ({
             };
         }
         return {
-            color: "#86EFAC",
-            fillColor: "#BBF7D0",
-            fillOpacity: Math.min(0.6, 0.5 * opacity),
-            weight: 1.5,
+            color: "#A7F3D0",
+            fillColor: "#D1FAE5",
+            fillOpacity: Math.min(0.7, 0.52 * opacity),
+            weight: 1.8,
             radius: isHighlightTarget ? 11 : 9,
         };
     };
@@ -339,6 +341,9 @@ const PositionsMap = ({
             consumedHighlightRef.current = highlightPositionId;
 
             setHighlightLocationId(targetLoc.location_id);
+
+            if (suppressAutoFocusOnHighlight) return;
+
             autoMoveRef.current = true;
 
             map.flyTo([targetLoc.latitude, targetLoc.longitude], 11, {
@@ -354,7 +359,7 @@ const PositionsMap = ({
             if (marker && typeof marker.openPopup === "function") {
                 setTimeout(() => marker.openPopup(), 150);
             }
-        }, [highlightPositionId, locations, map]);
+        }, [highlightPositionId, locations, map, suppressAutoFocusOnHighlight]);
 
         // ---- filter by location name: fly + open popup ----
         useEffect(() => {
@@ -455,7 +460,7 @@ const PositionsMap = ({
                     const locationOpacity = filterRoleName && !roleMatchesFilter ? 0.25 : 1;
                     const baseOpacity =
                         visualMode === "adminActiveMaps" && markerState === "available"
-                            ? 0.28
+                            ? 0.5
                             : 1;
                     const markerOpacity = locationOpacity * baseOpacity;
                     const isHighlightTarget =
