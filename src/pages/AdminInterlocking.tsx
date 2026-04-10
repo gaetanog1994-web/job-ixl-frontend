@@ -104,6 +104,7 @@ type AdminUserRow = {
     role_name: string | null;
     location_id: string | null;
     location_name: string | null;
+    fixed_location: boolean | null;
     responsible_name: string | null;
     pbp: string | null;
 };
@@ -205,6 +206,23 @@ const subtleCardStyle: React.CSSProperties = {
     border: "1px solid #E5E7EB",
     borderRadius: "18px",
 };
+
+const INTERLOCKING_CSV_HEADERS = [
+    "Scenario",
+    "ID Catena",
+    "Persona",
+    "Ruolo persona",
+    "Sede persona",
+    "Flag sede persona vincolante",
+    "PBP persona",
+    "Responsabile persona",
+    "Persona target",
+    "Ruolo target",
+    "Sede target",
+    "Flag sede target vincolante",
+    "PBP target",
+    "Responsabile target",
+];
 
 function FitBounds({
     markers,
@@ -501,6 +519,12 @@ const AdminInterlocking = () => {
                             location_name:
                                 u.location_name ??
                                 (locationId ? locationNameById.get(locationId) ?? null : null),
+                            fixed_location:
+                                typeof u.fixed_location === "boolean"
+                                    ? u.fixed_location
+                                    : typeof u.fixedLocation === "boolean"
+                                        ? u.fixedLocation
+                                        : null,
                             responsible_name:
                                 u.responsible_name ??
                                 u.manager_name ??
@@ -1011,58 +1035,92 @@ const AdminInterlocking = () => {
         setViewMode("map");
     };
 
+    const buildInterlockingCsvRows = (
+        scenario: SavedScenario,
+        onlyChainIndexes?: number[]
+    ): Array<Array<string | number>> => {
+        const chains = getScenarioViewChains(scenario);
+        const scenarioCode = scenario.scenario_code || getScenarioCode();
+        const allowedIndexes = Array.isArray(onlyChainIndexes)
+            ? new Set(
+                onlyChainIndexes.filter(
+                    (idx) => Number.isInteger(idx) && idx >= 0 && idx < chains.length
+                )
+            )
+            : null;
+
+        const formatFixedLocationFlag = (value: boolean | null | undefined) => {
+            if (typeof value === "boolean") return value ? "Sì" : "No";
+            return "";
+        };
+
+        const getUserCsvData = (userId: string, fallbackName?: string) => {
+            const user = usersById.get(userId);
+            return {
+                name: user?.full_name ?? fallbackName ?? userId,
+                role: user?.role_name ?? "",
+                location: user?.location_name ?? "",
+                fixedLocationFlag: formatFixedLocationFlag(user?.fixed_location),
+                pbp: user?.pbp ?? "",
+                responsible: user?.responsible_name ?? "",
+            };
+        };
+
+        const rows: Array<Array<string | number>> = [];
+
+        chains.forEach((chain, chainIdx) => {
+            if (allowedIndexes && !allowedIndexes.has(chainIdx)) return;
+
+            const userIds = Array.isArray(chain.userIds) ? chain.userIds : [];
+            if (userIds.length < 2) return;
+
+            for (let i = 0; i < userIds.length; i += 1) {
+                const sourceId = userIds[i];
+                const targetIndex = (i + 1) % userIds.length;
+                const targetId = userIds[targetIndex];
+
+                const sourceFallbackName = Array.isArray(chain.peopleNames)
+                    ? chain.peopleNames[i]
+                    : undefined;
+                const targetFallbackName = Array.isArray(chain.peopleNames)
+                    ? chain.peopleNames[targetIndex]
+                    : undefined;
+
+                const source = getUserCsvData(sourceId, sourceFallbackName);
+                const target = getUserCsvData(targetId, targetFallbackName);
+
+                rows.push([
+                    scenarioCode,
+                    chainIdx + 1,
+                    source.name,
+                    source.role,
+                    source.location,
+                    source.fixedLocationFlag,
+                    source.pbp,
+                    source.responsible,
+                    target.name,
+                    target.role,
+                    target.location,
+                    target.fixedLocationFlag,
+                    target.pbp,
+                    target.responsible,
+                ]);
+            }
+        });
+
+        return rows;
+    };
+
     const exportScenarioCsv = (scenario: SavedScenario) => {
-        const source =
-            scenario.strategy !== "NONE" &&
-                scenario.optimal_chains_json &&
-                scenario.optimal_chains_json.length > 0
-                ? scenario.optimal_chains_json.map((c) => ({
-                    peopleNames: c.nodeIds.map((id) => usersById.get(id)?.full_name ?? id),
-                    avgPriority: c.avgPriority ?? null,
-                    length: c.length ?? c.nodeIds.length,
-                }))
-                : scenario.chains_json;
-
-        const headers = [
-            "ID Catena",
-            "Persone coinvolte",
-            "Priorità catena",
-            "Lunghezza",
-            "Scenario",
-            "Data e ora",
-            "Strategia",
-            "MaxLen",
-        ];
-
-        const rows = source.map((c: any, i: number) => [
-            i + 1,
-            Array.isArray(c.peopleNames)
-                ? c.peopleNames.join(" -> ")
-                : Array.isArray(c.nodeIds)
-                    ? c.nodeIds.join(" -> ")
-                    : "",
-            typeof c.avgPriority === "number" ? c.avgPriority : "",
-            c.length ?? "",
-            scenario.scenario_code,
-            formatDateTime(scenario.generated_at),
-            getStrategyLabel(scenario.strategy),
-            scenario.max_len,
-        ]);
-
-        downloadCsv(`scenario_${scenario.scenario_code}`, headers, rows);
+        const rows = buildInterlockingCsvRows(scenario);
+        downloadCsv(`scenario_${scenario.scenario_code}`, INTERLOCKING_CSV_HEADERS, rows);
     };
 
     const exportPeopleListCsv = () => {
         if (!activeScenario) return;
-
-        const headers = ["Nome", "Ruolo", "Sede", "Responsabile", "PBP"];
-        const rows = peopleListToShow.map((person) => [
-            person.name,
-            person.role,
-            person.locationName,
-            person.responsible,
-            person.pbp,
-        ]);
+        const selectedChainIndexes =
+            selectedChainIndex !== null ? [selectedChainIndex] : undefined;
+        const rows = buildInterlockingCsvRows(activeScenario, selectedChainIndexes);
 
         const scenarioCode = activeScenario.scenario_code || getScenarioCode();
         const filenameBase =
@@ -1070,7 +1128,7 @@ const AdminInterlocking = () => {
                 ? `people_chain_${selectedChainIndex + 1}_${scenarioCode}`
                 : `people_scenario_${scenarioCode}`;
 
-        downloadCsv(filenameBase, headers, rows);
+        downloadCsv(filenameBase, INTERLOCKING_CSV_HEADERS, rows);
     };
 
     const renderExpandButton = (key: Exclude<ExpandableBoxKey, null>) => {
