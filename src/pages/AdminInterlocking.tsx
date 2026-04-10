@@ -15,7 +15,7 @@ import {
 import "leaflet/dist/leaflet.css";
 
 type UiStrategy = OptimizationStrategy | "NONE";
-type RightPanelTab = "MAP" | "PEOPLE" | "CHAINS";
+type RightPanelTab = "PEOPLE" | "CHAINS";
 
 /** Palette colori per le prime 8 catene (border, bg, dot) */
 const CHAIN_COLORS = [
@@ -170,14 +170,7 @@ const ghostButtonStyle: React.CSSProperties = {
     fontWeight: 500,
 };
 
-const tabButtonBaseStyle: React.CSSProperties = {
-    borderRadius: "12px",
-    padding: "10px 14px",
-    fontSize: "13px",
-    fontWeight: 600,
-    cursor: "pointer",
-    border: "1px solid #E5E7EB",
-};
+
 
 const subtleCardStyle: React.CSSProperties = {
     background: "#F9FAFB",
@@ -228,7 +221,7 @@ const AdminInterlocking = () => {
     const [expandedScenarioIds, setExpandedScenarioIds] = useState<string[]>([]);
 
     const [activeScenarioId, setActiveScenarioId] = useState<string | null>(null);
-    const [rightPanelTab, setRightPanelTab] = useState<RightPanelTab>("MAP");
+    const [rightPanelTab, setRightPanelTab] = useState<RightPanelTab>("PEOPLE");
     const [focusedPersonId, setFocusedPersonId] = useState<string | null>(null);
     const [selectedChainIndex, setSelectedChainIndex] = useState<number | null>(null);
     const [focusedLocationId, setFocusedLocationId] = useState<string | null>(null);
@@ -1274,107 +1267,130 @@ const AdminInterlocking = () => {
                                     </div>
                                 </div>
                                 <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                                    <button onClick={() => setRightPanelTab("MAP")}
-                                        style={rightPanelTab === "MAP"
-                                            ? { ...tabButtonBaseStyle, background: "#EFF6FF", color: "#111827", border: "1px solid #6366F1" }
-                                            : { ...tabButtonBaseStyle, background: "#FFFFFF", color: "#4B5563" }}>
-                                        Mappa
-                                    </button>
-                                    <button onClick={() => setRightPanelTab("PEOPLE")}
-                                        style={rightPanelTab === "PEOPLE"
-                                            ? { ...tabButtonBaseStyle, background: "#EFF6FF", color: "#111827", border: "1px solid #6366F1" }
-                                            : { ...tabButtonBaseStyle, background: "#FFFFFF", color: "#4B5563" }}>
-                                        Persone
-                                    </button>
-                                    <button
-                                        onClick={() => { setRightPanelTab("CHAINS"); }}
-                                        style={rightPanelTab === "CHAINS"
-                                            ? { ...tabButtonBaseStyle, background: "#EFF6FF", color: "#111827", border: "1px solid #6366F1" }
-                                            : { ...tabButtonBaseStyle, background: "#FFFFFF", color: "#4B5563" }}
-                                        title={!activeScenario ? "Seleziona uno scenario per vedere le catene" : undefined}
-                                    >
-                                        Catene trovate{activeScenario ? ` (${getScenarioViewChains(activeScenario).length})` : ""}
-                                    </button>
                                     {renderExpandButton("insights")}
                                 </div>
                             </div>
 
-                            <div style={{ ...subtleCardStyle, height: expandedBox === "insights" ? "calc(100vh - 210px)" : "450px", display: "grid", gridTemplateColumns: rightPanelTab === "MAP" ? "1.38fr 0.86fr" : "1fr", gap: "0px", overflow: "hidden" }}>
-                                {rightPanelTab === "MAP" ? (
-                                    <>
-                                        {/* ── MAP area ── */}
-                                        <div style={{ height: expandedBox === "insights" ? "calc(100vh - 210px)" : "450px", background: "#F3F4F6", overflow: "hidden" }}>
-                                            {displayedMapMarkers.length > 0 ? (
-                                                <MapContainer center={mapCenter} zoom={6} style={{ width: "100%", height: "100%" }}>
-                                                    <TileLayer attribution='&copy; OpenStreetMap contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                                                    <FitBounds markers={displayedMapMarkers} />
-                                                    {displayedMapMarkers.map((marker) => {
-                                                        const m = marker as any;
-                                                        const inChain: boolean = !!m.__inChain;
-                                                        const chainHighlightActive = selectedChainIndex !== null;
+                            {/* ─────────────────────────────────────────────────────────
+                                LAYOUT FISSO: mappa sempre a sinistra, pannello a destra.
+                                La mappa NON viene mai smontata. Le tab PEOPLE/CHAINS
+                                controllano solo il contenuto della colonna destra.
+                            ───────────────────────────────────────────────────────── */}
+                            <div style={{ ...subtleCardStyle, height: expandedBox === "insights" ? "calc(100vh - 210px)" : "450px", display: "grid", gridTemplateColumns: "1.38fr 0.86fr", gap: "0px", overflow: "hidden" }}>
 
-                                                        // Calcola colore marker
-                                                        let color: string;
-                                                        let fillColor: string;
-                                                        let fillOpacity: number;
-                                                        let weight: number;
-                                                        let radius: number;
+                                {/* ── Colonna sinistra: MAPPA (sempre visibile) ── */}
+                                <div style={{ height: expandedBox === "insights" ? "calc(100vh - 210px)" : "450px", background: "#F3F4F6", overflow: "hidden" }}>
+                                    {displayedMapMarkers.length > 0 ? (
+                                        <MapContainer center={mapCenter} zoom={6} style={{ width: "100%", height: "100%" }}>
+                                            <TileLayer attribution='&copy; OpenStreetMap contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                                            <FitBounds markers={displayedMapMarkers} />
+                                            {displayedMapMarkers.map((marker) => {
+                                                const m = marker as any;
+                                                const inChain: boolean = !!m.__inChain;
+                                                const chainHighlightActive = selectedChainIndex !== null;
 
-                                                        if (marker.colorMode === "focused-gold") {
-                                                            color = "#FCD34D"; fillColor = "#F59E0B";
-                                                            fillOpacity = 0.92; weight = 4; radius = 16;
-                                                        } else if (chainHighlightActive && inChain) {
-                                                            const cc = getChainColor(selectedChainIndex!);
-                                                            color = cc.marker; fillColor = cc.marker;
-                                                            fillOpacity = 0.88; weight = 3;
-                                                            radius = 12 + Math.min(marker.peopleCount, 5);
-                                                        } else if (chainHighlightActive && !inChain) {
-                                                            // de-enfatizzato
-                                                            color = "#D1D5DB"; fillColor = "#E5E7EB";
-                                                            fillOpacity = 0.45; weight = 1;
-                                                            radius = 7;
-                                                        } else if (marker.colorMode === "scenario-red") {
-                                                            color = "#F43F5E"; fillColor = "#F43F5E";
-                                                            fillOpacity = 0.82; weight = 2;
-                                                            radius = 10 + Math.min(marker.peopleCount, 6);
-                                                        } else {
-                                                            color = "#34D399"; fillColor = "#10B981";
-                                                            fillOpacity = 0.75; weight = 2; radius = 8;
-                                                        }
+                                                let color: string;
+                                                let fillColor: string;
+                                                let fillOpacity: number;
+                                                let weight: number;
+                                                let radius: number;
 
-                                                        return (
-                                                            <CircleMarker key={marker.locationId} center={[marker.latitude, marker.longitude]} radius={radius}
-                                                                pathOptions={{ color, fillColor, fillOpacity, weight }}>
-                                                                <Popup>
-                                                                    <div>
-                                                                        <strong>{marker.locationName}</strong>
-                                                                        {activeScenario ? (
-                                                                            <><div>Persone coinvolte: {marker.peopleCount}</div><div style={{ marginTop: "6px", fontSize: "12px" }}>{marker.peopleNames.join(", ")}</div></>
-                                                                        ) : (
-                                                                            <div style={{ marginTop: "6px", fontSize: "12px" }}>Sede disponibile nel perimetro aziendale</div>
-                                                                        )}
-                                                                    </div>
-                                                                </Popup>
-                                                            </CircleMarker>
-                                                        );
-                                                    })}
-                                                </MapContainer>
-                                            ) : (
-                                                <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#9CA3AF", padding: "20px", textAlign: "center" }}>
-                                                    Nessuna sede geolocalizzata disponibile.
-                                                </div>
-                                            )}
+                                                if (marker.colorMode === "focused-gold") {
+                                                    color = "#FCD34D"; fillColor = "#F59E0B";
+                                                    fillOpacity = 0.92; weight = 4; radius = 16;
+                                                } else if (chainHighlightActive && inChain) {
+                                                    const cc = getChainColor(selectedChainIndex!);
+                                                    color = cc.marker; fillColor = cc.marker;
+                                                    fillOpacity = 0.88; weight = 3;
+                                                    radius = 12 + Math.min(marker.peopleCount, 5);
+                                                } else if (chainHighlightActive && !inChain) {
+                                                    color = "#D1D5DB"; fillColor = "#E5E7EB";
+                                                    fillOpacity = 0.45; weight = 1; radius = 7;
+                                                } else if (marker.colorMode === "scenario-red") {
+                                                    color = "#F43F5E"; fillColor = "#F43F5E";
+                                                    fillOpacity = 0.82; weight = 2;
+                                                    radius = 10 + Math.min(marker.peopleCount, 6);
+                                                } else {
+                                                    color = "#34D399"; fillColor = "#10B981";
+                                                    fillOpacity = 0.75; weight = 2; radius = 8;
+                                                }
+
+                                                return (
+                                                    <CircleMarker key={marker.locationId} center={[marker.latitude, marker.longitude]} radius={radius}
+                                                        pathOptions={{ color, fillColor, fillOpacity, weight }}>
+                                                        <Popup>
+                                                            <div>
+                                                                <strong>{marker.locationName}</strong>
+                                                                {activeScenario ? (
+                                                                    <><div>Persone coinvolte: {marker.peopleCount}</div><div style={{ marginTop: "6px", fontSize: "12px" }}>{marker.peopleNames.join(", ")}</div></>
+                                                                ) : (
+                                                                    <div style={{ marginTop: "6px", fontSize: "12px" }}>Sede disponibile nel perimetro aziendale</div>
+                                                                )}
+                                                            </div>
+                                                        </Popup>
+                                                    </CircleMarker>
+                                                );
+                                            })}
+                                        </MapContainer>
+                                    ) : (
+                                        <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#9CA3AF", padding: "20px", textAlign: "center" }}>
+                                            Nessuna sede geolocalizzata disponibile.
                                         </div>
+                                    )}
+                                </div>
 
-                                        {/* ── Persone coinvolte (colonna destra della MAP) ── */}
-                                        <div style={{ borderLeft: "1px solid #E5E7EB", padding: "14px", background: "#FFFFFF", height: expandedBox === "insights" ? "calc(100vh - 210px)" : "450px", display: "grid", gridTemplateRows: "auto 1fr", gap: "12px", overflow: "hidden" }}>
-                                            <div>
-                                                <div style={{ fontWeight: 600, fontSize: "14px" }}>{activeScenario ? "Persone coinvolte" : "Sedi disponibili"}</div>
+                                {/* ── Colonna destra: tab PEOPLE / CHAINS ── */}
+                                <div style={{ borderLeft: "1px solid #E5E7EB", background: "#FFFFFF", height: expandedBox === "insights" ? "calc(100vh - 210px)" : "450px", display: "grid", gridTemplateRows: "auto 1fr", overflow: "hidden" }}>
+
+                                    {/* Tab bar interna */}
+                                    <div style={{ display: "flex", gap: "4px", padding: "10px 12px 0px", borderBottom: "1px solid #E5E7EB", flexShrink: 0 }}>
+                                        <button
+                                            onClick={() => setRightPanelTab("PEOPLE")}
+                                            style={{
+                                                padding: "7px 12px", borderRadius: "10px 10px 0 0",
+                                                fontSize: "12px", fontWeight: 600, cursor: "pointer",
+                                                border: "1px solid transparent",
+                                                borderBottom: rightPanelTab === "PEOPLE" ? "2px solid #6366F1" : "1px solid transparent",
+                                                background: "transparent",
+                                                color: rightPanelTab === "PEOPLE" ? "#6366F1" : "#6B7280",
+                                                transition: "color 0.15s",
+                                            }}
+                                        >
+                                            Persone coinvolte
+                                        </button>
+                                        <button
+                                            onClick={() => setRightPanelTab("CHAINS")}
+                                            style={{
+                                                padding: "7px 12px", borderRadius: "10px 10px 0 0",
+                                                fontSize: "12px", fontWeight: 600, cursor: "pointer",
+                                                border: "1px solid transparent",
+                                                borderBottom: rightPanelTab === "CHAINS" ? "2px solid #6366F1" : "1px solid transparent",
+                                                background: "transparent",
+                                                color: rightPanelTab === "CHAINS" ? "#6366F1" : "#6B7280",
+                                                transition: "color 0.15s",
+                                            }}
+                                        >
+                                            Catene trovate{activeScenario ? ` (${getScenarioViewChains(activeScenario).length})` : ""}
+                                            {selectedChainIndex !== null && (
+                                                <span style={{ marginLeft: 5, display: "inline-block", width: 7, height: 7, borderRadius: "50%", background: getChainColor(selectedChainIndex).dot, verticalAlign: "middle" }} />
+                                            )}
+                                        </button>
+                                    </div>
+
+                                    {/* Contenuto tab (scorre, mappa resta ferma) */}
+                                    <div style={{ overflowY: "auto", height: "100%" }}>
+
+                                        {rightPanelTab === "PEOPLE" ? (
+                                            /* ── PEOPLE: lista card persone ── */
+                                            <div style={{ padding: "10px 12px", display: "grid", gap: "8px", alignContent: "start" }}>
                                                 <div style={sectionSubtitleStyle}>
-                                                    {activeScenario ? "Click su una persona per enfatizzare la sede" : "Seleziona uno scenario per il dettaglio persone"}
+                                                    {activeScenario ? "Click su una persona per enfatizzare la sede" : "Seleziona uno scenario per vedere le persone"}
+                                                    {selectedChainIndex !== null && (
+                                                        <span style={{ marginLeft: 6, color: getChainColor(selectedChainIndex).border, fontWeight: 600 }}>
+                                                            · filtro catena #{selectedChainIndex + 1} attivo
+                                                        </span>
+                                                    )}
                                                 </div>
-                                            </div>
-                                            <div style={{ display: "grid", gap: "8px", alignContent: "start", overflowY: "auto", paddingRight: "4px" }}>
                                                 {activeScenario ? (
                                                     activeScenarioPeople.length > 0 ? (
                                                         activeScenarioPeople.map((person) => {
@@ -1389,7 +1405,7 @@ const AdminInterlocking = () => {
                                                                         textAlign: "left", padding: "10px 12px", borderRadius: "12px",
                                                                         border: isFocused ? "1px solid #FCD34D" : isInChain && cc ? `1px solid ${cc.border}` : "1px solid #E5E7EB",
                                                                         background: isFocused ? "#FEF3C7" : isInChain && cc ? cc.bg : "#FFFFFF",
-                                                                        color: "#111827", cursor: "pointer",
+                                                                        color: "#111827", cursor: "pointer", width: "100%",
                                                                         opacity: chainActive && !isInChain && !isFocused ? 0.45 : 1,
                                                                         transition: "opacity 0.2s, border 0.2s, background 0.2s",
                                                                     }}>
@@ -1418,125 +1434,85 @@ const AdminInterlocking = () => {
                                                 )}
                                                 {!activeScenario && focusedLocationId && (
                                                     <button onClick={() => setFocusedLocationId(null)}
-                                                        style={{ marginTop: "4px", fontSize: "11px", color: "#6B7280", background: "none", border: "none", cursor: "pointer", textDecoration: "underline", padding: 0 }}>
+                                                        style={{ fontSize: "11px", color: "#6B7280", background: "none", border: "none", cursor: "pointer", textDecoration: "underline", padding: 0 }}>
                                                         Deseleziona sede
                                                     </button>
                                                 )}
                                             </div>
-                                        </div>
-                                    </>
 
-                                ) : rightPanelTab === "PEOPLE" ? (
-                                    /* ── Tab PEOPLE: tabella completa ── */
-                                    <div style={{ overflow: "hidden", height: expandedBox === "insights" ? "calc(100vh - 210px)" : "450px", display: "grid", gridTemplateRows: "auto 1fr" }}>
-                                        <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr 1fr 1fr 0.8fr", gap: "10px", padding: "14px 16px", fontSize: "10px", color: "#6B7280", textTransform: "uppercase", letterSpacing: "0.08em", borderBottom: "1px solid #E5E7EB" }}>
-                                            <div>Nome</div><div>Ruolo</div><div>Sede</div><div>Responsabile</div><div>PBP</div>
-                                        </div>
-                                        <div style={{ overflowY: "auto", height: "100%" }}>
-                                            {activeScenario ? (
-                                                activeScenarioPeople.length > 0 ? (
-                                                    activeScenarioPeople.map((person) => (
-                                                        <div key={person.id} style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr 1fr 1fr 0.8fr", gap: "10px", padding: "14px 16px", borderBottom: "1px solid #E5E7EB", fontSize: "13px", background: focusedPersonId === person.id ? "#FEF3C7" : "transparent" }}>
-                                                            <div>{person.name}</div><div>{person.role}</div><div>{person.locationName}</div><div>{person.responsible}</div><div>{person.pbp}</div>
-                                                        </div>
-                                                    ))
-                                                ) : (
-                                                    <div style={{ padding: "20px", color: "#9CA3AF", fontSize: "13px" }}>Nessuna persona disponibile per lo scenario selezionato.</div>
-                                                )
-                                            ) : (
-                                                <div style={{ padding: "20px", color: "#9CA3AF", fontSize: "13px" }}>Seleziona uno scenario per vedere la tabella delle persone coinvolte.</div>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                ) : (
-                                    /* ── Tab CHAINS: lista catene con highlight ── */
-                                    <div style={{ overflow: "hidden", height: expandedBox === "insights" ? "calc(100vh - 210px)" : "450px", display: "grid", gridTemplateRows: "auto 1fr" }}>
-                                        {/* Header tab catene */}
-                                        <div style={{ padding: "12px 16px", borderBottom: "1px solid #E5E7EB", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                                            <div>
-                                                <div style={{ fontWeight: 600, fontSize: "14px" }}>Catene trovate</div>
-                                                <div style={sectionSubtitleStyle}>
-                                                    {activeScenario
-                                                        ? `${getScenarioViewChains(activeScenario).length} catene — click per evidenziare sulla mappa`
-                                                        : "Seleziona uno scenario per vedere le catene"}
-                                                </div>
-                                            </div>
-                                            {selectedChainIndex !== null && (
-                                                <button
-                                                    onClick={() => setSelectedChainIndex(null)}
-                                                    style={{ fontSize: "11px", color: "#6B7280", background: "none", border: "none", cursor: "pointer", textDecoration: "underline", padding: 0 }}
-                                                >
-                                                    Deseleziona catena
-                                                </button>
-                                            )}
-                                        </div>
-
-                                        {/* Lista catene */}
-                                        <div style={{ overflowY: "auto", padding: "12px 14px", display: "grid", gap: "8px", alignContent: "start" }}>
-                                            {!activeScenario ? (
-                                                <div style={{ color: "#9CA3AF", fontSize: "13px", paddingTop: "12px" }}>Seleziona uno scenario per vedere le catene.</div>
-                                            ) : getScenarioViewChains(activeScenario).length === 0 ? (
-                                                <div style={{ color: "#9CA3AF", fontSize: "13px", paddingTop: "12px" }}>Nessuna catena disponibile.</div>
-                                            ) : (
-                                                getScenarioViewChains(activeScenario).map((chain, idx) => {
-                                                    const cc = getChainColor(idx);
-                                                    const isSelected = selectedChainIndex === idx;
-                                                    return (
+                                        ) : (
+                                            /* ── CHAINS: lista catene ── */
+                                            <div style={{ padding: "10px 12px", display: "grid", gap: "8px", alignContent: "start" }}>
+                                                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                                                    <div style={sectionSubtitleStyle}>
+                                                        {activeScenario
+                                                            ? `${getScenarioViewChains(activeScenario).length} catene — click per evidenziare sulla mappa`
+                                                            : "Seleziona uno scenario per vedere le catene"}
+                                                    </div>
+                                                    {selectedChainIndex !== null && (
                                                         <button
-                                                            key={idx}
-                                                            onClick={() => {
-                                                                setSelectedChainIndex((prev) => prev === idx ? null : idx);
-                                                                // Switch automatico alla mappa per vedere l'highlight
-                                                                setRightPanelTab("MAP");
-                                                            }}
-                                                            style={{
-                                                                textAlign: "left",
-                                                                padding: "10px 12px 10px 15px",
-                                                                borderRadius: "12px",
-                                                                border: isSelected ? `2px solid ${cc.border}` : `1px solid ${cc.border}40`,
-                                                                background: isSelected ? cc.bg : "#FFFFFF",
-                                                                cursor: "pointer",
-                                                                display: "grid",
-                                                                gridTemplateColumns: "12px 1fr",
-                                                                gap: "10px",
-                                                                alignItems: "start",
-                                                                boxShadow: isSelected ? `0 0 0 2px ${cc.border}30` : "none",
-                                                                transition: "all 0.15s",
-                                                                width: "100%",
-                                                            }}
+                                                            onClick={() => setSelectedChainIndex(null)}
+                                                            style={{ fontSize: "11px", color: "#6B7280", background: "none", border: "none", cursor: "pointer", textDecoration: "underline", padding: 0, flexShrink: 0 }}
                                                         >
-                                                            {/* Pallino colore */}
-                                                            <div style={{
-                                                                width: 12, height: 12,
-                                                                borderRadius: "50%",
-                                                                background: cc.dot,
-                                                                marginTop: 3,
-                                                                flexShrink: 0,
-                                                                boxShadow: isSelected ? `0 0 0 3px ${cc.dot}40` : "none",
-                                                            }} />
-                                                            <div>
-                                                                {/* Sequenza nomi */}
-                                                                <div style={{ fontSize: "12px", fontWeight: 600, color: "#111827", lineHeight: 1.4 }}>
-                                                                    {chain.peopleNames.slice(0, 5).join(" → ")}
-                                                                    {chain.peopleNames.length > 5 && ` → +${chain.peopleNames.length - 5}`}
-                                                                </div>
-                                                                {/* Meta */}
-                                                                <div style={{ marginTop: "5px", display: "flex", gap: "10px", fontSize: "11px", color: "#6B7280" }}>
-                                                                    <span>Catena #{idx + 1}</span>
-                                                                    <span>Lung. {chain.length}</span>
-                                                                    {chain.avgPriority != null && (
-                                                                        <span>Priorità media {chain.avgPriority.toFixed(1)}</span>
-                                                                    )}
-                                                                </div>
-                                                            </div>
+                                                            ✕ reset
                                                         </button>
-                                                    );
-                                                })
-                                            )}
-                                        </div>
+                                                    )}
+                                                </div>
+
+                                                {!activeScenario ? (
+                                                    <div style={{ color: "#9CA3AF", fontSize: "13px", paddingTop: "8px" }}>Seleziona uno scenario per vedere le catene.</div>
+                                                ) : getScenarioViewChains(activeScenario).length === 0 ? (
+                                                    <div style={{ color: "#9CA3AF", fontSize: "13px", paddingTop: "8px" }}>Nessuna catena disponibile.</div>
+                                                ) : (
+                                                    getScenarioViewChains(activeScenario).map((chain, idx) => {
+                                                        const cc = getChainColor(idx);
+                                                        const isSelected = selectedChainIndex === idx;
+                                                        return (
+                                                            <button
+                                                                key={idx}
+                                                                onClick={() => setSelectedChainIndex((prev) => prev === idx ? null : idx)}
+                                                                style={{
+                                                                    textAlign: "left",
+                                                                    padding: "10px 12px 10px 15px",
+                                                                    borderRadius: "12px",
+                                                                    border: isSelected ? `2px solid ${cc.border}` : `1px solid ${cc.border}40`,
+                                                                    background: isSelected ? cc.bg : "#FFFFFF",
+                                                                    cursor: "pointer",
+                                                                    display: "grid",
+                                                                    gridTemplateColumns: "12px 1fr",
+                                                                    gap: "10px",
+                                                                    alignItems: "start",
+                                                                    boxShadow: isSelected ? `0 0 0 2px ${cc.border}30` : "none",
+                                                                    transition: "all 0.15s",
+                                                                    width: "100%",
+                                                                }}
+                                                            >
+                                                                <div style={{
+                                                                    width: 12, height: 12, borderRadius: "50%",
+                                                                    background: cc.dot, marginTop: 3, flexShrink: 0,
+                                                                    boxShadow: isSelected ? `0 0 0 3px ${cc.dot}40` : "none",
+                                                                }} />
+                                                                <div>
+                                                                    <div style={{ fontSize: "12px", fontWeight: 600, color: "#111827", lineHeight: 1.4 }}>
+                                                                        {chain.peopleNames.slice(0, 5).join(" → ")}
+                                                                        {chain.peopleNames.length > 5 && ` → +${chain.peopleNames.length - 5}`}
+                                                                    </div>
+                                                                    <div style={{ marginTop: "5px", display: "flex", gap: "10px", fontSize: "11px", color: "#6B7280" }}>
+                                                                        <span>#{idx + 1}</span>
+                                                                        <span>Lung. {chain.length}</span>
+                                                                        {chain.avgPriority != null && (
+                                                                            <span>Priorità {chain.avgPriority.toFixed(1)}</span>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            </button>
+                                                        );
+                                                    })
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
-                                )}
+                                </div>
                             </div>
 
                             <div style={{ marginTop: "10px", display: "flex", gap: "16px", flexWrap: "wrap", fontSize: "12px", color: "#9CA3AF" }}>
