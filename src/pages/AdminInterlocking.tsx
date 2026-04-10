@@ -51,10 +51,12 @@ const createChainCountBadgeIcon = (count: number, color: string) =>
                 font-size: 11px;
                 font-weight: 700;
                 line-height: 1;
+                pointer-events: none;
+                transform: translateY(-6px);
             ">${count}</div>
         `,
         iconSize: [22, 22],
-        iconAnchor: [11, 25],
+        iconAnchor: [11, 24],
     });
 
 type AnalyticsMetric =
@@ -1826,4 +1828,3 @@ const AdminInterlocking = () => {
 };
 
 export default AdminInterlocking;
-
