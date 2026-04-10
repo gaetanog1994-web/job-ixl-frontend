@@ -189,7 +189,7 @@ const PositionsMap = ({
     const handleApplyToRole = async (role: LocationRole) => {
         if (!myUserId || myStatus !== "available") return;
 
-        const priority = selectedPriorities[role.role_id] ?? availablePriorities[0];
+        const priority = selectedPriorities[role.role_id];
         if (priority == null) return;
 
         try {
@@ -423,7 +423,7 @@ const PositionsMap = ({
                                                     {interaction === "write" && myStatus === "available" && !r.applied && (
                                                         <>
                                                             <select
-                                                                value={selectedPriorities[r.role_id] ?? availablePriorities[0] ?? ""}
+                                                                value={selectedPriorities[r.role_id] ?? ""}
                                                                 onChange={(e) =>
                                                                     setSelectedPriorities((prev) => ({
                                                                         ...prev,
@@ -444,7 +444,7 @@ const PositionsMap = ({
 
                                                             <button
                                                                 onClick={() => handleApplyToRole(r)}
-                                                                disabled={(selectedPriorities[r.role_id] ?? availablePriorities[0]) == null}
+                                                                disabled={selectedPriorities[r.role_id] == null}
                                                             >
                                                                 Candidati
                                                             </button>

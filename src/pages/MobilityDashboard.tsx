@@ -88,6 +88,20 @@ const MobilityDashboard: React.FC = () => {
     [mapLocations]
   );
 
+  /* ---------- aggregated applications count (by role+location) ---------- */
+  const aggregatedApplicationsCount = useMemo(() => {
+    const keys = new Set<string>();
+    for (const app of myApplications) {
+      const position = Array.isArray(app.positions) ? app.positions[0] : app.positions;
+      const occupant = position?.users;
+      const locObj = Array.isArray(occupant?.locations) ? occupant.locations?.[0] : occupant?.locations;
+      const roleName = occupant?.roles?.name ?? "";
+      const locationName = locObj?.name ?? "";
+      keys.add(`${locationName}__${roleName}`);
+    }
+    return keys.size;
+  }, [myApplications]);
+
   /* ---------- availability toggle ---------- */
   const handleToggleAvailability = async () => {
     if (!userData) return;
@@ -246,7 +260,7 @@ const MobilityDashboard: React.FC = () => {
             />
 
             <UserStatsCard
-              applicationsCount={myApplications.length}
+              applicationsCount={aggregatedApplicationsCount}
               maxApplications={maxApplications}
               availabilityStatus={availabilityStatus}
               locationsCount={locationsCount}
