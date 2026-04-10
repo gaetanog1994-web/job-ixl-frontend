@@ -5,6 +5,7 @@ import {
     MapContainer,
     TileLayer,
     Marker,
+    CircleMarker,
     Popup,
     Circle,
     useMap,
@@ -272,6 +273,47 @@ const PositionsMap = ({
         return 200; // verde in background
     };
 
+    const getAdminCircleStyle = (
+        state: "available" | "candidate" | "partial" | "inactive",
+        opacity: number,
+        isHighlightTarget: boolean
+    ) => {
+        if (state === "candidate") {
+            return {
+                color: "#DC2626",
+                fillColor: "#EF4444",
+                fillOpacity: Math.min(0.95, 0.82 * opacity),
+                weight: isHighlightTarget ? 4 : 3,
+                radius: isHighlightTarget ? 14 : 12,
+            };
+        }
+        if (state === "partial") {
+            return {
+                color: "#CA8A04",
+                fillColor: "#EAB308",
+                fillOpacity: Math.min(0.95, 0.8 * opacity),
+                weight: isHighlightTarget ? 4 : 3,
+                radius: isHighlightTarget ? 14 : 12,
+            };
+        }
+        if (state === "inactive") {
+            return {
+                color: "#9CA3AF",
+                fillColor: "#D1D5DB",
+                fillOpacity: Math.min(0.7, 0.5 * opacity),
+                weight: 2,
+                radius: isHighlightTarget ? 11 : 10,
+            };
+        }
+        return {
+            color: "#86EFAC",
+            fillColor: "#BBF7D0",
+            fillOpacity: Math.min(0.6, 0.5 * opacity),
+            weight: 1.5,
+            radius: isHighlightTarget ? 11 : 9,
+        };
+    };
+
     const MapHighlighter = () => {
         const map = useMap();
 
@@ -380,7 +422,29 @@ const PositionsMap = ({
 
             {/* SEDI */}
             {myStatus !== null &&
-                locations.map((loc) => {
+                [...locations]
+                    .sort((a, b) => {
+                        const statePriority = (state: "available" | "candidate" | "partial" | "inactive") => {
+                            if (state === "available") return 1;
+                            if (state === "inactive") return 2;
+                            if (state === "partial") return 3;
+                            return 4;
+                        };
+                        const stateA = getLocationMarkerState(a.roles);
+                        const stateB = getLocationMarkerState(b.roles);
+                        const highlightA =
+                            !!highlightPositionId &&
+                            a.roles.some((r) => r.users.some((u) => u.position_id === highlightPositionId))
+                                ? 10
+                                : 0;
+                        const highlightB =
+                            !!highlightPositionId &&
+                            b.roles.some((r) => r.users.some((u) => u.position_id === highlightPositionId))
+                                ? 10
+                                : 0;
+                        return statePriority(stateA) + highlightA - (statePriority(stateB) + highlightB);
+                    })
+                    .map((loc) => {
                     const markerState = getLocationMarkerState(loc.roles);
                     // When a role filter is active, dim locations that don't match
                     const roleMatchesFilter =
@@ -405,6 +469,21 @@ const PositionsMap = ({
                         if (isHighlightTarget) return base + 2000;
                         return base;
                     })();
+                    const adminCircleStyle = getAdminCircleStyle(
+                        markerState,
+                        markerOpacity,
+                        isHighlightTarget
+                    );
+                    const useAdminCircleMarker =
+                        visualMode === "adminActiveMaps" && interaction === "read";
+                    const popupPeople = loc.roles.flatMap((role) =>
+                        role.users.map((user) => ({
+                            key: `${role.role_id}-${user.position_id}`,
+                            fullName: user.full_name ?? "—",
+                            roleName: role.role_name ?? "—",
+                            locationName: loc.name ?? "—",
+                        }))
+                    );
 
                     return (
                     <React.Fragment key={`${loc.location_id}-${myStatus}`}>
@@ -421,87 +500,126 @@ const PositionsMap = ({
                             />
                         )}
 
-                        <Marker
-                            position={[loc.latitude, loc.longitude]}
-                            icon={getLocationIcon(markerState)}
-                            ref={(ref: L.Marker | null) => {
-                                if (ref) locationMarkerRefs.current[loc.location_id] = ref;
-                            }}
-                            opacity={markerOpacity}
-                            zIndexOffset={zIndexOffset}
-                        >
-                            <Popup>
-                                <b>
-                                    📍 {loc.name} ({loc.roles.length})
-                                </b>
-
-                                <ul style={{ marginTop: "8px", paddingLeft: "16px" }}>
-                                    {loc.roles.map((r) => {
-                                        const disabled = interaction !== "write" || myStatus !== "available";
-
-                                        return (
-                                            <li key={r.role_id} style={{ marginBottom: "6px" }}>
-                                                <div
-                                                    style={{
-                                                        display: "flex",
-                                                        justifyContent: "space-between",
-                                                        alignItems: "center",
-                                                        gap: "12px",
-                                                        opacity: disabled ? 0.7 : 1,
-                                                    }}
-                                                >
-                                                    <span style={{ fontWeight: 500 }}>
-                                                        {r.role_name} ({r.users.length})
-                                                        {r.applied ? " 🔴" : " 🟢"}
-                                                    </span>
-
-                                                    {interaction === "write" && myStatus === "available" && !r.applied && (
-                                                        <>
-                                                            <select
-                                                                value={selectedPriorities[r.role_id] ?? ""}
-                                                                onChange={(e) =>
-                                                                    setSelectedPriorities((prev) => ({
-                                                                        ...prev,
-                                                                        [r.role_id]: Number(e.target.value),
-                                                                    }))
-                                                                }
-                                                            >
-                                                                <option value="" disabled>
-                                                                    Priorità
-                                                                </option>
-
-                                                                {availablePriorities.map((p) => (
-                                                                    <option key={p} value={p}>
-                                                                        {p}
-                                                                    </option>
-                                                                ))}
-                                                            </select>
-
-                                                            <button
-                                                                onClick={() => handleApplyToRole(r)}
-                                                                disabled={selectedPriorities[r.role_id] == null}
-                                                            >
-                                                                Candidati
-                                                            </button>
-                                                        </>
-                                                    )}
-
-                                                    {interaction === "write" && r.applied && (
-                                                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                                                            <span style={{ fontSize: "0.9em", opacity: 0.85 }}>
-                                                                Priorità: <b>{r.priority ?? "—"}</b>
-                                                            </span>
-
-                                                            <button onClick={() => handleWithdrawFromRole(r)}>Annulla</button>
-                                                        </div>
-                                                    )}
+                        {useAdminCircleMarker ? (
+                            <CircleMarker
+                                center={[loc.latitude, loc.longitude]}
+                                radius={adminCircleStyle.radius}
+                                pathOptions={{
+                                    color: adminCircleStyle.color,
+                                    fillColor: adminCircleStyle.fillColor,
+                                    fillOpacity: adminCircleStyle.fillOpacity,
+                                    weight: adminCircleStyle.weight,
+                                }}
+                                ref={(ref) => {
+                                    if (ref) locationMarkerRefs.current[loc.location_id] = ref;
+                                }}
+                            >
+                                <Popup>
+                                    <div style={{ minWidth: "230px" }}>
+                                        <div style={{ fontWeight: 700, fontSize: "14px", color: "#111827" }}>
+                                            📍 {loc.name}
+                                        </div>
+                                        <div style={{ marginTop: "8px", display: "grid", gap: "8px" }}>
+                                            {popupPeople.map((person) => (
+                                                <div key={person.key} style={{ border: "1px solid #E5E7EB", borderRadius: "10px", padding: "8px 9px", background: "#FFFFFF" }}>
+                                                    <div style={{ fontWeight: 600, color: "#111827", fontSize: "13px" }}>
+                                                        {person.fullName}
+                                                    </div>
+                                                    <div style={{ fontSize: "12px", color: "#4B5563", marginTop: "2px" }}>
+                                                        {person.roleName}
+                                                    </div>
+                                                    <div style={{ fontSize: "12px", color: "#6B7280", marginTop: "1px" }}>
+                                                        {person.locationName}
+                                                    </div>
                                                 </div>
-                                            </li>
-                                        );
-                                    })}
-                                </ul>
-                            </Popup>
-                        </Marker>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </Popup>
+                            </CircleMarker>
+                        ) : (
+                            <Marker
+                                position={[loc.latitude, loc.longitude]}
+                                icon={getLocationIcon(markerState)}
+                                ref={(ref: L.Marker | null) => {
+                                    if (ref) locationMarkerRefs.current[loc.location_id] = ref;
+                                }}
+                                opacity={markerOpacity}
+                                zIndexOffset={zIndexOffset}
+                            >
+                                <Popup>
+                                    <b>
+                                        📍 {loc.name} ({loc.roles.length})
+                                    </b>
+
+                                    <ul style={{ marginTop: "8px", paddingLeft: "16px" }}>
+                                        {loc.roles.map((r) => {
+                                            const disabled = interaction !== "write" || myStatus !== "available";
+
+                                            return (
+                                                <li key={r.role_id} style={{ marginBottom: "6px" }}>
+                                                    <div
+                                                        style={{
+                                                            display: "flex",
+                                                            justifyContent: "space-between",
+                                                            alignItems: "center",
+                                                            gap: "12px",
+                                                            opacity: disabled ? 0.7 : 1,
+                                                        }}
+                                                    >
+                                                        <span style={{ fontWeight: 500 }}>
+                                                            {r.role_name} ({r.users.length})
+                                                            {r.applied ? " 🔴" : " 🟢"}
+                                                        </span>
+
+                                                        {interaction === "write" && myStatus === "available" && !r.applied && (
+                                                            <>
+                                                                <select
+                                                                    value={selectedPriorities[r.role_id] ?? ""}
+                                                                    onChange={(e) =>
+                                                                        setSelectedPriorities((prev) => ({
+                                                                            ...prev,
+                                                                            [r.role_id]: Number(e.target.value),
+                                                                        }))
+                                                                    }
+                                                                >
+                                                                    <option value="" disabled>
+                                                                        Priorità
+                                                                    </option>
+
+                                                                    {availablePriorities.map((p) => (
+                                                                        <option key={p} value={p}>
+                                                                            {p}
+                                                                        </option>
+                                                                    ))}
+                                                                </select>
+
+                                                                <button
+                                                                    onClick={() => handleApplyToRole(r)}
+                                                                    disabled={selectedPriorities[r.role_id] == null}
+                                                                >
+                                                                    Candidati
+                                                                </button>
+                                                            </>
+                                                        )}
+
+                                                        {interaction === "write" && r.applied && (
+                                                            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                                                <span style={{ fontSize: "0.9em", opacity: 0.85 }}>
+                                                                    Priorità: <b>{r.priority ?? "—"}</b>
+                                                                </span>
+
+                                                                <button onClick={() => handleWithdrawFromRole(r)}>Annulla</button>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </li>
+                                            );
+                                        })}
+                                    </ul>
+                                </Popup>
+                            </Marker>
+                        )}
                     </React.Fragment>
                     );
                 })}

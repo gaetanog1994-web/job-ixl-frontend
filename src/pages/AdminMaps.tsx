@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import PositionsMap from "../components/PositionsMap";
 import { appApi } from "../lib/appApi";
+import type { MapLocation } from "../components/PositionsMap";
 import "../styles/dashboard.css";
 
 type ActiveUser = {
@@ -13,6 +14,8 @@ const AdminMaps = () => {
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [mode, setMode] = useState<"from" | "to">("from");
   const [search, setSearch] = useState("");
+  const [mapLocations, setMapLocations] = useState<MapLocation[]>([]);
+  const [selectedPositionId, setSelectedPositionId] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -31,6 +34,38 @@ const AdminMaps = () => {
   const filteredUsers = activeUsers.filter(u => 
     u.full_name.toLowerCase().includes(search.toLowerCase())
   );
+
+  useEffect(() => {
+    setSelectedPositionId(null);
+  }, [selectedUserId, mode]);
+
+  const rightPanelEntries = useMemo(() => {
+    const rows = mapLocations.flatMap((loc) =>
+      loc.roles.flatMap((role) =>
+        role.users.map((user) => ({
+          key: `${user.position_id}-${user.id}`,
+          positionId: user.position_id,
+          userId: user.id,
+          name: user.full_name ?? "—",
+          roleName: role.role_name ?? "—",
+          locationName: loc.name ?? "—",
+          applied: role.applied === true,
+        }))
+      )
+    );
+
+    const seen = new Set<string>();
+    const deduped = rows.filter((row) => {
+      if (seen.has(row.positionId)) return false;
+      seen.add(row.positionId);
+      return true;
+    });
+
+    return deduped.sort((a, b) => {
+      if (a.applied !== b.applied) return a.applied ? -1 : 1;
+      return a.name.localeCompare(b.name, "it");
+    });
+  }, [mapLocations]);
 
   return (
     <div style={{
@@ -139,7 +174,7 @@ const AdminMaps = () => {
         </div>
 
         {/* ---- RIGHT COLUMN: Map ---- */}
-        <div style={{ flex: 1, minWidth: "400px" }}>
+        <div style={{ flex: 1, minWidth: "680px" }}>
           <div className="db-card" style={{ height: "680px", display: "flex", flexDirection: "column" }}>
             <div style={{
               padding: "16px 20px",
@@ -153,7 +188,7 @@ const AdminMaps = () => {
               </div>
               <div className="db-map-legend" style={{ margin: 0 }}>
                 <div className="db-map-legend-item">
-                  <div className="db-map-legend-dot" style={{ background: "#22c55e" }} /> Disponibile
+                  <div className="db-map-legend-dot" style={{ background: "#22c55e" }} /> Disponibile (sfondo)
                 </div>
                 <div className="db-map-legend-item">
                   <div className="db-map-legend-dot" style={{ background: "#ef4444" }} /> Candidato
@@ -164,17 +199,72 @@ const AdminMaps = () => {
               </div>
             </div>
 
-            <div style={{ flex: 1, position: "relative" }}>
+            <div style={{ flex: 1, display: "grid", gridTemplateColumns: "1.36fr 0.84fr", minHeight: 0 }}>
               {selectedUserId ? (
-                <PositionsMap
-                  viewerUserId={selectedUserId}
-                  mode={mode}
-                  interaction="read"
-                  visualMode="adminActiveMaps"
-                />
+                <>
+                  <div style={{ position: "relative", minHeight: 0 }}>
+                    <PositionsMap
+                      viewerUserId={selectedUserId}
+                      mode={mode}
+                      interaction="read"
+                      visualMode="adminActiveMaps"
+                      highlightPositionId={selectedPositionId ?? undefined}
+                      onLocationsLoaded={setMapLocations}
+                    />
+                  </div>
+
+                  <div style={{ borderLeft: "1px solid var(--border)", background: "#fff", minHeight: 0, display: "grid", gridTemplateRows: "auto 1fr" }}>
+                    <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)" }}>
+                      <div style={{ fontSize: "14px", fontWeight: 700, color: "var(--text-primary)" }}>
+                        Persone e posizioni rilevanti
+                      </div>
+                      <div style={{ fontSize: "12px", color: "var(--text-secondary)", marginTop: "4px" }}>
+                        Clicca una card per evidenziare la sede sulla mappa
+                      </div>
+                    </div>
+
+                    <div style={{ overflowY: "auto", padding: "10px 12px", display: "grid", gap: "8px", alignContent: "start" }}>
+                      {rightPanelEntries.length > 0 ? (
+                        rightPanelEntries.map((entry) => {
+                          const isActive = selectedPositionId === entry.positionId;
+                          return (
+                            <button
+                              key={entry.key}
+                              onClick={() => setSelectedPositionId(entry.positionId)}
+                              style={{
+                                textAlign: "left",
+                                borderRadius: "12px",
+                                border: isActive ? "1px solid #6366F1" : "1px solid #E5E7EB",
+                                background: isActive ? "#EEF2FF" : "#FFFFFF",
+                                padding: "10px 11px",
+                                cursor: "pointer",
+                                transition: "all 0.15s",
+                              }}
+                            >
+                              <div style={{ fontWeight: 600, fontSize: "13px", color: "#111827" }}>
+                                {entry.name}
+                              </div>
+                              <div style={{ fontSize: "12px", color: "#4B5563", marginTop: "2px" }}>
+                                {entry.roleName}
+                              </div>
+                              <div style={{ fontSize: "12px", color: "#6B7280", marginTop: "1px" }}>
+                                {entry.locationName}
+                              </div>
+                            </button>
+                          );
+                        })
+                      ) : (
+                        <div style={{ color: "var(--text-muted)", fontSize: "13px", padding: "10px 2px" }}>
+                          Nessuna posizione rilevante trovata per l’utente selezionato.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </>
               ) : (
                 <div style={{
-                  position: "absolute", inset: 0,
+                  gridColumn: "1 / -1",
+                  position: "relative", inset: 0,
                   display: "flex", flexDirection: "column",
                   alignItems: "center", justifyContent: "center", background: "#f8fafc",
                   color: "var(--text-muted)", fontSize: "14px", gap: "12px",
