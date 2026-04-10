@@ -13,7 +13,7 @@ import {
     Popup,
     useMap,
 } from "react-leaflet";
-import L from "leaflet";
+import * as L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
 type UiStrategy = OptimizationStrategy | "NONE";
@@ -33,30 +33,30 @@ const CHAIN_COLORS = [
 
 const getChainColor = (index: number) => CHAIN_COLORS[index % CHAIN_COLORS.length];
 
-const createChainCountBadgeIcon = (count: number, color: string) =>
+const createCountBadgeIcon = (count: number, color: string) =>
     L.divIcon({
-        className: "chain-count-badge-icon",
+        className: "chain-count-badge",
         html: `
             <div style="
-                width: 22px;
-                height: 22px;
+                width: 16px;
+                height: 16px;
                 border-radius: 999px;
                 background: ${color};
-                color: #FFFFFF;
-                border: 2px solid #FFFFFF;
-                box-shadow: 0 2px 6px rgba(0,0,0,0.28);
+                color: white;
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                font-size: 11px;
+                font-size: 10px;
                 font-weight: 700;
-                line-height: 1;
-                pointer-events: none;
-                transform: translateY(-6px);
-            ">${count}</div>
+                border: 2px solid white;
+                box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+                transform: translate(6px, -6px);
+            ">
+                ${count}
+            </div>
         `,
-        iconSize: [22, 22],
-        iconAnchor: [11, 24],
+        iconSize: [16, 16],
+        iconAnchor: [8, 8],
     });
 
 type AnalyticsMetric =
@@ -1439,7 +1439,7 @@ const AdminInterlocking = () => {
                                                 {displayedMapMarkers.map((marker) => {
                                                     const m = marker as any;
                                                     const inChain: boolean = !!m.__inChain;
-                                                    const chainMemberCount: number = Number(m.__chainMemberCount ?? 0);
+                                                    const count: number = Number(m.__chainMemberCount ?? 0);
                                                     const chainHighlightActive = selectedChainIndex !== null;
 
                                                     let color: string;
@@ -1479,7 +1479,7 @@ const AdminInterlocking = () => {
                                                                             <>
                                                                                 <div>Persone coinvolte: {marker.peopleCount}</div>
                                                                                 {chainHighlightActive && inChain && (
-                                                                                    <div>Membri della catena in questa sede: {chainMemberCount}</div>
+                                                                                    <div>Membri della catena in questa sede: {count}</div>
                                                                                 )}
                                                                                 <div style={{ marginTop: "6px", fontSize: "12px" }}>{marker.peopleNames.join(", ")}</div>
                                                                             </>
@@ -1489,15 +1489,15 @@ const AdminInterlocking = () => {
                                                                     </div>
                                                                 </Popup>
                                                             </CircleMarker>
-                                                            {chainHighlightActive && inChain && chainMemberCount > 1 && (
+                                                            {chainHighlightActive && inChain && count > 1 && (
                                                                 <Marker
                                                                     position={[marker.latitude, marker.longitude]}
-                                                                    icon={createChainCountBadgeIcon(
-                                                                        chainMemberCount,
+                                                                    icon={createCountBadgeIcon(
+                                                                        count,
                                                                         getChainColor(selectedChainIndex!).marker
                                                                     )}
                                                                     interactive={false}
-                                                                    zIndexOffset={1000}
+                                                                    zIndexOffset={3000}
                                                                 />
                                                             )}
                                                         </React.Fragment>
