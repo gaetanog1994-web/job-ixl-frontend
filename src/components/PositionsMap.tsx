@@ -43,13 +43,24 @@ const icons = {
         iconSize: [25, 41],
         iconAnchor: [12, 41],
     }),
-    me: new L.Icon({
-        iconUrl: iconBase + "marker-icon-blue.png",
-        shadowUrl: iconBase + "marker-shadow.png",
-        iconSize: [25, 41],
-        iconAnchor: [12, 41],
-    }),
 };
+
+const meIndicatorIcon = L.divIcon({
+    className: "me-location-indicator",
+    html: `
+        <div style="
+            width: 14px;
+            height: 14px;
+            border-radius: 999px;
+            background: #2563EB;
+            border: 2px solid #FFFFFF;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+            transform: translate(8px, -8px);
+        "></div>
+    `,
+    iconSize: [14, 14],
+    iconAnchor: [7, 7],
+});
 
 /* ---------- TYPES ---------- */
 
@@ -471,17 +482,28 @@ const PositionsMap = ({
                     );
                 })}
 
-            {/* VIEWER */}
+            {/* VIEWER: indicatore secondario non interattivo per evitare conflitti click con la sede */}
             {meLocation && (
-                <Marker
-                    position={[meLocation.latitude, meLocation.longitude]}
-                    icon={icons.me}
-                    zIndexOffset={1000}
-                >
-                    <Popup>
-                        <b>📍 Tu sei qui</b>
-                    </Popup>
-                </Marker>
+                <>
+                    <Circle
+                        center={[meLocation.latitude, meLocation.longitude]}
+                        radius={420}
+                        pathOptions={{
+                            color: "#2563EB",
+                            fillColor: "#3B82F6",
+                            fillOpacity: 0.12,
+                            opacity: 0.9,
+                            weight: 2,
+                        }}
+                        interactive={false}
+                    />
+                    <Marker
+                        position={[meLocation.latitude, meLocation.longitude]}
+                        icon={meIndicatorIcon}
+                        interactive={false}
+                        zIndexOffset={3000}
+                    />
+                </>
             )}
         </MapContainer>
     );
