@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { appApi } from "../lib/appApi";
+import { useAvailability } from "../lib/AvailabilityContext";
 
 /* =======================
    TYPES
@@ -31,6 +32,7 @@ type Props = {
 ======================= */
 
 const AdminUsersManager = ({ users, locations, onBack, onUpdateDone }: Props) => {
+    const { reload } = useAvailability();
     const [maxApplications, setMaxApplications] = useState<number | null>(null);
     const [saving, setSaving] = useState(false);
 
@@ -75,6 +77,7 @@ const AdminUsersManager = ({ users, locations, onBack, onUpdateDone }: Props) =>
             }
 
             onUpdateDone();
+            await reload();
         } catch (e: any) {
             alert("Errore aggiornamento utente: " + (e?.message ?? "unknown"));
             console.error(e);
