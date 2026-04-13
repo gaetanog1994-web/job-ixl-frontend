@@ -11,7 +11,6 @@ import AdminTestUsers from "./pages/AdminTestUsers";
 import TopBar from "./pages/TopBar";
 import PreAuthPage from "./pages/PreAuthPage";
 import LoginPage from "./pages/LoginPage";
-import SignupPage from "./pages/RegisterPage";
 import RequireAdmin from "./components/RequireAdmin";
 
 function App() {
