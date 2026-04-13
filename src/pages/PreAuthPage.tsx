@@ -46,23 +46,6 @@ const PreAuthPage = () => {
                 >
                     Accedi
                 </button>
-
-                <button
-                    onClick={() => navigate("/signup")}
-                    style={{
-                        padding: "12px 24px",
-                        fontSize: "15px",
-                        fontWeight: 600,
-                        cursor: "pointer",
-                        background: "transparent",
-                        color: "#fff",
-                        border: "2px solid rgba(255,255,255,0.2)",
-                        borderRadius: "10px",
-                        transition: "background 0.2s"
-                    }}
-                >
-                    Registrati
-                </button>
             </div>
         </div>
     );

@@ -9,6 +9,7 @@ import { CSS } from "@dnd-kit/utilities";
 
 import { appApi } from "../lib/appApi";
 import { useAvailability } from "../lib/AvailabilityContext";
+import { supabase } from "../lib/supabaseClient";
 
 // 2️⃣ COMPONENTE DI SUPPORTO
 const SortableRow: React.FC<{ id: string; children: React.ReactNode }> = ({ id, children }) => {
@@ -58,6 +59,38 @@ const AccountPage: React.FC = () => {
     const [userData, setUserData] = useState<any>(null);
     const [myApplications, setMyApplications] = useState<any[]>([]);
     const [maxApplications, setMaxApplications] = useState<number>(10); // fallback safe
+
+    const [newPassword, setNewPassword] = useState("");
+    const [confirmPassword, setConfirmPassword] = useState("");
+    const [passwordMsg, setPasswordMsg] = useState<{ text: string; ok: boolean } | null>(null);
+    const [passwordSaving, setPasswordSaving] = useState(false);
+
+    const handleChangePassword = async () => {
+        if (!newPassword || !confirmPassword) {
+            setPasswordMsg({ text: "Compila entrambi i campi.", ok: false });
+            return;
+        }
+        if (newPassword !== confirmPassword) {
+            setPasswordMsg({ text: "Le password non coincidono.", ok: false });
+            return;
+        }
+        try {
+            setPasswordSaving(true);
+            setPasswordMsg(null);
+            const { error } = await supabase.auth.updateUser({ password: newPassword });
+            if (error) {
+                setPasswordMsg({ text: "Errore: " + error.message, ok: false });
+            } else {
+                setPasswordMsg({ text: "Password aggiornata.", ok: true });
+                setNewPassword("");
+                setConfirmPassword("");
+            }
+        } catch (e: any) {
+            setPasswordMsg({ text: "Errore imprevisto: " + (e?.message ?? "unknown"), ok: false });
+        } finally {
+            setPasswordSaving(false);
+        }
+    };
 
     const aggregatedApplications: AggregatedRow[] = useMemo(() => {
         const map = new Map<string, AggregatedRow>();
@@ -288,6 +321,36 @@ const AccountPage: React.FC = () => {
             >
                 {availabilityStatus === "available" ? "Renditi inattivo" : "Renditi attivo"}
             </button>
+
+            <hr />
+
+            <h3>Cambia password</h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px", maxWidth: "320px" }}>
+                <input
+                    type="password"
+                    placeholder="Nuova password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    disabled={passwordSaving}
+                    style={{ padding: "8px" }}
+                />
+                <input
+                    type="password"
+                    placeholder="Conferma password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    disabled={passwordSaving}
+                    style={{ padding: "8px" }}
+                />
+                <button onClick={handleChangePassword} disabled={passwordSaving}>
+                    Aggiorna password
+                </button>
+                {passwordMsg && (
+                    <p style={{ color: passwordMsg.ok ? "green" : "red", margin: 0, fontSize: "13px" }}>
+                        {passwordMsg.text}
+                    </p>
+                )}
+            </div>
 
             <hr />
 

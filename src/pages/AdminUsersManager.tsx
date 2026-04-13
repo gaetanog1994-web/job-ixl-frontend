@@ -36,6 +36,36 @@ const AdminUsersManager = ({ users, locations, onBack, onUpdateDone }: Props) =>
     const [maxApplications, setMaxApplications] = useState<number | null>(null);
     const [saving, setSaving] = useState(false);
 
+    const [inviteFullName, setInviteFullName] = useState("");
+    const [inviteEmail, setInviteEmail] = useState("");
+    const [inviteLocationId, setInviteLocationId] = useState<string>("");
+    const [inviteSuccess, setInviteSuccess] = useState<string | null>(null);
+
+    const handleInvite = async () => {
+        if (!inviteEmail.trim() || !inviteFullName.trim()) {
+            alert("Nome e email sono obbligatori.");
+            return;
+        }
+        try {
+            setSaving(true);
+            setInviteSuccess(null);
+            await appApi.adminInviteUser({
+                email: inviteEmail.trim(),
+                full_name: inviteFullName.trim(),
+                location_id: inviteLocationId || null,
+            });
+            setInviteSuccess(`Invito inviato a ${inviteEmail.trim()}`);
+            setInviteFullName("");
+            setInviteEmail("");
+            setInviteLocationId("");
+            onUpdateDone();
+        } catch (e: any) {
+            alert("Errore invito: " + (e?.message ?? "unknown"));
+        } finally {
+            setSaving(false);
+        }
+    };
+
     // Se vuoi, puoi passare maxApplications come prop dal parent.
     // Qui proviamo a leggerlo via backend (serve endpoint /api/admin/config oppure lo gestisci nel parent).
     // Per ora: lo lasciamo opzionale e lo mostriamo solo se c'è.
@@ -121,6 +151,46 @@ const AdminUsersManager = ({ users, locations, onBack, onUpdateDone }: Props) =>
                         </option>
                     ))}
                 </select>
+            </div>
+
+            {/* INVITA UTENTE */}
+            <div style={{ marginBottom: "20px", padding: "14px", border: "1px solid #ddd", borderRadius: "8px" }}>
+                <h5 style={{ margin: "0 0 10px 0" }}>Invita utente</h5>
+                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "flex-end" }}>
+                    <input
+                        type="text"
+                        placeholder="Nome completo"
+                        value={inviteFullName}
+                        onChange={(e) => setInviteFullName(e.target.value)}
+                        disabled={saving}
+                        style={{ padding: "6px 8px", minWidth: "160px" }}
+                    />
+                    <input
+                        type="email"
+                        placeholder="Email"
+                        value={inviteEmail}
+                        onChange={(e) => setInviteEmail(e.target.value)}
+                        disabled={saving}
+                        style={{ padding: "6px 8px", minWidth: "200px" }}
+                    />
+                    <select
+                        value={inviteLocationId}
+                        onChange={(e) => setInviteLocationId(e.target.value)}
+                        disabled={saving}
+                        style={{ padding: "6px 8px" }}
+                    >
+                        <option value="">Sede (opzionale)</option>
+                        {locations.map((l) => (
+                            <option key={l.id} value={l.id}>{l.name}</option>
+                        ))}
+                    </select>
+                    <button onClick={handleInvite} disabled={saving}>
+                        Invia invito
+                    </button>
+                </div>
+                {inviteSuccess && (
+                    <p style={{ color: "green", margin: "8px 0 0 0", fontSize: "13px" }}>{inviteSuccess}</p>
+                )}
             </div>
 
             <p>Associa utenti alle sedi e gestisci lo stato (admin-only, via backend)</p>

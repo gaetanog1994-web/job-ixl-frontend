@@ -51,8 +51,8 @@ function App() {
             <>
               <Route path="/" element={<PreAuthPage />} />
               <Route path="/login" element={<LoginPage />} />
-              <Route path="/signup" element={<SignupPage />} />
-              <Route path="/register" element={<SignupPage />} />
+              <Route path="/signup" element={<Navigate to="/login" replace />} />
+              <Route path="/register" element={<Navigate to="/login" replace />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </>
           )}

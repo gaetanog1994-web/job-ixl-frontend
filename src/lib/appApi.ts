@@ -394,4 +394,11 @@ export const appApi = {
             body: JSON.stringify(payload),
         });
     },
+
+    async adminInviteUser(params: { email: string; full_name: string; location_id: string | null }) {
+        return apiFetch(`/api/admin/users/invite`, {
+            method: "POST",
+            body: JSON.stringify(params),
+        });
+    },
 };

@@ -141,9 +141,6 @@ const LoginPage: React.FC = () => {
                     >
                         Accedi
                     </button>
-                    <div style={{ textAlign: "center", marginTop: "24px" }}>
-                        <a href="/signup" style={{ color: "#9ca3af", fontSize: "14px", textDecoration: "none" }}>Non hai un account? <span style={{ color: "var(--brand, #e8511a)", fontWeight: 600 }}>Registrati</span></a>
-                    </div>
                 </form>
             </div>
         </div>
