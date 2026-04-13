@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { useAuth } from "../lib/AuthContext";
 import { appApi } from "../lib/appApi";
 import { useSidebar } from "../lib/SidebarContext";
+import { useAvailability } from "../lib/AvailabilityContext";
 
 import MapPanel from "../components/dashboard/MapPanel";
 import FiltersCard from "../components/dashboard/FiltersCard";
@@ -18,9 +19,10 @@ const MobilityDashboard: React.FC = () => {
   const { toggle: toggleSidebar } = useSidebar();
   const [searchParams, setSearchParams] = useSearchParams();
 
+  const { availabilityStatus, isAdmin, toggleAvailability } = useAvailability();
+
   /* ---------- data state ---------- */
   const [userData, setUserData] = useState<any>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [myApplications, setMyApplications] = useState<any[]>([]);
   const [maxApplications, setMaxApplications] = useState<number>(10);
 
@@ -61,11 +63,10 @@ const MobilityDashboard: React.FC = () => {
     const load = async () => {
       setDataLoading(true);
       try {
-        const [userInfo, cfg, apps, me] = await Promise.allSettled([
+        const [userInfo, cfg, apps] = await Promise.allSettled([
           appApi.getMyUser(),
           appApi.getConfig(),
           appApi.getMyApplications(),
-          appApi.getMe(),
         ]);
         if (cancelled) return;
         if (userInfo.status === "fulfilled") setUserData(userInfo.value);
@@ -73,7 +74,6 @@ const MobilityDashboard: React.FC = () => {
           setMaxApplications(cfg.value.maxApplications);
         }
         if (apps.status === "fulfilled") setMyApplications(apps.value ?? []);
-        if (me.status === "fulfilled") setIsAdmin(!!me.value?.isAdmin);
       } catch (e: any) {
         if (cancelled) return;
         console.error("[MobilityDashboard] load error:", e?.message ?? e);
@@ -105,21 +105,11 @@ const MobilityDashboard: React.FC = () => {
     return keys.size;
   }, [myApplications]);
 
-  /* ---------- availability toggle ---------- */
+  /* ---------- availability toggle (clears apps on deactivate) ---------- */
   const handleToggleAvailability = async () => {
-    if (!userData) return;
-    try {
-      if (userData.availability_status === "available") {
-        await appApi.deactivateMe();
-        setUserData({ ...userData, availability_status: "inactive" });
-        setMyApplications([]);
-      } else {
-        await appApi.activateMe();
-        setUserData({ ...userData, availability_status: "available" });
-      }
-    } catch (e: any) {
-      console.error("[MobilityDashboard] toggleAvailability:", e?.message ?? e);
-    }
+    const wasAvailable = availabilityStatus === "available";
+    await toggleAvailability();
+    if (wasAvailable) setMyApplications([]);
   };
 
   /* ---------- reload applications (used when map updates) ---------- */
@@ -147,7 +137,6 @@ const MobilityDashboard: React.FC = () => {
     );
   }
 
-  const availabilityStatus = userData?.availability_status ?? null;
   const initials = userData?.full_name
     ? userData.full_name.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase()
     : "U";

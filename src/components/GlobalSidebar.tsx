@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
 import { appApi } from "../lib/appApi";
 import { useSidebar } from "../lib/SidebarContext";
+import { useAvailability } from "../lib/AvailabilityContext";
 import "../styles/dashboard.css";
 
 /**
@@ -16,21 +17,17 @@ const GlobalSidebar: React.FC = () => {
   const location = useLocation();
 
   const [userData, setUserData] = useState<any>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
+  const { availabilityStatus, isAdmin, toggleAvailability } = useAvailability();
 
   /* ---- load user data ---- */
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
       try {
-        const [me, userInfo] = await Promise.allSettled([
-          appApi.getMe(),
-          appApi.getMyUser(),
-        ]);
+        const userInfo = await appApi.getMyUser();
         if (cancelled) return;
-        if (me.status === "fulfilled") setIsAdmin(!!me.value?.isAdmin);
-        if (userInfo.status === "fulfilled") setUserData(userInfo.value);
+        setUserData(userInfo);
       } catch {
         // silently ignore — sidebar works even without data
       }
@@ -38,22 +35,6 @@ const GlobalSidebar: React.FC = () => {
     load();
     return () => { cancelled = true; };
   }, []);
-
-  /* ---- availability toggle (self-contained) ---- */
-  const handleToggleAvailability = async () => {
-    if (!userData) return;
-    try {
-      if (userData.availability_status === "available") {
-        await appApi.deactivateMe();
-        setUserData({ ...userData, availability_status: "inactive" });
-      } else {
-        await appApi.activateMe();
-        setUserData({ ...userData, availability_status: "available" });
-      }
-    } catch (e: any) {
-      console.error("[GlobalSidebar] toggleAvailability error:", e?.message ?? e);
-    }
-  };
 
   /* ---- logout ---- */
   const handleLogout = async () => {
@@ -74,7 +55,7 @@ const GlobalSidebar: React.FC = () => {
     ? userData.full_name.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase()
     : "U";
 
-  const available = userData?.availability_status === "available";
+  const available = availabilityStatus === "available";
 
   return (
     <>
@@ -216,7 +197,7 @@ const GlobalSidebar: React.FC = () => {
             id="global-sidebar-availability"
             className="db-sidebar-availability"
             disabled={!isAdmin}
-            onClick={isAdmin ? handleToggleAvailability : undefined}
+            onClick={isAdmin ? toggleAvailability : undefined}
             title={isAdmin ? (available ? "Clicca per disattivarti" : "Clicca per attivarti") : "Solo gli admin possono modificare la disponibilità"}
             style={!isAdmin ? { cursor: "default", opacity: 0.7 } : undefined}
           >

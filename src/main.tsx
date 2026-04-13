@@ -7,6 +7,7 @@ import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import { AuthProvider } from "./lib/AuthContext";
 import { SidebarProvider } from "./lib/SidebarContext";
+import { AvailabilityProvider } from "./lib/AvailabilityContext";
 import GlobalSidebar from "./components/GlobalSidebar";
 
 import "leaflet/dist/leaflet.css";
@@ -17,6 +18,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     <AuthProvider>
       <SidebarProvider>
         <BrowserRouter>
+          <AvailabilityProvider>
           {/* GlobalSidebar is mounted once at root level, works across all routes */}
           <GlobalSidebar />
 
@@ -29,6 +31,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
             {/* PRIVATE / APP */}
             <Route path="/*" element={<App />} />
           </Routes>
+          </AvailabilityProvider>
         </BrowserRouter>
       </SidebarProvider>
     </AuthProvider>

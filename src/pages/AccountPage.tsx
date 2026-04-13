@@ -8,6 +8,7 @@ import { SortableContext, verticalListSortingStrategy, useSortable } from "@dnd-
 import { CSS } from "@dnd-kit/utilities";
 
 import { appApi } from "../lib/appApi";
+import { useAvailability } from "../lib/AvailabilityContext";
 
 // 2️⃣ COMPONENTE DI SUPPORTO
 const SortableRow: React.FC<{ id: string; children: React.ReactNode }> = ({ id, children }) => {
@@ -53,8 +54,8 @@ const AccountPage: React.FC = () => {
     const { user, loading } = useAuth();
     const navigate = useNavigate();
 
+    const { availabilityStatus, isAdmin, toggleAvailability } = useAvailability();
     const [userData, setUserData] = useState<any>(null);
-    const [isAdmin, setIsAdmin] = useState(false);
     const [myApplications, setMyApplications] = useState<any[]>([]);
     const [maxApplications, setMaxApplications] = useState<number>(10); // fallback safe
 
@@ -114,15 +115,13 @@ const AccountPage: React.FC = () => {
 
         const load = async () => {
             try {
-                const [me, meAdmin, cfg, apps] = await Promise.allSettled([
+                const [me, cfg, apps] = await Promise.allSettled([
                     appApi.getMyUser(),
-                    appApi.getMe(),
                     appApi.getConfig(),
                     appApi.getMyApplications(),
                 ]);
                 if (cancelled) return;
                 if (me.status === "fulfilled") setUserData(me.value);
-                if (meAdmin.status === "fulfilled") setIsAdmin(!!meAdmin.value?.isAdmin);
                 if (cfg.status === "fulfilled" && cfg.value?.maxApplications != null) {
                     setMaxApplications(cfg.value.maxApplications);
                 }
@@ -191,26 +190,10 @@ const AccountPage: React.FC = () => {
 
     /* ===== AVAILABILITY ===== */
 
-    const toggleAvailability = async () => {
-        if (!userData) return;
-
-        if (userData.availability_status === "available") {
-            try {
-                await appApi.deactivateMe();
-                setUserData({ ...userData, availability_status: "inactive" });
-                setMyApplications([]);
-            } catch (e: any) {
-                console.error("[AccountPage] deactivateMe error:", e?.message ?? e);
-            }
-            return;
-        }
-
-        try {
-            await appApi.activateMe();
-            setUserData({ ...userData, availability_status: "available" });
-        } catch (e: any) {
-            console.error("[AccountPage] activateMe error:", e?.message ?? e);
-        }
+    const handleToggleAvailability = async () => {
+        const wasAvailable = availabilityStatus === "available";
+        await toggleAvailability();
+        if (wasAvailable) setMyApplications([]);
     };
 
     /* ===== NAVIGATION TO DASHBOARD ===== */
@@ -294,16 +277,16 @@ const AccountPage: React.FC = () => {
                 <b>Email:</b> {userData.email ?? "—"}
             </p>
             <p>
-                <b>Disponibilità:</b> {userData.availability_status === "available" ? "Attivo" : "Inattivo"}
+                <b>Disponibilità:</b> {availabilityStatus === "available" ? "Attivo" : "Inattivo"}
             </p>
 
             <button
-                onClick={isAdmin ? toggleAvailability : undefined}
+                onClick={isAdmin ? handleToggleAvailability : undefined}
                 disabled={!isAdmin}
-                title={isAdmin ? (userData.availability_status === "available" ? "Clicca per disattivarti" : "Clicca per attivarti") : "Solo gli admin possono modificare la disponibilità"}
+                title={isAdmin ? (availabilityStatus === "available" ? "Clicca per disattivarti" : "Clicca per attivarti") : "Solo gli admin possono modificare la disponibilità"}
                 style={!isAdmin ? { cursor: "default", opacity: 0.7 } : undefined}
             >
-                {userData.availability_status === "available" ? "Renditi inattivo" : "Renditi attivo"}
+                {availabilityStatus === "available" ? "Renditi inattivo" : "Renditi attivo"}
             </button>
 
             <hr />
