@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { useAuth } from "../lib/AuthContext";
+import { useNavigate } from "react-router-dom";
 import { appApi } from "../lib/appApi";
 import { supabase } from "../lib/supabaseClient";
 import "../styles/dashboard.css";
 
 const AccountPage: React.FC = () => {
     const { user, loading } = useAuth();
+    const navigate = useNavigate();
     const [userData, setUserData] = useState<any>(null);
     const [newPassword, setNewPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
@@ -44,41 +46,105 @@ const AccountPage: React.FC = () => {
         }
     };
 
-    if (loading || !userData) return <div className="db-loading"><div className="db-spinner" />Caricamento…</div>;
+    if (loading || !userData) {
+        return (
+            <div className="db-loading" style={{ paddingTop: 80 }}>
+                <div className="db-spinner" />
+                Caricamento…
+            </div>
+        );
+    }
 
     return (
-        <div style={{ maxWidth: 600, margin: "40px auto", padding: "0 16px" }}>
-            <div className="db-card db-fade-in">
-                <div className="db-card-title">Il mio profilo</div>
+        <div
+            style={{
+                maxWidth: 560,
+                margin: "0 auto",
+                padding: "32px 16px 40px",
+                fontFamily: "var(--font)",
+                display: "flex",
+                flexDirection: "column",
+                gap: 20,
+            }}
+        >
+            {/* Back button */}
+            <div>
+                <button
+                    onClick={() => navigate("/")}
+                    style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 6,
+                        background: "transparent",
+                        border: "1px solid var(--border)",
+                        borderRadius: 9,
+                        padding: "7px 14px",
+                        fontSize: 13,
+                        fontWeight: 600,
+                        fontFamily: "var(--font)",
+                        color: "var(--text-secondary)",
+                        cursor: "pointer",
+                        transition: "background 0.15s, color 0.15s",
+                    }}
+                    onMouseEnter={e => {
+                        e.currentTarget.style.background = "var(--surface)";
+                        e.currentTarget.style.color = "var(--text-primary)";
+                    }}
+                    onMouseLeave={e => {
+                        e.currentTarget.style.background = "transparent";
+                        e.currentTarget.style.color = "var(--text-secondary)";
+                    }}
+                >
+                    ← Dashboard
+                </button>
+            </div>
 
-                {/* Info utente */}
-                <div style={{ display: "flex", flexDirection: "column", gap: 16, marginTop: 16 }}>
+            {/* Profile card */}
+            <div className="db-card db-fade-in" style={{ padding: "20px 24px" }}>
+                <div className="db-card-title" style={{ marginBottom: 18 }}>Il mio profilo</div>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
                     <div>
-                        <div className="db-stat-label">Email</div>
+                        <div className="db-stat-label" style={{ marginBottom: 4 }}>Email</div>
                         <div className="db-cell-primary">{userData.email ?? "—"}</div>
                     </div>
+                    <div style={{ height: 1, background: "var(--border)" }} />
                     <div>
-                        <div className="db-stat-label">Sede</div>
-                        <div className="db-cell-primary">{userData.location_name ?? userData.location_id ?? "—"}</div>
+                        <div className="db-stat-label" style={{ marginBottom: 4 }}>Sede</div>
+                        <div className="db-cell-primary">{userData.location_name ?? "—"}</div>
                     </div>
+                    <div style={{ height: 1, background: "var(--border)" }} />
                     <div>
-                        <div className="db-stat-label">Ruolo</div>
-                        <div className="db-cell-primary">{userData.role_name ?? userData.role_id ?? "—"}</div>
+                        <div className="db-stat-label" style={{ marginBottom: 4 }}>Ruolo</div>
+                        <div className="db-cell-primary">{userData.role_name ?? "—"}</div>
                     </div>
                 </div>
+            </div>
 
-                <hr style={{ margin: "24px 0", borderColor: "var(--border)" }} />
+            {/* Change password card */}
+            <div className="db-card db-fade-in" style={{ padding: "20px 24px" }}>
+                <div className="db-card-title" style={{ marginBottom: 18 }}>Cambia password</div>
 
-                {/* Cambia password */}
-                <div className="db-card-title">Cambia password</div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 16, maxWidth: 340 }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 340 }}>
                     <input
                         type="password"
                         placeholder="Nuova password"
                         value={newPassword}
                         onChange={(e) => setNewPassword(e.target.value)}
                         disabled={passwordSaving}
-                        style={{ padding: "10px 12px", borderRadius: 8, border: "1px solid var(--border)", fontSize: 14 }}
+                        style={{
+                            padding: "10px 12px",
+                            borderRadius: 9,
+                            border: "1px solid var(--border)",
+                            fontSize: 13,
+                            fontFamily: "var(--font)",
+                            color: "var(--text-primary)",
+                            background: "var(--surface)",
+                            outline: "none",
+                            transition: "border-color 0.15s",
+                        }}
+                        onFocus={e => (e.currentTarget.style.borderColor = "var(--brand)")}
+                        onBlur={e => (e.currentTarget.style.borderColor = "var(--border)")}
                     />
                     <input
                         type="password"
@@ -86,21 +152,46 @@ const AccountPage: React.FC = () => {
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
                         disabled={passwordSaving}
-                        style={{ padding: "10px 12px", borderRadius: 8, border: "1px solid var(--border)", fontSize: 14 }}
+                        style={{
+                            padding: "10px 12px",
+                            borderRadius: 9,
+                            border: "1px solid var(--border)",
+                            fontSize: 13,
+                            fontFamily: "var(--font)",
+                            color: "var(--text-primary)",
+                            background: "var(--surface)",
+                            outline: "none",
+                            transition: "border-color 0.15s",
+                        }}
+                        onFocus={e => (e.currentTarget.style.borderColor = "var(--brand)")}
+                        onBlur={e => (e.currentTarget.style.borderColor = "var(--border)")}
                     />
                     <button
                         onClick={handleChangePassword}
                         disabled={passwordSaving}
                         style={{
-                            padding: "10px 20px", background: "var(--brand, #e8511a)", color: "#fff",
-                            border: "none", borderRadius: 8, fontWeight: 600, fontSize: 14,
-                            cursor: passwordSaving ? "not-allowed" : "pointer", opacity: passwordSaving ? 0.7 : 1,
+                            padding: "10px 20px",
+                            background: passwordSaving ? "var(--text-muted)" : "var(--brand)",
+                            color: "#fff",
+                            border: "none",
+                            borderRadius: 9,
+                            fontWeight: 600,
+                            fontSize: 13,
+                            fontFamily: "var(--font)",
+                            cursor: passwordSaving ? "not-allowed" : "pointer",
+                            transition: "background 0.15s",
+                            boxShadow: passwordSaving ? "none" : "0 2px 8px rgba(232,81,26,0.25)",
                         }}
                     >
                         {passwordSaving ? "Salvataggio…" : "Aggiorna password"}
                     </button>
                     {passwordMsg && (
-                        <p style={{ color: passwordMsg.ok ? "var(--success, #22c55e)" : "var(--danger, #ef4444)", margin: 0, fontSize: 13 }}>
+                        <p style={{
+                            margin: 0,
+                            fontSize: 13,
+                            fontWeight: 500,
+                            color: passwordMsg.ok ? "var(--available-color)" : "#ef4444",
+                        }}>
                             {passwordMsg.text}
                         </p>
                     )}
