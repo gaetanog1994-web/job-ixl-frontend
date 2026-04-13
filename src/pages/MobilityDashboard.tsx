@@ -20,6 +20,7 @@ const MobilityDashboard: React.FC = () => {
 
   /* ---------- data state ---------- */
   const [userData, setUserData] = useState<any>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [myApplications, setMyApplications] = useState<any[]>([]);
   const [maxApplications, setMaxApplications] = useState<number>(10);
 
@@ -60,10 +61,11 @@ const MobilityDashboard: React.FC = () => {
     const load = async () => {
       setDataLoading(true);
       try {
-        const [userInfo, cfg, apps] = await Promise.allSettled([
+        const [userInfo, cfg, apps, me] = await Promise.allSettled([
           appApi.getMyUser(),
           appApi.getConfig(),
           appApi.getMyApplications(),
+          appApi.getMe(),
         ]);
         if (cancelled) return;
         if (userInfo.status === "fulfilled") setUserData(userInfo.value);
@@ -71,6 +73,7 @@ const MobilityDashboard: React.FC = () => {
           setMaxApplications(cfg.value.maxApplications);
         }
         if (apps.status === "fulfilled") setMyApplications(apps.value ?? []);
+        if (me.status === "fulfilled") setIsAdmin(!!me.value?.isAdmin);
       } catch (e: any) {
         if (cancelled) return;
         console.error("[MobilityDashboard] load error:", e?.message ?? e);
@@ -183,15 +186,19 @@ const MobilityDashboard: React.FC = () => {
         <div className="db-topbar-right">
           {/* Availability badge */}
           <button
-            onClick={handleToggleAvailability}
+            onClick={isAdmin ? handleToggleAvailability : undefined}
+            disabled={!isAdmin}
             id="topbar-availability-toggle"
+            title={isAdmin ? (availabilityStatus === "available" ? "Clicca per disattivarti" : "Clicca per attivarti") : "Solo gli admin possono modificare la disponibilità"}
             style={{
               display: "flex", alignItems: "center", gap: "7px",
               padding: "6px 12px",
               borderRadius: "10px",
               fontSize: "13px", fontWeight: 600,
               fontFamily: "var(--font)",
-              cursor: "pointer", transition: "all 0.15s",
+              cursor: isAdmin ? "pointer" : "default",
+              opacity: isAdmin ? 1 : 0.7,
+              transition: "all 0.15s",
               border: availabilityStatus === "available"
                 ? "1.5px solid #a7f3d0"
                 : "1.5px solid var(--border)",

@@ -54,6 +54,7 @@ const AccountPage: React.FC = () => {
     const navigate = useNavigate();
 
     const [userData, setUserData] = useState<any>(null);
+    const [isAdmin, setIsAdmin] = useState(false);
     const [myApplications, setMyApplications] = useState<any[]>([]);
     const [maxApplications, setMaxApplications] = useState<number>(10); // fallback safe
 
@@ -113,22 +114,19 @@ const AccountPage: React.FC = () => {
 
         const load = async () => {
             try {
-                const me = await appApi.getMyUser();
+                const [me, meAdmin, cfg, apps] = await Promise.allSettled([
+                    appApi.getMyUser(),
+                    appApi.getMe(),
+                    appApi.getConfig(),
+                    appApi.getMyApplications(),
+                ]);
                 if (cancelled) return;
-                setUserData(me);
-
-                try {
-                    const cfg = await appApi.getConfig();
-                    if (!cancelled && cfg?.maxApplications != null) {
-                        setMaxApplications(cfg.maxApplications);
-                    }
-                } catch {
-                    // ignore
+                if (me.status === "fulfilled") setUserData(me.value);
+                if (meAdmin.status === "fulfilled") setIsAdmin(!!meAdmin.value?.isAdmin);
+                if (cfg.status === "fulfilled" && cfg.value?.maxApplications != null) {
+                    setMaxApplications(cfg.value.maxApplications);
                 }
-
-                const apps = await appApi.getMyApplications();
-                if (cancelled) return;
-                setMyApplications(apps ?? []);
+                if (apps.status === "fulfilled") setMyApplications(apps.value ?? []);
             } catch (e: any) {
                 console.error("[AccountPage] load error:", e?.message ?? e);
                 if (cancelled) return;
@@ -299,7 +297,12 @@ const AccountPage: React.FC = () => {
                 <b>Disponibilità:</b> {userData.availability_status === "available" ? "Attivo" : "Inattivo"}
             </p>
 
-            <button onClick={toggleAvailability}>
+            <button
+                onClick={isAdmin ? toggleAvailability : undefined}
+                disabled={!isAdmin}
+                title={isAdmin ? (userData.availability_status === "available" ? "Clicca per disattivarti" : "Clicca per attivarti") : "Solo gli admin possono modificare la disponibilità"}
+                style={!isAdmin ? { cursor: "default", opacity: 0.7 } : undefined}
+            >
                 {userData.availability_status === "available" ? "Renditi inattivo" : "Renditi attivo"}
             </button>
 

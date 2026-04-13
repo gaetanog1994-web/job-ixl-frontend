@@ -215,8 +215,10 @@ const GlobalSidebar: React.FC = () => {
           <button
             id="global-sidebar-availability"
             className="db-sidebar-availability"
-            onClick={handleToggleAvailability}
-            title={available ? "Clicca per disattivarti" : "Clicca per attivarti"}
+            disabled={!isAdmin}
+            onClick={isAdmin ? handleToggleAvailability : undefined}
+            title={isAdmin ? (available ? "Clicca per disattivarti" : "Clicca per attivarti") : "Solo gli admin possono modificare la disponibilità"}
+            style={!isAdmin ? { cursor: "default", opacity: 0.7 } : undefined}
           >
             <div className={`db-avail-dot ${available ? "available" : "inactive"}`} />
             <span className={`db-avail-text ${available ? "available" : ""}`}>
