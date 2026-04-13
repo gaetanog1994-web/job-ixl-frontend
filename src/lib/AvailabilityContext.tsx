@@ -31,6 +31,11 @@ export const AvailabilityProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   useEffect(() => { reload(); }, [reload]);
 
+  useEffect(() => {
+    const interval = setInterval(() => { reload(); }, 10_000);
+    return () => clearInterval(interval);
+  }, [reload]);
+
   const toggleAvailability = useCallback(async () => {
     if (!isAdmin) return;
     try {
