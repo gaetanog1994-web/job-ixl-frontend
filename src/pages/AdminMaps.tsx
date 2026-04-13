@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import PositionsMap from "../components/PositionsMap";
 import { appApi } from "../lib/appApi";
 import type { MapLocation } from "../components/PositionsMap";
+import TenantContextStrip from "../components/TenantContextStrip";
 import "../styles/dashboard.css";
 
 type ActiveUser = {
@@ -88,6 +89,8 @@ const AdminMaps = () => {
           Esplora la mappa interattiva per ciascun utente attivo, simulando il suo punto di vista.
         </p>
       </div>
+
+      <TenantContextStrip sectionLabel="Admin / Mappe utenti" />
 
       <div style={{ display: "flex", gap: "24px", alignItems: "flex-start", flexWrap: "wrap" }}>
         

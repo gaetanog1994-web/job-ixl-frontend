@@ -11,6 +11,8 @@ import type { MapFilters } from "../components/dashboard/FiltersCard";
 import UserStatsCard from "../components/dashboard/UserStatsCard";
 import MyApplicationsPanel from "../components/dashboard/MyApplicationsPanel";
 import type { MapLocation } from "../components/PositionsMap";
+import TenantContextStrip from "../components/TenantContextStrip";
+import { labelAccessRole } from "../lib/accessLabels";
 
 import "../styles/dashboard.css";
 
@@ -34,6 +36,11 @@ const MobilityDashboard: React.FC = () => {
     locationName: "",
     roleName: "",
   });
+  const [tenantContextData, setTenantContextData] = useState<{
+    company: string;
+    perimeter: string;
+    accessRole: string;
+  } | null>(null);
 
   /* ---------- map highlight from URL ---------- */
   const [highlightPositionId, setHighlightPositionId] = useState<string | undefined>(undefined);
@@ -42,6 +49,31 @@ const MobilityDashboard: React.FC = () => {
     const id = searchParams.get("highlightPositionId") ?? undefined;
     setHighlightPositionId(id);
   }, [searchParams]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadContext = async () => {
+      try {
+        const me = await appApi.getMe();
+        const company = me?.access?.currentCompanyName ?? "";
+        const perimeter = me?.access?.currentPerimeterName ?? "";
+        const accessRole = labelAccessRole(me?.access?.accessRole);
+        if (!cancelled) {
+          setTenantContextData({
+            company: company || "Company non selezionata",
+            perimeter: perimeter || "Perimeter non selezionato",
+            accessRole,
+          });
+        }
+      } catch {
+        if (!cancelled) setTenantContextData(null);
+      }
+    };
+    loadContext();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleHighlightPosition = (positionId: string) => {
     setSearchParams({ highlightPositionId: positionId });
@@ -177,6 +209,50 @@ const MobilityDashboard: React.FC = () => {
           </button>
 
           <span className="db-topbar-title">My Mobility Dashboard</span>
+          {tenantContextData ? (
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <span
+                style={{
+                  marginLeft: 8,
+                  padding: "5px 10px",
+                  border: "1px solid var(--border)",
+                  borderRadius: "10px",
+                  fontSize: "12px",
+                  color: "var(--text-secondary)",
+                  background: "var(--surface)",
+                  fontWeight: 600,
+                }}
+              >
+                {tenantContextData.company}
+              </span>
+              <span
+                style={{
+                  padding: "5px 10px",
+                  border: "1px solid var(--border)",
+                  borderRadius: "10px",
+                  fontSize: "12px",
+                  color: "var(--text-secondary)",
+                  background: "var(--surface)",
+                  fontWeight: 600,
+                }}
+              >
+                {tenantContextData.perimeter}
+              </span>
+              <span
+                style={{
+                  padding: "5px 10px",
+                  border: "1px solid var(--border)",
+                  borderRadius: "10px",
+                  fontSize: "12px",
+                  color: "var(--text-secondary)",
+                  background: "var(--surface)",
+                  fontWeight: 600,
+                }}
+              >
+                {tenantContextData.accessRole}
+              </span>
+            </div>
+          ) : null}
         </div>
 
         <div className="db-topbar-right">
@@ -243,6 +319,7 @@ const MobilityDashboard: React.FC = () => {
 
       {/* ===== CONTENT ===== */}
       <div className="db-content" style={{ flex: 1 }}>
+        <TenantContextStrip sectionLabel="Dashboard utente" />
 
         {/* ---- Top row: Map + Right Panel ---- */}
         <div className="db-content-row">

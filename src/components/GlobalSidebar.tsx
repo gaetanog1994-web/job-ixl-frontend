@@ -4,6 +4,7 @@ import { supabase } from "../lib/supabaseClient";
 import { appApi } from "../lib/appApi";
 import { useSidebar } from "../lib/SidebarContext";
 import { useAvailability } from "../lib/AvailabilityContext";
+import { labelAccessRole, labelHighestRole } from "../lib/accessLabels";
 import "../styles/dashboard.css";
 
 /**
@@ -17,6 +18,7 @@ const GlobalSidebar: React.FC = () => {
   const location = useLocation();
 
   const [userData, setUserData] = useState<any>(null);
+  const [meData, setMeData] = useState<any>(null);
   const [adminOpen, setAdminOpen] = useState(false);
   const { availabilityStatus, isAdmin, toggleAvailability } = useAvailability();
 
@@ -25,9 +27,17 @@ const GlobalSidebar: React.FC = () => {
     let cancelled = false;
     const load = async () => {
       try {
-        const userInfo = await appApi.getMyUser();
+        const [userInfo, me] = await Promise.allSettled([
+          appApi.getMyUser(),
+          appApi.getMe(),
+        ]);
         if (cancelled) return;
-        setUserData(userInfo);
+        if (userInfo.status === "fulfilled") {
+          setUserData(userInfo.value);
+        }
+        if (me.status === "fulfilled") {
+          setMeData(me.value);
+        }
       } catch {
         // silently ignore — sidebar works even without data
       }
@@ -36,9 +46,16 @@ const GlobalSidebar: React.FC = () => {
     return () => { cancelled = true; };
   }, []);
 
+  useEffect(() => {
+    if (location.pathname.startsWith("/admin")) {
+      setAdminOpen(true);
+    }
+  }, [location.pathname]);
+
   /* ---- logout ---- */
   const handleLogout = async () => {
     close();
+    appApi.clearTenantContext();
     await supabase.auth.signOut();
     navigate("/login");
   };
@@ -50,6 +67,13 @@ const GlobalSidebar: React.FC = () => {
   };
 
   const isActive = (path: string) => location.pathname === path;
+  const activeAccess = meData?.access ?? null;
+  const hasActivePerimeter = !!activeAccess?.currentPerimeterId;
+  const activeCompanyId = activeAccess?.currentCompanyId ?? null;
+  const isOwner = meData?.isOwner === true;
+  const isSuperAdmin = meData?.isSuperAdmin === true;
+  const accessRoleLabel = labelAccessRole(activeAccess?.accessRole);
+  const highestRoleLabel = labelHighestRole(activeAccess?.highestRole);
 
   const initials = userData?.full_name
     ? userData.full_name.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase()
@@ -146,16 +170,86 @@ const GlobalSidebar: React.FC = () => {
 
         {/* ---- Nav ---- */}
         <nav style={{ flex: 1, padding: "14px 10px", overflowY: "auto" }}>
+          <div
+            style={{
+              border: "1px solid rgba(255,255,255,0.1)",
+              background: "rgba(255,255,255,0.03)",
+              borderRadius: 10,
+              padding: "8px 10px",
+              marginBottom: 10,
+              display: "grid",
+              gap: 3,
+            }}
+          >
+            <div style={{ fontSize: 11, color: "#e2e8f0", fontWeight: 700 }}>Contesto attivo</div>
+            <div style={{ fontSize: 11, color: "var(--sidebar-text)" }}>
+              Company: {activeAccess?.currentCompanyName ?? "Non selezionata"}
+            </div>
+            <div style={{ fontSize: 11, color: "var(--sidebar-text)" }}>
+              Perimeter: {activeAccess?.currentPerimeterName ?? "Non selezionato"}
+            </div>
+            <div style={{ fontSize: 11, color: "var(--sidebar-text)" }}>
+              Access: {accessRoleLabel}
+            </div>
+            <button
+              className="db-nav-item"
+              style={{
+                marginTop: 4,
+                marginBottom: 0,
+                border: "1px solid rgba(255,255,255,0.12)",
+                background: "rgba(255,255,255,0.02)",
+                color: "#e2e8f0",
+                padding: "7px 9px",
+                fontSize: 12,
+              }}
+              onClick={() => go("/select-context")}
+              id="global-nav-change-context"
+            >
+              <span className="db-nav-icon">🔄</span>
+              <span className="db-nav-label">Cambia contesto</span>
+            </button>
+          </div>
+
           <div className="db-section-label">Principale</div>
 
-          <button
-            id="global-nav-dashboard"
-            className={`db-nav-item ${isActive("/") ? "active" : ""}`}
-            onClick={() => go("/")}
-          >
-            <span className="db-nav-icon">🗺️</span>
-            <span className="db-nav-label">Dashboard</span>
-          </button>
+          {hasActivePerimeter && (
+            <button
+              id="global-nav-dashboard"
+              className={`db-nav-item ${isActive("/dashboard") ? "active" : ""}`}
+              onClick={() => go("/dashboard")}
+            >
+              <span className="db-nav-icon">🗺️</span>
+              <span className="db-nav-label">Dashboard</span>
+            </button>
+          )}
+
+          {(isOwner || isSuperAdmin) && (
+            <>
+              <div className="db-section-label" style={{ marginTop: 12 }}>Multi-tenant</div>
+
+              {isOwner && (
+                <button
+                  id="global-nav-owner"
+                  className={`db-nav-item ${isActive("/owner") ? "active" : ""}`}
+                  onClick={() => go("/owner")}
+                >
+                  <span className="db-nav-icon">🏢</span>
+                  <span className="db-nav-label">Owner Area</span>
+                </button>
+              )}
+
+              {activeCompanyId && (
+                <button
+                  id="global-nav-company-perimeters"
+                  className={`db-nav-item ${location.pathname.includes("/perimeters") ? "active" : ""}`}
+                  onClick={() => go(`/companies/${activeCompanyId}/perimeters`)}
+                >
+                  <span className="db-nav-icon">📍</span>
+                  <span className="db-nav-label">Company / Perimeters</span>
+                </button>
+              )}
+            </>
+          )}
 
           {isAdmin && (
             <>
@@ -213,7 +307,13 @@ const GlobalSidebar: React.FC = () => {
               <div className="db-user-avatar">{initials}</div>
               <div className="db-user-info">
                 <div className="db-user-name">{userData.full_name ?? "Utente"}</div>
-                <div className="db-user-role">{userData.email ?? ""}</div>
+                <div className="db-user-role">
+                  {highestRoleLabel} · {accessRoleLabel}
+                </div>
+                <div className="db-user-role">
+                  {activeAccess?.currentCompanyName ?? "-"}
+                  {activeAccess?.currentPerimeterName ? ` / ${activeAccess.currentPerimeterName}` : " / -"}
+                </div>
               </div>
             </div>
           )}
@@ -225,7 +325,7 @@ const GlobalSidebar: React.FC = () => {
             id="global-nav-account"
           >
             <span className="db-nav-icon">🔑</span>
-            <span className="db-nav-label">Cambia password</span>
+            <span className="db-nav-label">Profilo & Sicurezza</span>
           </button>
 
           {/* Logout */}

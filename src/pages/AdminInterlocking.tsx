@@ -15,6 +15,7 @@ import {
 } from "react-leaflet";
 import * as L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import TenantContextStrip from "../components/TenantContextStrip";
 
 type UiStrategy = OptimizationStrategy | "NONE";
 type RightPanelTab = "PEOPLE" | "CHAINS";
@@ -1185,6 +1186,7 @@ const AdminInterlocking = () => {
                         Dashboard decisionale per scenari, sedi coinvolte e analisi di impatto
                     </div>
                 </div>
+                <TenantContextStrip sectionLabel="Admin / Interlocking" style={{ marginBottom: 0 }} />
 
                 {/* ── Row 1: Simulazioni (left 55%) + World Map (right 45%) ── */}
                 <div

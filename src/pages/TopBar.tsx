@@ -1,12 +1,46 @@
 import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import { useSidebar } from "../lib/SidebarContext";
+import { appApi } from "../lib/appApi";
+import { labelAccessRole } from "../lib/accessLabels";
 
 const TopBar: React.FC = () => {
   const navigate = useNavigate();
   const { toggle: toggleSidebar } = useSidebar();
+  const [contextData, setContextData] = useState<{
+    company: string;
+    perimeter: string;
+    accessRole: string;
+  } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadContext = async () => {
+      try {
+        const me = await appApi.getMe();
+        const company = me?.access?.currentCompanyName ?? "";
+        const perimeter = me?.access?.currentPerimeterName ?? "";
+        const accessRole = labelAccessRole(me?.access?.accessRole);
+        if (!cancelled) {
+          setContextData({
+            company: company || "Company non selezionata",
+            perimeter: perimeter || "Perimeter non selezionato",
+            accessRole,
+          });
+        }
+      } catch {
+        if (!cancelled) setContextData(null);
+      }
+    };
+    loadContext();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleLogout = async () => {
+    appApi.clearTenantContext();
     await supabase.auth.signOut();
     navigate("/login");
   };
@@ -22,6 +56,13 @@ const TopBar: React.FC = () => {
         >
           ☰
         </button>
+        {contextData ? (
+          <div style={styles.contextWrap}>
+            <div style={styles.contextBadge}>Company: {contextData.company}</div>
+            <div style={styles.contextBadge}>Perimeter: {contextData.perimeter}</div>
+            <div style={styles.contextBadge}>Access: {contextData.accessRole}</div>
+          </div>
+        ) : null}
       </div>
 
       <div style={styles.right}>
@@ -89,6 +130,25 @@ const styles: Record<string, React.CSSProperties> = {
     transition: "background-color 0.18s, border-color 0.18s",
     fontFamily: "inherit",
     letterSpacing: "0.01em",
+  },
+  contextWrap: {
+    display: "flex",
+    gap: 8,
+    alignItems: "center",
+    flexWrap: "wrap",
+  },
+  contextBadge: {
+    border: "1px solid #E2E8F0",
+    background: "#F8FAFC",
+    borderRadius: "10px",
+    padding: "6px 10px",
+    fontSize: "12px",
+    color: "#475569",
+    fontWeight: 600,
+    maxWidth: "420px",
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
   },
 };
 

@@ -3,12 +3,15 @@ import { useAuth } from "../lib/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { appApi } from "../lib/appApi";
 import { supabase } from "../lib/supabaseClient";
+import TenantContextStrip from "../components/TenantContextStrip";
+import { labelAccessRole, labelAdminContext, labelHighestRole } from "../lib/accessLabels";
 import "../styles/dashboard.css";
 
 const AccountPage: React.FC = () => {
     const { user, loading } = useAuth();
     const navigate = useNavigate();
     const [userData, setUserData] = useState<any>(null);
+    const [meData, setMeData] = useState<any>(null);
     const [newPassword, setNewPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
     const [passwordMsg, setPasswordMsg] = useState<{ text: string; ok: boolean } | null>(null);
@@ -16,7 +19,12 @@ const AccountPage: React.FC = () => {
 
     useEffect(() => {
         if (!user) return;
-        appApi.getMyUser().then(setUserData).catch(console.error);
+        Promise.allSettled([appApi.getMyUser(), appApi.getMe()])
+            .then(([userInfo, me]) => {
+                if (userInfo.status === "fulfilled") setUserData(userInfo.value);
+                if (me.status === "fulfilled") setMeData(me.value);
+            })
+            .catch(console.error);
     }, [user]);
 
     const handleChangePassword = async () => {
@@ -58,7 +66,7 @@ const AccountPage: React.FC = () => {
     return (
         <div
             style={{
-                maxWidth: 560,
+                maxWidth: 820,
                 margin: "0 auto",
                 padding: "32px 16px 40px",
                 fontFamily: "var(--font)",
@@ -95,9 +103,11 @@ const AccountPage: React.FC = () => {
                         e.currentTarget.style.color = "var(--text-secondary)";
                     }}
                 >
-                    ← Dashboard
+                    ← Torna all'app
                 </button>
             </div>
+
+            <TenantContextStrip sectionLabel="Profilo utente" />
 
             {/* Profile card */}
             <div className="db-card db-fade-in" style={{ padding: "20px 24px" }}>
@@ -106,7 +116,7 @@ const AccountPage: React.FC = () => {
                 <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
                     <div>
                         <div className="db-stat-label" style={{ marginBottom: 4 }}>Email</div>
-                        <div className="db-cell-primary">{userData.email ?? "—"}</div>
+                        <div className="db-cell-primary">{meData?.user?.email ?? userData.email ?? "—"}</div>
                     </div>
                     <div style={{ height: 1, background: "var(--border)" }} />
                     <div>
@@ -117,6 +127,46 @@ const AccountPage: React.FC = () => {
                     <div>
                         <div className="db-stat-label" style={{ marginBottom: 4 }}>Ruolo</div>
                         <div className="db-cell-primary">{userData.role_name ?? "—"}</div>
+                    </div>
+                </div>
+            </div>
+
+            <div className="db-card db-fade-in" style={{ padding: "20px 24px" }}>
+                <div className="db-card-title" style={{ marginBottom: 18 }}>Contesto di appartenenza</div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14 }}>
+                    <div>
+                        <div className="db-stat-label" style={{ marginBottom: 4 }}>Company</div>
+                        <div className="db-cell-primary">{meData?.access?.currentCompanyName ?? userData.company_name ?? "—"}</div>
+                    </div>
+                    <div>
+                        <div className="db-stat-label" style={{ marginBottom: 4 }}>Perimeter</div>
+                        <div className="db-cell-primary">{meData?.access?.currentPerimeterName ?? userData.perimeter_name ?? "—"}</div>
+                    </div>
+                    <div>
+                        <div className="db-stat-label" style={{ marginBottom: 4 }}>Access role</div>
+                        <div className="db-cell-primary">{labelAccessRole(meData?.access?.accessRole ?? userData?.access_role)}</div>
+                    </div>
+                    <div>
+                        <div className="db-stat-label" style={{ marginBottom: 4 }}>Contesto admin</div>
+                        <div className="db-cell-primary">
+                            {labelAdminContext({
+                                isOwner: meData?.isOwner === true || userData?.is_owner === true,
+                                isSuperAdmin: meData?.isSuperAdmin === true || userData?.is_super_admin === true,
+                                isAdmin: meData?.isAdmin === true,
+                            })}
+                        </div>
+                    </div>
+                    <div>
+                        <div className="db-stat-label" style={{ marginBottom: 4 }}>Livello account</div>
+                        <div className="db-cell-primary">{labelHighestRole(meData?.access?.highestRole)}</div>
+                    </div>
+                    <div>
+                        <div className="db-stat-label" style={{ marginBottom: 4 }}>Account identity</div>
+                        <div className="db-cell-primary">
+                            {(meData?.user?.email ?? userData?.email ?? "—")}
+                        </div>
+                        <div className="db-cell-secondary">User ID: {userData?.id ?? meData?.user?.id ?? "—"}</div>
                     </div>
                 </div>
             </div>

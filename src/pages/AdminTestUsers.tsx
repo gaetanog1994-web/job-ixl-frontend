@@ -3,6 +3,7 @@ import AdminScenariosManager from "./AdminScenariosManager";
 import AdminLocationsManager from "./AdminLocationsManager";
 import AdminRolesManager from "./AdminRolesManager";
 import { appApi } from "../lib/appApi";
+import TenantContextStrip from "../components/TenantContextStrip";
 import "../styles/dashboard.css";
 
 
@@ -12,11 +13,17 @@ import "../styles/dashboard.css";
 
 type User = {
   id: string;
+  first_name: string | null;
+  last_name: string | null;
   full_name: string | null;
+  email: string | null;
   availability_status: string | null;
   location_id: string | null;
+  location_name?: string | null;
   fixed_location?: boolean | null;
   role_id?: string | null;
+  role_name?: string | null;
+  access_role?: "user" | "admin" | "admin_user" | null;
 };
 
 type Location = {
@@ -55,6 +62,16 @@ const AdminTestUsers = () => {
   const [loadingTop, setLoadingTop] = useState(false);
   const [errorTop, setErrorTop] = useState<string | null>(null);
   const [maxApplications, setMaxApplications] = useState<number | null>(null);
+  const [inviteFirstName, setInviteFirstName] = useState("");
+  const [inviteLastName, setInviteLastName] = useState("");
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteAccessRole, setInviteAccessRole] = useState<"user" | "admin" | "admin_user">("user");
+
+  const [filterName, setFilterName] = useState("");
+  const [filterSurname, setFilterSurname] = useState("");
+  const [filterStatus, setFilterStatus] = useState("");
+  const [filterLocation, setFilterLocation] = useState("");
+  const [filterAccessRole, setFilterAccessRole] = useState("");
 
   const [activeScenarioLabel, setActiveScenarioLabel] = useState<string | null>(null);
 
@@ -236,6 +253,27 @@ const AdminTestUsers = () => {
     await loadUsers();
   };
 
+  const usersFiltered = users.filter((u) => {
+    const name = (u.first_name ?? "").toLowerCase();
+    const surname = (u.last_name ?? "").toLowerCase();
+    const status = (u.availability_status ?? "").toLowerCase();
+    const accessRole = (u.access_role ?? "").toLowerCase();
+
+    const byName = !filterName.trim() || name.includes(filterName.trim().toLowerCase());
+    const bySurname = !filterSurname.trim() || surname.includes(filterSurname.trim().toLowerCase());
+    const byStatus = !filterStatus || status === filterStatus.toLowerCase();
+    const byLocation = !filterLocation || String(u.location_id ?? "") === filterLocation;
+    const byAccessRole = !filterAccessRole || accessRole === filterAccessRole.toLowerCase();
+
+    return byName && bySurname && byStatus && byLocation && byAccessRole;
+  });
+
+  const accessRoleLabel = (role: string | null | undefined) => {
+    if (role === "admin") return "Admin";
+    if (role === "admin_user") return "Admin + User";
+    return "User";
+  };
+
 
   /* =======================
      RENDER
@@ -272,6 +310,8 @@ const AdminTestUsers = () => {
           {view === "roles" && "Gestione Ruoli"}
         </h1>
       </div>
+
+      <TenantContextStrip sectionLabel="Admin / Configurazione e utenti" />
 
 
       {/* ---- TOP ACTIONS BAR ---- */}
@@ -396,27 +436,148 @@ const AdminTestUsers = () => {
       {view === "users" && (
         <div className="db-card">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 20px", borderBottom: "1px solid var(--border)" }}>
-            <h2 style={{ margin: 0, fontSize: "16px", fontWeight: 700, color: "var(--text-primary)" }}>Lista Utenti ({users.length})</h2>
-            <button className="db-btn db-btn-outline" onClick={async () => {
-              const fullName = prompt("Nome completo utente:");
-              const email = prompt("Email utente:");
-              if (!fullName || !email) return;
-              try {
-                await appApi.adminCreateUser({ full_name: fullName, email });
-                await loadUsers();
-              } catch (e: any) {
-                alert(e?.message ?? "Errore creazione utente");
-              }
-            }}>
-              ➕ Aggiungi utente
-            </button>
+            <h2 style={{ margin: 0, fontSize: "16px", fontWeight: 700, color: "var(--text-primary)" }}>Lista Utenti ({usersFiltered.length})</h2>
+          </div>
+
+          <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--border)", background: "#fafafa" }}>
+            <div style={{ fontSize: "12px", fontWeight: 700, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "8px" }}>
+              Aggiungi utente
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: "10px" }}>
+              <input
+                className="db-filter-select"
+                style={{ height: "34px" }}
+                value={inviteFirstName}
+                onChange={(e) => setInviteFirstName(e.target.value)}
+                placeholder="Nome"
+              />
+              <input
+                className="db-filter-select"
+                style={{ height: "34px" }}
+                value={inviteLastName}
+                onChange={(e) => setInviteLastName(e.target.value)}
+                placeholder="Cognome"
+              />
+              <input
+                className="db-filter-select"
+                style={{ height: "34px" }}
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+                placeholder="Email"
+                type="email"
+              />
+              <select
+                className="db-filter-select"
+                style={{ height: "34px" }}
+                value={inviteAccessRole}
+                onChange={(e) => setInviteAccessRole(e.target.value as "user" | "admin" | "admin_user")}
+              >
+                <option value="user">User</option>
+                <option value="admin">Admin</option>
+                <option value="admin_user">Admin + User</option>
+              </select>
+              <button
+                className="db-btn db-btn-outline"
+                onClick={async () => {
+                  const firstName = inviteFirstName.trim();
+                  const lastName = inviteLastName.trim();
+                  const email = inviteEmail.trim().toLowerCase();
+                  if (!firstName || !lastName || !email) {
+                    alert("Compila Nome, Cognome ed Email.");
+                    return;
+                  }
+                  try {
+                    await appApi.adminInviteUser({
+                      first_name: firstName,
+                      last_name: lastName,
+                      full_name: `${firstName} ${lastName}`.trim(),
+                      email,
+                      location_id: null,
+                      access_role: inviteAccessRole,
+                    });
+                    setInviteFirstName("");
+                    setInviteLastName("");
+                    setInviteEmail("");
+                    setInviteAccessRole("user");
+                    await loadUsers();
+                  } catch (e: any) {
+                    alert(e?.message ?? "Errore aggiunta utente");
+                  }
+                }}
+              >
+                ➕ Aggiungi utente
+              </button>
+            </div>
           </div>
 
           <div style={{ overflowX: "auto", padding: "0" }}>
             <table className="db-apps-table" style={{ width: "100%", whiteSpace: "nowrap" }}>
               <thead>
                 <tr>
+                  <th>
+                    <input
+                      className="db-filter-select"
+                      style={{ height: "30px", fontSize: "12px", minWidth: "120px" }}
+                      placeholder="Filtro cognome"
+                      value={filterSurname}
+                      onChange={(e) => setFilterSurname(e.target.value)}
+                    />
+                  </th>
+                  <th>
+                    <input
+                      className="db-filter-select"
+                      style={{ height: "30px", fontSize: "12px", minWidth: "120px" }}
+                      placeholder="Filtro nome"
+                      value={filterName}
+                      onChange={(e) => setFilterName(e.target.value)}
+                    />
+                  </th>
+                  <th />
+                  <th>
+                    <select
+                      className="db-filter-select"
+                      style={{ height: "30px", fontSize: "12px", minWidth: "120px" }}
+                      value={filterAccessRole}
+                      onChange={(e) => setFilterAccessRole(e.target.value)}
+                    >
+                      <option value="">Tutti</option>
+                      <option value="user">User</option>
+                      <option value="admin">Admin</option>
+                      <option value="admin_user">Admin + User</option>
+                    </select>
+                  </th>
+                  <th>
+                    <select
+                      className="db-filter-select"
+                      style={{ height: "30px", fontSize: "12px", minWidth: "120px" }}
+                      value={filterStatus}
+                      onChange={(e) => setFilterStatus(e.target.value)}
+                    >
+                      <option value="">Tutti</option>
+                      <option value="available">Disponibile</option>
+                      <option value="inactive">Inattivo</option>
+                    </select>
+                  </th>
+                  <th>
+                    <select
+                      className="db-filter-select"
+                      style={{ height: "30px", fontSize: "12px", minWidth: "120px" }}
+                      value={filterLocation}
+                      onChange={(e) => setFilterLocation(e.target.value)}
+                    >
+                      <option value="">Tutte le sedi</option>
+                      {locations.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+                    </select>
+                  </th>
+                  <th />
+                  <th />
+                  <th />
+                </tr>
+                <tr>
+                  <th>Cognome</th>
                   <th>Nome</th>
+                  <th>Email</th>
+                  <th>Ruolo accesso</th>
                   <th>Stato</th>
                   <th>Sede</th>
                   <th align="center">Vincolante</th>
@@ -425,9 +586,31 @@ const AdminTestUsers = () => {
                 </tr>
               </thead>
               <tbody>
-                {users.map((u) => (
+                {usersFiltered.map((u) => (
                   <tr key={u.id}>
-                    <td><span style={{ fontWeight: 600 }}>{u.full_name}</span></td>
+                    <td><span style={{ fontWeight: 600 }}>{u.last_name ?? "—"}</span></td>
+                    <td><span style={{ fontWeight: 600 }}>{u.first_name ?? "—"}</span></td>
+                    <td>{u.email ?? "—"}</td>
+                    <td>
+                      <select
+                        className="db-filter-select"
+                        style={{ height: "30px", fontSize: "12px", minWidth: "125px" }}
+                        value={u.access_role ?? "user"}
+                        onChange={async (e) => {
+                          try {
+                            await adminUpdateUser(u.id, { access_role: e.target.value as any });
+                            await loadUsers();
+                          } catch (err: any) {
+                            alert(err?.message ?? "Errore ruolo accesso");
+                          }
+                        }}
+                      >
+                        <option value="user">User</option>
+                        <option value="admin">Admin</option>
+                        <option value="admin_user">Admin + User</option>
+                      </select>
+                      <div className="db-cell-secondary">{accessRoleLabel(u.access_role)}</div>
+                    </td>
                     
                     {/* Stato */}
                     <td>

@@ -23,9 +23,17 @@ export const AvailabilityProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   const reload = useCallback(async () => {
     try {
-      const [me, userInfo] = await Promise.allSettled([appApi.getMe(), appApi.getMyUser()]);
-      if (me.status === "fulfilled") setIsAdmin(!!me.value?.isAdmin);
-      if (userInfo.status === "fulfilled") setAvailabilityStatus(userInfo.value?.availability_status ?? null);
+      const me = await appApi.getMe();
+      setIsAdmin(!!me?.isAdmin);
+
+      const hasPerimeter = !!me?.access?.currentPerimeterId;
+      if (!hasPerimeter) {
+        setAvailabilityStatus(null);
+        return;
+      }
+
+      const userInfo = await appApi.getMyUser();
+      setAvailabilityStatus(userInfo?.availability_status ?? null);
     } catch {}
   }, []);
 

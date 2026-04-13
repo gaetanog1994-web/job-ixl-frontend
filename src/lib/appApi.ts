@@ -4,6 +4,7 @@ import { supabase } from "./supabaseClient";
 // appApi.ts
 
 const BASE = (import.meta.env.VITE_APP_API_URL || "").replace(/\/+$/, "");
+const TENANT_CONTEXT_STORAGE_KEY = "jip_tenant_context_v1";
 
 if (!BASE) {
     throw new Error(
@@ -19,15 +20,66 @@ async function getAccessToken(): Promise<string> {
     return token;
 }
 
+export type TenantContextSelection = {
+    companyId: string | null;
+    perimeterId: string | null;
+};
+
+function readTenantContext(): TenantContextSelection {
+    if (typeof window === "undefined") return { companyId: null, perimeterId: null };
+    const raw = window.localStorage.getItem(TENANT_CONTEXT_STORAGE_KEY);
+    if (!raw) return { companyId: null, perimeterId: null };
+    try {
+        const parsed = JSON.parse(raw);
+        return {
+            companyId: typeof parsed?.companyId === "string" && parsed.companyId.trim() ? parsed.companyId : null,
+            perimeterId: typeof parsed?.perimeterId === "string" && parsed.perimeterId.trim() ? parsed.perimeterId : null,
+        };
+    } catch {
+        return { companyId: null, perimeterId: null };
+    }
+}
+
+function writeTenantContext(next: TenantContextSelection) {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(
+        TENANT_CONTEXT_STORAGE_KEY,
+        JSON.stringify({
+            companyId: next.companyId ?? null,
+            perimeterId: next.perimeterId ?? null,
+        })
+    );
+}
+
+function mergeHeaders(base: HeadersInit | undefined, tenant: TenantContextSelection): HeadersInit {
+    const result: Record<string, string> = {};
+
+    if (base && typeof base === "object" && !Array.isArray(base) && !(base instanceof Headers)) {
+        Object.assign(result, base as Record<string, string>);
+    } else if (Array.isArray(base)) {
+        for (const [key, value] of base) result[key] = String(value);
+    } else if (base instanceof Headers) {
+        base.forEach((value, key) => {
+            result[key] = value;
+        });
+    }
+
+    if (tenant.companyId) result["x-company-id"] = tenant.companyId;
+    if (tenant.perimeterId) result["x-perimeter-id"] = tenant.perimeterId;
+
+    return result;
+}
+
 async function apiFetch(path: string, init?: RequestInit) {
     const token = await getAccessToken();
+    const tenant = readTenantContext();
 
     const res = await fetch(`${BASE}${path}`, {
         ...init,
         headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
-            ...(init?.headers ?? {}),
+            ...mergeHeaders(init?.headers, tenant),
         },
     });
 
@@ -52,6 +104,21 @@ async function apiFetch(path: string, init?: RequestInit) {
 }
 
 export const appApi = {
+    getTenantContext(): TenantContextSelection {
+        return readTenantContext();
+    },
+
+    setTenantContext(next: TenantContextSelection) {
+        writeTenantContext({
+            companyId: next.companyId ?? null,
+            perimeterId: next.perimeterId ?? null,
+        });
+    },
+
+    clearTenantContext() {
+        writeTenantContext({ companyId: null, perimeterId: null });
+    },
+
     async createTestScenario(name: string): Promise<{ id: string; name: string }> {
         const json = await apiFetch(`/api/admin/test-scenarios`, {
             method: "POST",
@@ -118,7 +185,13 @@ export const appApi = {
         });
     },
 
-    async getMe(): Promise<{ user: { id: string; email?: string }; isAdmin: boolean }> {
+    async getMe(): Promise<{
+        user: { id: string; email?: string };
+        isAdmin: boolean;
+        isOwner?: boolean;
+        isSuperAdmin?: boolean;
+        access?: any;
+    }> {
         return apiFetch(`/api/me`, { method: "GET" });
     },
 
@@ -395,10 +468,46 @@ export const appApi = {
         });
     },
 
-    async adminInviteUser(params: { email: string; full_name: string; location_id: string | null }) {
+    async adminInviteUser(params: {
+        email: string;
+        full_name?: string;
+        first_name?: string;
+        last_name?: string;
+        location_id: string | null;
+        access_role?: "user" | "admin" | "admin_user";
+    }) {
         return apiFetch(`/api/admin/users/invite`, {
             method: "POST",
             body: JSON.stringify(params),
         });
+    },
+
+    async platformGetCompanies() {
+        const json = await apiFetch(`/api/platform/companies`, { method: "GET" });
+        return json.companies ?? [];
+    },
+
+    async platformCreateCompany(params: {
+        name: string;
+        first_super_admin: { first_name: string; last_name: string; email: string };
+    }) {
+        const json = await apiFetch(`/api/platform/companies`, {
+            method: "POST",
+            body: JSON.stringify(params),
+        });
+        return json.company;
+    },
+
+    async platformGetPerimeters(companyId: string) {
+        const json = await apiFetch(`/api/platform/companies/${companyId}/perimeters`, { method: "GET" });
+        return json.perimeters ?? [];
+    },
+
+    async platformCreatePerimeter(companyId: string, params: { name: string }) {
+        const json = await apiFetch(`/api/platform/companies/${companyId}/perimeters`, {
+            method: "POST",
+            body: JSON.stringify(params),
+        });
+        return json.perimeter;
     },
 };

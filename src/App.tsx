@@ -3,6 +3,10 @@ import { useAuth } from "./lib/AuthContext";
 
 import MobilityDashboard from "./pages/MobilityDashboard";
 import AccountPage from "./pages/AccountPage";
+import HomeEntry from "./pages/HomeEntry";
+import OwnerAreaPage from "./pages/OwnerAreaPage";
+import CompanyPerimetersPage from "./pages/CompanyPerimetersPage";
+import ContextSwitcherPage from "./pages/ContextSwitcherPage";
 
 import AdminCandidatures from "./pages/AdminCandidatures";
 import AdminMaps from "./pages/AdminMaps";
@@ -13,6 +17,8 @@ import TopBar from "./pages/TopBar";
 import PreAuthPage from "./pages/PreAuthPage";
 import LoginPage from "./pages/LoginPage";
 import RequireAdmin from "./components/RequireAdmin";
+import RequireOwner from "./components/RequireOwner";
+import RequireCompanyAdmin from "./components/RequireCompanyAdmin";
 
 function App() {
   const { user, loading } = useAuth();
@@ -61,7 +67,19 @@ function App() {
           {user && (
             <>
               {/* Unified dashboard (replaces DashboardPage + AccountPage) */}
-              <Route path="/" element={<MobilityDashboard />} />
+              <Route path="/" element={<HomeEntry />} />
+              <Route path="/select-context" element={<ContextSwitcherPage />} />
+              <Route path="/dashboard" element={<MobilityDashboard />} />
+
+              <Route path="/owner" element={<RequireOwner><OwnerAreaPage /></RequireOwner>} />
+              <Route
+                path="/companies/:companyId/perimeters"
+                element={
+                  <RequireCompanyAdmin>
+                    <CompanyPerimetersPage />
+                  </RequireCompanyAdmin>
+                }
+              />
 
               <Route path="/account" element={<AccountPage />} />
 
