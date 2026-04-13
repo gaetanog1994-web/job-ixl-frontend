@@ -218,6 +218,16 @@ const GlobalSidebar: React.FC = () => {
             </div>
           )}
 
+          {/* Account */}
+          <button
+            className="db-nav-item"
+            onClick={() => { go("/account"); }}
+            id="global-nav-account"
+          >
+            <span className="db-nav-icon">🔑</span>
+            <span className="db-nav-label">Cambia password</span>
+          </button>
+
           {/* Logout */}
           <button className="db-logout-btn" onClick={handleLogout} id="global-logout-btn">
             <span style={{ fontSize: 14 }}>↩</span>

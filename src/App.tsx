@@ -2,6 +2,7 @@ import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "./lib/AuthContext";
 
 import MobilityDashboard from "./pages/MobilityDashboard";
+import AccountPage from "./pages/AccountPage";
 
 import AdminCandidatures from "./pages/AdminCandidatures";
 import AdminMaps from "./pages/AdminMaps";
@@ -62,8 +63,7 @@ function App() {
               {/* Unified dashboard (replaces DashboardPage + AccountPage) */}
               <Route path="/" element={<MobilityDashboard />} />
 
-              {/* /account → redirect to unified dashboard */}
-              <Route path="/account" element={<Navigate to="/" replace />} />
+              <Route path="/account" element={<AccountPage />} />
 
               {/* Admin (guarded by RequireAdmin) */}
               <Route path="/admin" element={<Navigate to="/admin/interlocking" replace />} />
