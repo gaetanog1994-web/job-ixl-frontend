@@ -484,6 +484,213 @@
 }
 
 /* ==========================================================================
+   OWNER PLATFORM UX
+   ========================================================================== */
+
+.owner-primary-btn {
+  background: var(--brand);
+  color: #ffffff;
+  border-color: var(--brand);
+}
+
+.owner-primary-btn:hover {
+  filter: brightness(0.95);
+}
+
+.owner-primary-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.owner-console-header {
+  padding: 20px 22px;
+  background: linear-gradient(145deg, #ffffff 20%, #f8fafc 100%);
+}
+
+.owner-create-panel {
+  padding: 18px 20px;
+}
+
+.owner-companies-panel {
+  overflow: hidden;
+}
+
+.owner-company-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+  padding: 16px;
+}
+
+.owner-company-card {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: #ffffff;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: transform 0.14s ease, box-shadow 0.14s ease, border-color 0.14s ease;
+  cursor: pointer;
+}
+
+.owner-company-card:hover {
+  transform: translateY(-2px);
+  border-color: #cfd8e3;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+}
+
+.owner-company-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.owner-company-name {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.3;
+}
+
+.owner-company-slug {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.owner-company-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.owner-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  background: #f1f5f9;
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+}
+
+.owner-company-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.owner-flow-card {
+  padding: 16px 20px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  border: 1px dashed #cbd5e1;
+}
+
+.owner-flow-step {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.owner-flow-step + .owner-flow-step {
+  margin-top: 12px;
+}
+
+.owner-flow-step.done {
+  color: #15803d;
+  font-weight: 600;
+}
+
+.owner-company-detail-header {
+  padding: 20px 22px;
+}
+
+.owner-company-detail-metrics {
+  margin-top: 14px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.owner-back-link {
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+}
+
+.owner-back-link:hover {
+  color: var(--text-primary);
+  border-color: #cbd5e1;
+}
+
+.owner-super-admin-panel {
+  overflow: hidden;
+}
+
+.owner-super-admin-list {
+  padding: 14px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.owner-super-admin-card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  background: #ffffff;
+}
+
+.owner-super-admin-main {
+  min-width: 0;
+}
+
+.owner-super-admin-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.owner-super-admin-email {
+  margin-top: 3px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  word-break: break-word;
+}
+
+.owner-super-admin-side {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.owner-inline-note {
+  border: 1px solid #fde68a;
+  border-radius: 10px;
+  background: #fffbeb;
+  color: #92400e;
+  font-size: 12px;
+  padding: 10px 12px;
+}
+
+/* ==========================================================================
    CONTENT LAYOUT
    ========================================================================== */
 
@@ -1027,4 +1234,26 @@
 
 .db-fade-in {
   animation: db-fadeIn 0.25s ease forwards;
+}
+
+@media (max-width: 760px) {
+  .owner-company-grid {
+    grid-template-columns: 1fr;
+    padding: 12px;
+  }
+
+  .owner-company-actions .db-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .owner-super-admin-card {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .owner-super-admin-side {
+    width: 100%;
+    justify-content: flex-start;
+  }
 }

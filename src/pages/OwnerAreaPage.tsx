@@ -14,11 +14,20 @@ type CompanyRow = {
   super_admins_count?: number;
 };
 
+const formatDate = (value?: string) => {
+  if (!value) return "n/a";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "n/a";
+  return date.toLocaleDateString("it-IT", { day: "2-digit", month: "short", year: "numeric" });
+};
+
 const OwnerAreaPage: React.FC = () => {
   const navigate = useNavigate();
   const [companies, setCompanies] = useState<CompanyRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [showCreatePanel, setShowCreatePanel] = useState(false);
+  const [createdCompanyFlow, setCreatedCompanyFlow] = useState<{ id: string; name: string } | null>(null);
 
   const [companyName, setCompanyName] = useState("");
   const [firstName, setFirstName] = useState("");
@@ -74,7 +83,8 @@ const OwnerAreaPage: React.FC = () => {
 
       appApi.setTenantContext({ companyId: created.id, perimeterId: null });
       await loadCompanies();
-      navigate(`/companies/${created.id}/perimeters`);
+      setCreatedCompanyFlow({ id: created.id, name: created.name ?? name });
+      setShowCreatePanel(false);
       setCompanyName("");
       setFirstName("");
       setLastName("");
@@ -97,113 +107,160 @@ const OwnerAreaPage: React.FC = () => {
     >
       <TenantContextStrip sectionLabel="Owner area" />
 
-      <div className="db-card" style={{ padding: "18px 20px", marginBottom: "18px" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", flexWrap: "wrap" }}>
+      <div className="db-card owner-console-header" style={{ marginBottom: "18px" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "14px", flexWrap: "wrap" }}>
           <div>
-            <h1 style={{ margin: 0, fontSize: "20px", color: "var(--text-primary)" }}>Owner Area</h1>
-            <p style={{ margin: "6px 0 0", fontSize: "13px", color: "var(--text-secondary)" }}>
-              Livello piattaforma: gestione companies e bootstrap Super Admin.
+            <h1 style={{ margin: 0, fontSize: "24px", color: "var(--text-primary)" }}>Platform / Companies</h1>
+            <p style={{ margin: "6px 0 0", fontSize: "13px", color: "var(--text-secondary)", maxWidth: "700px" }}>
+              Console owner per governare onboarding company, contesto multi-tenant e passaggio operativo verso i Super Admin.
             </p>
           </div>
-          <button className="db-btn db-btn-outline" onClick={loadCompanies} disabled={loading || creating}>
-            Aggiorna
-          </button>
+          <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
+            <button
+              className="db-btn owner-primary-btn"
+              onClick={() => setShowCreatePanel((prev) => !prev)}
+              disabled={creating}
+            >
+              + New Company
+            </button>
+            <button className="db-btn db-btn-outline" onClick={loadCompanies} disabled={loading || creating}>
+              Refresh
+            </button>
+          </div>
         </div>
       </div>
 
-      <div className="db-card" style={{ padding: "18px 20px", marginBottom: "18px" }}>
-        <h2 style={{ margin: 0, fontSize: "15px", color: "var(--text-primary)" }}>Create profile</h2>
-        <p style={{ margin: "6px 0 14px", fontSize: "12px", color: "var(--text-secondary)" }}>
-          Crea company e primo Super Admin in un unico flusso.
-        </p>
-
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "10px" }}>
-          <input
-            className="db-filter-select"
-            style={{ height: "36px" }}
-            placeholder="Company name"
-            value={companyName}
-            onChange={(e) => setCompanyName(e.target.value)}
-            disabled={creating}
-          />
-          <input
-            className="db-filter-select"
-            style={{ height: "36px" }}
-            placeholder="Nome Super Admin"
-            value={firstName}
-            onChange={(e) => setFirstName(e.target.value)}
-            disabled={creating}
-          />
-          <input
-            className="db-filter-select"
-            style={{ height: "36px" }}
-            placeholder="Cognome Super Admin"
-            value={lastName}
-            onChange={(e) => setLastName(e.target.value)}
-            disabled={creating}
-          />
-          <input
-            className="db-filter-select"
-            style={{ height: "36px" }}
-            placeholder="Email Super Admin"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            disabled={creating}
-            type="email"
-          />
+      {createdCompanyFlow && (
+        <div className="db-card owner-flow-card" style={{ marginBottom: "18px" }}>
+          <div className="owner-flow-step done">Step 1: Company created ✅</div>
+          <div className="owner-flow-step">
+            Step 2: Add Super Admin
+            <button
+              className="db-btn owner-primary-btn"
+              onClick={() => navigate(`/companies/${createdCompanyFlow.id}/perimeters`)}
+            >
+              Open company detail
+            </button>
+          </div>
         </div>
+      )}
 
-        <div style={{ marginTop: "12px", display: "flex", justifyContent: "flex-end" }}>
-          <button className="db-btn db-btn-outline" onClick={handleCreateProfile} disabled={creating}>
-            {creating ? "Creazione..." : "Create profile"}
-          </button>
+      {showCreatePanel && (
+        <div className="db-card owner-create-panel" style={{ marginBottom: "18px" }}>
+          <h2 style={{ margin: 0, fontSize: "15px", color: "var(--text-primary)" }}>New company profile</h2>
+          <p style={{ margin: "6px 0 14px", fontSize: "12px", color: "var(--text-secondary)" }}>
+            Crea company e primo Super Admin in un unico flusso guidato.
+          </p>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "10px" }}>
+            <input
+              className="db-filter-select"
+              style={{ height: "38px" }}
+              placeholder="Company name"
+              value={companyName}
+              onChange={(e) => setCompanyName(e.target.value)}
+              disabled={creating}
+            />
+            <input
+              className="db-filter-select"
+              style={{ height: "38px" }}
+              placeholder="Nome Super Admin"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              disabled={creating}
+            />
+            <input
+              className="db-filter-select"
+              style={{ height: "38px" }}
+              placeholder="Cognome Super Admin"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              disabled={creating}
+            />
+            <input
+              className="db-filter-select"
+              style={{ height: "38px" }}
+              placeholder="Email Super Admin"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              disabled={creating}
+              type="email"
+            />
+          </div>
+
+          <div style={{ marginTop: "12px", display: "flex", justifyContent: "flex-end" }}>
+            <button className="db-btn owner-primary-btn" onClick={handleCreateProfile} disabled={creating}>
+              {creating ? "Creating..." : "Create Company"}
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
-      <div className="db-card">
+      <div className="db-card owner-companies-panel">
         <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border)" }}>
-          <h2 style={{ margin: 0, fontSize: "15px", color: "var(--text-primary)" }}>
-            Company list ({sortedCompanies.length})
+          <h2 style={{ margin: 0, fontSize: "15px", color: "var(--text-primary)", display: "flex", justifyContent: "space-between", gap: "10px", flexWrap: "wrap" }}>
+            <span>Companies ({sortedCompanies.length})</span>
+            <span style={{ fontSize: "12px", color: "var(--text-secondary)", fontWeight: 500 }}>
+              Click on a card to enter company detail
+            </span>
           </h2>
         </div>
 
-        <div className="db-apps-table-wrap">
-          <table className="db-apps-table" style={{ width: "100%" }}>
-            <thead>
-              <tr>
-                <th>Company</th>
-                <th>Status</th>
-                <th>Perimeters</th>
-                <th>Super Admin</th>
-                <th>Azione</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sortedCompanies.map((company) => (
-                <tr key={company.id}>
-                  <td>
-                    <div className="db-cell-primary">{company.name}</div>
-                    <div className="db-cell-secondary">{company.slug ?? "-"}</div>
-                  </td>
-                  <td>{company.status ?? "active"}</td>
-                  <td>{company.perimeters_count ?? 0}</td>
-                  <td>{company.super_admins_count ?? 0}</td>
-                  <td>
-                    <Link to={`/companies/${company.id}/perimeters`} className="db-btn db-btn-outline" style={{ textDecoration: "none" }}>
-                      Open
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-              {!loading && sortedCompanies.length === 0 && (
-                <tr>
-                  <td colSpan={5} style={{ color: "var(--text-secondary)" }}>
-                    Nessuna company disponibile.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+        <div className="owner-company-grid">
+          {sortedCompanies.map((company) => (
+            <div
+              key={company.id}
+              className="owner-company-card"
+              role="button"
+              tabIndex={0}
+              onClick={() => navigate(`/companies/${company.id}/perimeters`)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  navigate(`/companies/${company.id}/perimeters`);
+                }
+              }}
+            >
+              <div className="owner-company-card-head">
+                <div>
+                  <div className="owner-company-name">{company.name}</div>
+                  <div className="owner-company-slug">{company.slug ?? "slug n/a"}</div>
+                </div>
+                <span className="owner-chip">{company.status ?? "active"}</span>
+              </div>
+
+              <div className="owner-company-meta">
+                <span>Perimeters: {company.perimeters_count ?? 0}</span>
+                <span>Super Admins: {company.super_admins_count ?? 0}</span>
+                <span>Created: {formatDate(company.created_at)}</span>
+              </div>
+
+              <div className="owner-company-actions" onClick={(event) => event.stopPropagation()}>
+                <Link
+                  to={`/companies/${company.id}/perimeters`}
+                  className="db-btn owner-primary-btn"
+                  style={{ textDecoration: "none" }}
+                >
+                  Enter
+                </Link>
+                <button className="db-btn db-btn-outline" disabled>
+                  Edit
+                </button>
+                <button className="db-btn db-btn-outline" disabled>
+                  Delete
+                </button>
+              </div>
+            </div>
+          ))}
+
+          {!loading && sortedCompanies.length === 0 && (
+            <div className="db-empty-state" style={{ gridColumn: "1 / -1" }}>
+              <div className="db-empty-state-title">Nessuna company disponibile</div>
+              <div className="db-empty-state-desc">
+                Crea una nuova company per attivare il primo flusso operativo owner.
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
