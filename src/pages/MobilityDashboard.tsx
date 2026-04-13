@@ -85,6 +85,13 @@ const MobilityDashboard: React.FC = () => {
     return () => { cancelled = true; };
   }, [user]);
 
+  /* ---------- sync availabilityStatus → userData (admin may change it externally) ---------- */
+  useEffect(() => {
+    if (availabilityStatus !== null && userData) {
+      setUserData((prev: any) => ({ ...prev, availability_status: availabilityStatus }));
+    }
+  }, [availabilityStatus]);
+
   /* ---------- unique locations count for UserStats ---------- */
   const locationsCount = useMemo(
     () => (mapLocations.length > 0 ? mapLocations.length : undefined),
