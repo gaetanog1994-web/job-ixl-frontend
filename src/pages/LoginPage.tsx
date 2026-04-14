@@ -13,6 +13,9 @@ const LoginPage: React.FC = () => {
         setError("");
 
         try {
+            // reset tenant context vecchio prima del nuovo login
+            appApi.clearTenantContext();
+
             const { data, error: loginError } =
                 await supabase.auth.signInWithPassword({
                     email,
@@ -28,14 +31,16 @@ const LoginPage: React.FC = () => {
                 setError("Login impossibile: utente non trovato.");
                 return;
             }
-            if (!data.user) {
-                setError("Login impossibile: utente non trovato.");
-                return;
-            }
 
-            // ✅ Bootstrap profilo applicativo se manca (caso: signup con email confirmation)
+            // Legge access context: se non c'è perimeter, non chiamare /api/users/me
+            const me = await appApi.getMe();
+            const hasPerimeter = !!me?.access?.currentPerimeterId;
+
+            // ✅ Bootstrap profilo applicativo se manca (solo quando endpoint /users/me è valido)
             try {
-                await appApi.getMyUser(); // se esiste già, ok
+                if (hasPerimeter) {
+                    await appApi.getMyUser(); // se esiste già, ok
+                }
             } catch (e: any) {
                 const msg = String(e?.message ?? "");
 

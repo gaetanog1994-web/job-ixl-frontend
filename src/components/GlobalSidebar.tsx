@@ -37,16 +37,23 @@ const GlobalSidebar: React.FC = () => {
 
     const load = async () => {
       try {
-        const [userInfo, me] = await Promise.allSettled([
-          appApi.getMyUser(),
-          appApi.getMe(),
-        ]);
+        const mePayload = await appApi.getMe();
         if (cancelled) return;
-        if (userInfo.status === "fulfilled") {
-          setUserData(userInfo.value);
+        setMeData(mePayload);
+
+        const hasPerimeter = !!mePayload?.access?.currentPerimeterId;
+        if (hasPerimeter) {
+          try {
+            const userInfo = await appApi.getMyUser();
+            if (!cancelled) setUserData(userInfo);
+          } catch {
+            if (!cancelled) setUserData(null);
+          }
+        } else if (!cancelled) {
+          setUserData(null);
         }
-        if (me.status === "fulfilled") {
-          const mePayload = me.value;
+
+        if (mePayload) {
           setMeData(mePayload);
           const access = mePayload?.access ?? null;
           const companyMemberships = Array.isArray(access?.companies) ? access.companies : [];
