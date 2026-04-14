@@ -83,6 +83,7 @@ export function getAvailableContexts(me: MePayload | null | undefined): Availabl
   const contexts: AvailableContext[] = [];
 
   if (me?.isOwner === true) {
+    // Owner context always routes to /owner (platform area). No companyId/perimeterId needed.
     contexts.push({
       key: "platform-owner",
       level: "platform",

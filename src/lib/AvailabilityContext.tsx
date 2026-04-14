@@ -47,6 +47,9 @@ export const AvailabilityProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const toggleAvailability = useCallback(async () => {
     if (!isAdmin) return;
     try {
+      // activateMe/deactivateMe go through apiFetch which auto-injects
+      // x-company-id + x-perimeter-id from localStorage tenant context.
+      // requireTenantScope on these routes is satisfied without extra wiring here.
       if (availabilityStatus === "available") {
         await appApi.deactivateMe();
         setAvailabilityStatus("inactive");

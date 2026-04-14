@@ -7,6 +7,7 @@ export default function RequireAdmin({ children }: { children: React.ReactNode }
     const { user, loading: authLoading } = useAuth();
     const [checking, setChecking] = useState(true);
     const [isAdmin, setIsAdmin] = useState(false);
+    const [me, setMe] = useState<Awaited<ReturnType<typeof appApi.getMe>> | null>(null);
 
     useEffect(() => {
         let cancelled = false;
@@ -15,16 +16,23 @@ export default function RequireAdmin({ children }: { children: React.ReactNode }
             if (!user) {
                 if (!cancelled) {
                     setIsAdmin(false);
+                    setMe(null);
                     setChecking(false);
                 }
                 return;
             }
 
             try {
-                const me = await appApi.getMe();
-                if (!cancelled) setIsAdmin(me.isAdmin === true);
+                const result = await appApi.getMe();
+                if (!cancelled) {
+                    setMe(result);
+                    setIsAdmin(result.isAdmin === true);
+                }
             } catch {
-                if (!cancelled) setIsAdmin(false);
+                if (!cancelled) {
+                    setMe(null);
+                    setIsAdmin(false);
+                }
             } finally {
                 if (!cancelled) setChecking(false);
             }
@@ -40,7 +48,11 @@ export default function RequireAdmin({ children }: { children: React.ReactNode }
 
     if (authLoading || checking) return <p style={{ padding: 20 }}>Verifica permessi…</p>;
     if (!user) return <Navigate to="/login" replace />;
-    if (!isAdmin) return <Navigate to="/" replace />;
+    if (!isAdmin) {
+        // User has perimeters but none selected → needs context selection, not home.
+        const needsContext = (me?.access?.perimeters?.length ?? 0) > 0 && !me?.access?.currentPerimeterId;
+        return <Navigate to={needsContext ? "/select-context" : "/"} replace />;
+    }
 
     return <>{children}</>;
 }
