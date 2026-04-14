@@ -8,6 +8,7 @@ interface MapPanelProps {
   filters: MapFilters;
   onLocationsLoaded: (locations: MapLocation[]) => void;
   onApplicationUpdate?: () => void;
+  onCampaignStatusLoaded?: (status: "open" | "closed") => void;
 }
 
 const MapPanel: React.FC<MapPanelProps> = ({
@@ -15,6 +16,7 @@ const MapPanel: React.FC<MapPanelProps> = ({
   filters,
   onLocationsLoaded,
   onApplicationUpdate,
+  onCampaignStatusLoaded,
 }) => {
   return (
     <div className="db-card db-map-panel">
@@ -53,6 +55,7 @@ const MapPanel: React.FC<MapPanelProps> = ({
             filterRoleName={filters.roleName || undefined}
             onLocationsLoaded={onLocationsLoaded}
             onApplicationUpdate={onApplicationUpdate}
+            onCampaignStatusLoaded={onCampaignStatusLoaded}
           />
         </div>
       </div>

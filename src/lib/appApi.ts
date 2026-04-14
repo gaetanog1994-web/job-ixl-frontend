@@ -499,6 +499,19 @@ export const appApi = {
         });
     },
 
+    async adminGetCampaignStatus(): Promise<{ campaign_status: "open" | "closed" }> {
+        const json = await apiFetch(`/api/admin/campaign-status`, { method: "GET" });
+        return { campaign_status: json.campaign_status };
+    },
+
+    async adminSetCampaignStatus(status: "open" | "closed"): Promise<{ campaign_status: "open" | "closed" }> {
+        const json = await apiFetch(`/api/admin/campaign-status`, {
+            method: "PATCH",
+            body: JSON.stringify({ campaign_status: status }),
+        });
+        return { campaign_status: json.campaign_status };
+    },
+
     async platformGetCompanies() {
         const json = await apiFetch(`/api/platform/companies`, { method: "GET" });
         return json.companies ?? [];

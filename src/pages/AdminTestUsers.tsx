@@ -62,6 +62,7 @@ const AdminTestUsers = () => {
   const [loadingTop, setLoadingTop] = useState(false);
   const [errorTop, setErrorTop] = useState<string | null>(null);
   const [maxApplications, setMaxApplications] = useState<number | null>(null);
+  const [campaignStatus, setCampaignStatus] = useState<"open" | "closed" | null>(null);
   const [inviteFirstName, setInviteFirstName] = useState("");
   const [inviteLastName, setInviteLastName] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
@@ -145,6 +146,26 @@ const AdminTestUsers = () => {
     }
   };
 
+  const loadCampaignStatus = async () => {
+    try {
+      const data = await appApi.adminGetCampaignStatus();
+      setCampaignStatus(data.campaign_status);
+    } catch (e) {
+      console.error("LOAD CAMPAIGN STATUS ERROR:", e);
+      setCampaignStatus(null);
+    }
+  };
+
+  const toggleCampaignStatus = async () => {
+    const next = campaignStatus === "open" ? "closed" : "open";
+    try {
+      const data = await appApi.adminSetCampaignStatus(next);
+      setCampaignStatus(data.campaign_status);
+    } catch (e: any) {
+      alert("Errore aggiornamento campagna: " + (e?.message ?? "unknown"));
+    }
+  };
+
 
   const loadAll = async () => {
     await Promise.all([
@@ -153,7 +174,8 @@ const AdminTestUsers = () => {
       loadPositions(),
       loadScenarios(),
       loadRoles(),
-      loadAppConfig()
+      loadAppConfig(),
+      loadCampaignStatus(),
     ]);
   };
 
@@ -417,7 +439,7 @@ const AdminTestUsers = () => {
             </p>
           </div>
 
-          <div className="db-card" style={{ cursor: "pointer", transition: "transform 0.15s", border: "2px solid transparent", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", padding: "24px" }} 
+          <div className="db-card" style={{ cursor: "pointer", transition: "transform 0.15s", border: "2px solid transparent", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", padding: "24px" }}
             onClick={() => setView("roles")}
             onMouseEnter={e => e.currentTarget.style.borderColor = "var(--brand-light)"}
             onMouseLeave={e => e.currentTarget.style.borderColor = "transparent"}
@@ -427,6 +449,37 @@ const AdminTestUsers = () => {
             <p style={{ margin: 0, fontSize: "13px", color: "var(--text-secondary)", lineHeight: 1.5 }}>
               Definisci i ruoli aziendali per gli utenti e per le posizioni.
             </p>
+          </div>
+
+          {/* Campaign status toggle card */}
+          <div className="db-card" style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", padding: "24px", gap: "12px" }}>
+            <div style={{ fontSize: "38px" }}>📣</div>
+            <h3 style={{ margin: 0, fontSize: "16px", color: "var(--text-primary)" }}>Campagna di mobilità</h3>
+            {campaignStatus !== null ? (
+              <>
+                <div style={{
+                  display: "inline-flex", alignItems: "center", gap: "6px",
+                  padding: "4px 12px", borderRadius: "999px", fontSize: "13px", fontWeight: 700,
+                  background: campaignStatus === "open" ? "#ecfdf5" : "#fef2f2",
+                  color: campaignStatus === "open" ? "#059669" : "#dc2626",
+                  border: `1px solid ${campaignStatus === "open" ? "#a7f3d0" : "#fca5a5"}`,
+                }}>
+                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: campaignStatus === "open" ? "#10b981" : "#ef4444" }} />
+                  {campaignStatus === "open" ? "Aperta" : "Chiusa"}
+                </div>
+                <button
+                  className="db-btn db-btn-outline"
+                  style={campaignStatus === "open"
+                    ? { color: "#dc2626", borderColor: "#fca5a5", background: "#fef2f2" }
+                    : { color: "#059669", borderColor: "#a7f3d0", background: "#ecfdf5" }}
+                  onClick={toggleCampaignStatus}
+                >
+                  {campaignStatus === "open" ? "Chiudi campagna" : "Apri campagna"}
+                </button>
+              </>
+            ) : (
+              <span style={{ fontSize: "13px", color: "var(--text-secondary)" }}>Caricamento…</span>
+            )}
           </div>
 
         </div>

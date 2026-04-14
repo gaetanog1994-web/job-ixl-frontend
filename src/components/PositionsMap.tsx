@@ -107,6 +107,8 @@ type Props = {
     onLocationsLoaded?: (locations: MapLocation[]) => void;
     /** Called whenever the user successfully applies or withdraws from a role */
     onApplicationUpdate?: () => void;
+    /** Called after each data load with the campaign status from the map payload */
+    onCampaignStatusLoaded?: (status: "open" | "closed") => void;
 };
 
 /* ---------- COMPONENT ---------- */
@@ -122,6 +124,7 @@ const PositionsMap = ({
     filterRoleName,
     onLocationsLoaded,
     onApplicationUpdate,
+    onCampaignStatusLoaded,
 }: Props) => {
     useEffect(() => {
         console.log("[DEBUG] highlightPositionId =", highlightPositionId);
@@ -131,6 +134,7 @@ const PositionsMap = ({
     const [myUserId, setMyUserId] = useState<string | null>(null);
     const [myStatus, setMyStatus] = useState<"available" | "inactive" | null>(null);
     const [meLocation, setMeLocation] = useState<MeLocation | null>(null);
+    const [campaignStatus, setCampaignStatus] = useState<"open" | "closed">("closed");
 
     const [maxApplications, setMaxApplications] = useState<number | null>(null);
     const [usedPriorities, setUsedPriorities] = useState<number[]>([]);
@@ -194,6 +198,9 @@ const PositionsMap = ({
             setMeLocation(payload.meLocation);
             setMaxApplications(payload.maxApplications);
             setUsedPriorities(payload.usedPriorities);
+            const status: "open" | "closed" = payload.campaign_status === "open" ? "open" : "closed";
+            setCampaignStatus(status);
+            onCampaignStatusLoaded?.(status);
             const filteredLocations = applyDefensiveVisibilityFilter(
                 payload.locations,
                 payload.viewerRoleId ?? null,
@@ -604,6 +611,7 @@ const PositionsMap = ({
                                                             <>
                                                                 <select
                                                                     value={selectedPriorities[r.role_id] ?? ""}
+                                                                    disabled={campaignStatus !== "open"}
                                                                     onChange={(e) =>
                                                                         setSelectedPriorities((prev) => ({
                                                                             ...prev,
@@ -624,7 +632,8 @@ const PositionsMap = ({
 
                                                                 <button
                                                                     onClick={() => handleApplyToRole(r)}
-                                                                    disabled={selectedPriorities[r.role_id] == null}
+                                                                    disabled={selectedPriorities[r.role_id] == null || campaignStatus !== "open"}
+                                                                    title={campaignStatus !== "open" ? "Campagna chiusa" : undefined}
                                                                 >
                                                                     Candidati
                                                                 </button>

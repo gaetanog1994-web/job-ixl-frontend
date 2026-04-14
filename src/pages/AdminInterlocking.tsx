@@ -256,6 +256,7 @@ const AdminInterlocking = () => {
     const [loadingScenarios, setLoadingScenarios] = useState(false);
     const [loadingReferenceData, setLoadingReferenceData] = useState(false);
     const [deleting, setDeleting] = useState(false);
+    const [campaignStatus, setCampaignStatus] = useState<"open" | "closed" | null>(null);
 
     const [buildResult, setBuildResult] = useState<BuildResult | null>(null);
     const [strategy, setStrategy] = useState<UiStrategy>("NONE");
@@ -601,9 +602,29 @@ const AdminInterlocking = () => {
         }
     };
 
+    const loadCampaignStatus = async () => {
+        try {
+            const data = await appApi.adminGetCampaignStatus();
+            setCampaignStatus(data.campaign_status);
+        } catch {
+            setCampaignStatus(null);
+        }
+    };
+
+    const toggleCampaignStatus = async () => {
+        const next = campaignStatus === "open" ? "closed" : "open";
+        try {
+            const data = await appApi.adminSetCampaignStatus(next);
+            setCampaignStatus(data.campaign_status);
+        } catch (e: any) {
+            setError("Errore aggiornamento campagna: " + (e?.message ?? "unknown"));
+        }
+    };
+
     useEffect(() => {
         loadScenarios();
         loadReferenceData();
+        loadCampaignStatus();
     }, []);
 
     const usersById = useMemo(() => {
@@ -1187,6 +1208,37 @@ const AdminInterlocking = () => {
                     </div>
                 </div>
                 <TenantContextStrip sectionLabel="Admin / Interlocking" style={{ marginBottom: 0 }} />
+
+                {/* ── Campaign status toggle (compact) ── */}
+                {campaignStatus !== null && (
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "10px 16px", background: "#FFFFFF", border: "1px solid #E5E7EB", borderRadius: "14px" }}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <span style={{ fontSize: "13px", fontWeight: 600, color: "#374151" }}>Campagna:</span>
+                        <div style={{
+                            display: "inline-flex", alignItems: "center", gap: "5px",
+                            padding: "3px 10px", borderRadius: "999px", fontSize: "12px", fontWeight: 700,
+                            background: campaignStatus === "open" ? "#ecfdf5" : "#fef2f2",
+                            color: campaignStatus === "open" ? "#059669" : "#dc2626",
+                            border: `1px solid ${campaignStatus === "open" ? "#a7f3d0" : "#fca5a5"}`,
+                        }}>
+                            <div style={{ width: 7, height: 7, borderRadius: "50%", background: campaignStatus === "open" ? "#10b981" : "#ef4444" }} />
+                            {campaignStatus === "open" ? "Aperta" : "Chiusa"}
+                        </div>
+                        <button
+                            style={{
+                                border: `1px solid ${campaignStatus === "open" ? "#fca5a5" : "#a7f3d0"}`,
+                                background: campaignStatus === "open" ? "#fef2f2" : "#ecfdf5",
+                                color: campaignStatus === "open" ? "#dc2626" : "#059669",
+                                borderRadius: "10px", padding: "5px 12px", cursor: "pointer",
+                                fontSize: "12px", fontWeight: 600,
+                            }}
+                            onClick={toggleCampaignStatus}
+                        >
+                            {campaignStatus === "open" ? "Chiudi campagna" : "Apri campagna"}
+                        </button>
+                    </div>
+                )}
 
                 {/* ── Row 1: Simulazioni (left 55%) + World Map (right 45%) ── */}
                 <div

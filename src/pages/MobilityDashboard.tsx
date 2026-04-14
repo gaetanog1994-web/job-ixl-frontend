@@ -42,6 +42,13 @@ const MobilityDashboard: React.FC = () => {
     accessRole: string;
   } | null>(null);
 
+  /* ---------- campaign status ---------- */
+  const [campaignStatus, setCampaignStatus] = useState<"open" | "closed" | null>(null);
+
+  const handleCampaignStatusLoaded = useCallback((status: "open" | "closed") => {
+    setCampaignStatus(status);
+  }, []);
+
   /* ---------- map highlight from URL ---------- */
   const [highlightPositionId, setHighlightPositionId] = useState<string | undefined>(undefined);
 
@@ -321,6 +328,22 @@ const MobilityDashboard: React.FC = () => {
       <div className="db-content" style={{ flex: 1 }}>
         <TenantContextStrip sectionLabel="Dashboard utente" />
 
+        {/* ---- Campaign closed banner ---- */}
+        {campaignStatus === "closed" && (
+          <div className="db-card" style={{
+            marginBottom: "16px",
+            padding: "12px 16px",
+            background: "#fffbeb",
+            border: "1px solid #fcd34d",
+            borderRadius: "10px",
+            color: "#92400e",
+            fontSize: "13px",
+            fontWeight: 600,
+          }}>
+            ⚠️ Campagna di mobilità non attiva. Le candidature sono sospese.
+          </div>
+        )}
+
         {/* ---- Top row: Map + Right Panel ---- */}
         <div className="db-content-row">
           {/* Map Panel */}
@@ -329,6 +352,7 @@ const MobilityDashboard: React.FC = () => {
             filters={mapFilters}
             onLocationsLoaded={handleLocationsLoaded}
             onApplicationUpdate={handleApplicationUpdate}
+            onCampaignStatusLoaded={handleCampaignStatusLoaded}
           />
 
           {/* Right column */}
