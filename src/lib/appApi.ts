@@ -192,7 +192,24 @@ export const appApi = {
         isSuperAdmin?: boolean;
         access?: any;
     }> {
-        return apiFetch(`/api/me`, { method: "GET" });
+        try {
+            return await apiFetch(`/api/me`, { method: "GET" });
+        } catch (e: any) {
+            const msg = String(e?.message ?? "").toLowerCase();
+            const isTenantScopeError =
+                msg.includes("tenant_scope_mismatch") ||
+                msg.includes("requested company does not match requested perimeter") ||
+                msg.includes("company context required") ||
+                msg.includes("perimeter context required");
+
+            if (isTenantScopeError) {
+                // stale/mismatched tenant context in localStorage: reset and retry once
+                writeTenantContext({ companyId: null, perimeterId: null });
+                return apiFetch(`/api/me`, { method: "GET" });
+            }
+
+            throw e;
+        }
     },
 
     async getMyUser(): Promise<any> {
