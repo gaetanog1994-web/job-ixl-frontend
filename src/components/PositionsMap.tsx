@@ -77,6 +77,7 @@ type LocationRole = {
     users: LocationUser[];
     applied: boolean;
     priority?: number;
+    fixed_location?: boolean;
 };
 
 type MeLocation = {
@@ -109,6 +110,10 @@ type Props = {
     onApplicationUpdate?: () => void;
     /** Called after each data load with the campaign status from the map payload */
     onCampaignStatusLoaded?: (status: "open" | "closed") => void;
+    /** When true, admin count badge is shown and user list can be expanded */
+    isAdmin?: boolean;
+    /** When true, hide fixed-location roles from popup and dim fully-fixed markers */
+    filterOnlyNonFixed?: boolean;
 };
 
 /* ---------- COMPONENT ---------- */
@@ -125,6 +130,8 @@ const PositionsMap = ({
     onLocationsLoaded,
     onApplicationUpdate,
     onCampaignStatusLoaded,
+    isAdmin = false,
+    filterOnlyNonFixed = false,
 }: Props) => {
     useEffect(() => {
         console.log("[DEBUG] highlightPositionId =", highlightPositionId);
@@ -135,6 +142,7 @@ const PositionsMap = ({
     const [myStatus, setMyStatus] = useState<"available" | "inactive" | null>(null);
     const [meLocation, setMeLocation] = useState<MeLocation | null>(null);
     const [campaignStatus, setCampaignStatus] = useState<"open" | "closed">("closed");
+    const [clickedRoleId, setClickedRoleId] = useState<string | null>(null);
 
     const [maxApplications, setMaxApplications] = useState<number | null>(null);
     const [usedPriorities, setUsedPriorities] = useState<number[]>([]);
@@ -487,7 +495,10 @@ const PositionsMap = ({
                         loc.roles.some(
                             (r) => r.role_name.toLowerCase() === filterRoleName.toLowerCase()
                         );
-                    const locationOpacity = filterRoleName && !roleMatchesFilter ? 0.25 : 1;
+                    // When onlyNonFixed filter is active, dim locations where ALL roles are fixed
+                    const allRolesFixed =
+                        filterOnlyNonFixed && loc.roles.length > 0 && loc.roles.every((r) => r.fixed_location);
+                    const locationOpacity = (filterRoleName && !roleMatchesFilter) || allRolesFixed ? 0.25 : 1;
                     const baseOpacity =
                         visualMode === "adminActiveMaps" && markerState === "available"
                             ? 0.5
@@ -588,7 +599,9 @@ const PositionsMap = ({
                                     </b>
 
                                     <ul style={{ marginTop: "8px", paddingLeft: "16px" }}>
-                                        {loc.roles.map((r) => {
+                                        {loc.roles
+                                            .filter((r) => !filterOnlyNonFixed || !r.fixed_location)
+                                            .map((r) => {
                                             const disabled = interaction !== "write" || myStatus !== "available";
 
                                             return (
@@ -602,10 +615,29 @@ const PositionsMap = ({
                                                             opacity: disabled ? 0.7 : 1,
                                                         }}
                                                     >
-                                                        <span style={{ fontWeight: 500 }}>
-                                                            {r.role_name} ({r.users.length})
+                                                        <span style={{ fontWeight: 500, display: "flex", alignItems: "center", flexWrap: "wrap", gap: "4px" }}>
+                                                            {r.role_name}
                                                             {r.applied ? " 🔴" : " 🟢"}
+                                                            {r.fixed_location && (
+                                                                <span style={{ fontSize: "11px", color: "#b45309", background: "#fef3c7", borderRadius: "6px", padding: "1px 6px" }}>
+                                                                    🏠 Richiede trasferimento
+                                                                </span>
+                                                            )}
+                                                            {isAdmin && (
+                                                                <span
+                                                                    onClick={() => setClickedRoleId((prev) => prev === r.role_id ? null : r.role_id)}
+                                                                    style={{ cursor: "pointer", fontSize: "12px", color: "#2563eb", background: "#eff6ff", borderRadius: "999px", padding: "1px 7px", userSelect: "none" }}
+                                                                    title="Clicca per vedere le persone"
+                                                                >
+                                                                    {r.users.length}
+                                                                </span>
+                                                            )}
                                                         </span>
+                                                        {isAdmin && clickedRoleId === r.role_id && (
+                                                            <ul style={{ margin: "4px 0 0 0", padding: "0 0 0 12px", fontSize: "12px", color: "#374151", listStyle: "disc" }}>
+                                                                {r.users.map((u) => <li key={u.id}>{u.full_name}</li>)}
+                                                            </ul>
+                                                        )}
 
                                                         {interaction === "write" && myStatus === "available" && !r.applied && (
                                                             <>

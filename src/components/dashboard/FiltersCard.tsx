@@ -4,6 +4,7 @@ import type { MapLocation } from "../PositionsMap";
 export interface MapFilters {
   locationName: string; // sede → fly to + open popup
   roleName: string;     // ruolo → highlight matching markers
+  onlyNonFixed?: boolean; // hide/dim fixed-location roles
 }
 
 interface FiltersCardProps {
@@ -29,9 +30,9 @@ const FiltersCard: React.FC<FiltersCardProps> = ({
     )
   ).sort();
 
-  const hasActiveFilters = filters.locationName !== "" || filters.roleName !== "";
+  const hasActiveFilters = filters.locationName !== "" || filters.roleName !== "" || !!filters.onlyNonFixed;
 
-  const reset = () => onFiltersChange({ locationName: "", roleName: "" });
+  const reset = () => onFiltersChange({ locationName: "", roleName: "", onlyNonFixed: false });
 
   return (
     <div className="db-card db-filters-card">
@@ -119,6 +120,19 @@ const FiltersCard: React.FC<FiltersCardProps> = ({
             ✓ Sedi con "{filters.roleName}" evidenziate
           </div>
         )}
+      </div>
+
+      {/* onlyNonFixed filter */}
+      <div className="db-filter-group">
+        <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", fontSize: "13px" }}>
+          <input
+            type="checkbox"
+            checked={filters.onlyNonFixed ?? false}
+            onChange={(e) => onFiltersChange({ ...filters, onlyNonFixed: e.target.checked })}
+            style={{ width: 15, height: 15, cursor: "pointer" }}
+          />
+          <span>Solo posizioni non vincolanti</span>
+        </label>
       </div>
 
       {/* Reset */}

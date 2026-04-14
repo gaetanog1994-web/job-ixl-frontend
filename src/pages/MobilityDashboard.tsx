@@ -35,6 +35,7 @@ const MobilityDashboard: React.FC = () => {
   const [mapFilters, setMapFilters] = useState<MapFilters>({
     locationName: "",
     roleName: "",
+    onlyNonFixed: false,
   });
   const [tenantContextData, setTenantContextData] = useState<{
     company: string;
@@ -353,6 +354,7 @@ const MobilityDashboard: React.FC = () => {
             onLocationsLoaded={handleLocationsLoaded}
             onApplicationUpdate={handleApplicationUpdate}
             onCampaignStatusLoaded={handleCampaignStatusLoaded}
+            isAdmin={isAdmin}
           />
 
           {/* Right column */}
