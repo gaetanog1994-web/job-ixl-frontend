@@ -506,6 +506,26 @@ export const appApi = {
         return json.company;
     },
 
+    async platformGetCompanySuperAdmins(companyId: string) {
+        const json = await apiFetch(`/api/platform/companies/${companyId}/super-admins`, { method: "GET" });
+        return json.super_admins ?? [];
+    },
+
+    async platformAddCompanySuperAdmin(
+        companyId: string,
+        params: { first_name: string; last_name: string; email: string }
+    ) {
+        const json = await apiFetch(`/api/platform/companies/${companyId}/super-admins`, {
+            method: "POST",
+            body: JSON.stringify(params),
+        });
+        return json.super_admin;
+    },
+
+    async platformRemoveCompanySuperAdmin(companyId: string, userId: string) {
+        return apiFetch(`/api/platform/companies/${companyId}/super-admins/${userId}`, { method: "DELETE" });
+    },
+
     async platformGetPerimeters(companyId: string) {
         const json = await apiFetch(`/api/platform/companies/${companyId}/perimeters`, { method: "GET" });
         return json.perimeters ?? [];
@@ -517,5 +537,38 @@ export const appApi = {
             body: JSON.stringify(params),
         });
         return json.perimeter;
+    },
+
+    async platformRenamePerimeter(companyId: string, perimeterId: string, params: { name: string }) {
+        const json = await apiFetch(`/api/platform/companies/${companyId}/perimeters/${perimeterId}`, {
+            method: "PATCH",
+            body: JSON.stringify(params),
+        });
+        return json.perimeter;
+    },
+
+    async platformGetPerimeterAdmins(companyId: string, perimeterId: string) {
+        const json = await apiFetch(`/api/platform/companies/${companyId}/perimeters/${perimeterId}/admins`, {
+            method: "GET",
+        });
+        return json.admins ?? [];
+    },
+
+    async platformAddPerimeterAdmin(
+        companyId: string,
+        perimeterId: string,
+        params: { first_name: string; last_name: string; email: string }
+    ) {
+        const json = await apiFetch(`/api/platform/companies/${companyId}/perimeters/${perimeterId}/admins`, {
+            method: "POST",
+            body: JSON.stringify(params),
+        });
+        return json.admin;
+    },
+
+    async platformRemovePerimeterAdmin(companyId: string, perimeterId: string, userId: string) {
+        return apiFetch(`/api/platform/companies/${companyId}/perimeters/${perimeterId}/admins/${userId}`, {
+            method: "DELETE",
+        });
     },
 };

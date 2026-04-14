@@ -21,6 +21,13 @@ type SuperAdminRow = {
   role?: string;
 };
 
+type PerimeterAdminRow = {
+  id: string;
+  full_name?: string;
+  email?: string;
+  access_role?: string;
+};
+
 type CompanyDetailsRow = {
   id?: string;
   company_id?: string;
@@ -52,6 +59,18 @@ const CompanyPerimetersPage: React.FC = () => {
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [superAdminHint, setSuperAdminHint] = useState<string | null>(null);
+  const [superAdmins, setSuperAdmins] = useState<SuperAdminRow[]>([]);
+  const [superAdminFirstName, setSuperAdminFirstName] = useState("");
+  const [superAdminLastName, setSuperAdminLastName] = useState("");
+  const [superAdminEmail, setSuperAdminEmail] = useState("");
+  const [savingSuperAdmin, setSavingSuperAdmin] = useState(false);
+  const [selectedPerimeterForAdmins, setSelectedPerimeterForAdmins] = useState<PerimeterRow | null>(null);
+  const [perimeterAdmins, setPerimeterAdmins] = useState<PerimeterAdminRow[]>([]);
+  const [loadingPerimeterAdmins, setLoadingPerimeterAdmins] = useState(false);
+  const [savingPerimeterAdmin, setSavingPerimeterAdmin] = useState(false);
+  const [adminFirstName, setAdminFirstName] = useState("");
+  const [adminLastName, setAdminLastName] = useState("");
+  const [adminEmail, setAdminEmail] = useState("");
 
   const sortedPerimeters = useMemo(
     () => [...perimeters].sort((a, b) => a.name.localeCompare(b.name)),
@@ -76,6 +95,12 @@ const CompanyPerimetersPage: React.FC = () => {
       );
       setCompanyDetails(currentCompany ?? null);
       setCompanyName(currentCompany?.name ?? currentCompany?.company_name ?? "Company");
+      if (me?.isOwner === true) {
+        const superAdminRows = await appApi.platformGetCompanySuperAdmins(companyId);
+        setSuperAdmins(superAdminRows ?? []);
+      } else {
+        setSuperAdmins([]);
+      }
     } catch (e: any) {
       setError(e?.message ?? "Errore caricamento perimeters");
     } finally {
@@ -114,8 +139,130 @@ const CompanyPerimetersPage: React.FC = () => {
     navigate(meData?.isSuperAdmin ? "/admin/interlocking" : "/dashboard");
   };
 
-  const superAdmins = Array.isArray(companyDetails?.super_admins) ? companyDetails?.super_admins ?? [] : [];
-  const superAdminsCount = companyDetails?.super_admins_count ?? superAdmins.length ?? 0;
+  const superAdminsCount = meData?.isOwner
+    ? superAdmins.length
+    : (companyDetails?.super_admins_count ?? 0);
+
+  const handleAddSuperAdmin = async () => {
+    if (!companyId) return;
+    const first_name = superAdminFirstName.trim();
+    const last_name = superAdminLastName.trim();
+    const email = superAdminEmail.trim().toLowerCase();
+    if (!first_name || !last_name || !email) {
+      setError("Compila nome, cognome ed email del Super Admin.");
+      return;
+    }
+
+    try {
+      setSavingSuperAdmin(true);
+      setError(null);
+      await appApi.platformAddCompanySuperAdmin(companyId, { first_name, last_name, email });
+      setSuperAdminFirstName("");
+      setSuperAdminLastName("");
+      setSuperAdminEmail("");
+      const rows = await appApi.platformGetCompanySuperAdmins(companyId);
+      setSuperAdmins(rows ?? []);
+      emitTenantStructureChanged();
+    } catch (e: any) {
+      setError(e?.message ?? "Errore aggiunta Super Admin");
+    } finally {
+      setSavingSuperAdmin(false);
+    }
+  };
+
+  const handleRemoveSuperAdmin = async (userId: string) => {
+    if (!companyId) return;
+    try {
+      setSavingSuperAdmin(true);
+      setError(null);
+      await appApi.platformRemoveCompanySuperAdmin(companyId, userId);
+      const rows = await appApi.platformGetCompanySuperAdmins(companyId);
+      setSuperAdmins(rows ?? []);
+      emitTenantStructureChanged();
+    } catch (e: any) {
+      setError(e?.message ?? "Errore rimozione Super Admin");
+    } finally {
+      setSavingSuperAdmin(false);
+    }
+  };
+
+  const handleRenamePerimeter = async (perimeter: PerimeterRow) => {
+    if (!companyId) return;
+    const nextNameRaw = window.prompt("Nuovo nome perimeter", perimeter.name);
+    if (nextNameRaw === null) return;
+    const nextName = nextNameRaw.trim();
+    if (!nextName || nextName === perimeter.name) return;
+
+    try {
+      setError(null);
+      await appApi.platformRenamePerimeter(companyId, perimeter.id, { name: nextName });
+      await loadPage();
+      emitTenantStructureChanged();
+    } catch (e: any) {
+      setError(e?.message ?? "Errore rinomina perimeter");
+    }
+  };
+
+  const openPerimeterAdmins = async (perimeter: PerimeterRow) => {
+    if (!companyId) return;
+    setSelectedPerimeterForAdmins(perimeter);
+    setLoadingPerimeterAdmins(true);
+    setError(null);
+    try {
+      const rows = await appApi.platformGetPerimeterAdmins(companyId, perimeter.id);
+      setPerimeterAdmins(rows ?? []);
+    } catch (e: any) {
+      setError(e?.message ?? "Errore caricamento admin perimeter");
+      setPerimeterAdmins([]);
+    } finally {
+      setLoadingPerimeterAdmins(false);
+    }
+  };
+
+  const handleAddPerimeterAdmin = async () => {
+    if (!companyId || !selectedPerimeterForAdmins) return;
+    const first_name = adminFirstName.trim();
+    const last_name = adminLastName.trim();
+    const email = adminEmail.trim().toLowerCase();
+    if (!first_name || !last_name || !email) {
+      setError("Compila nome, cognome ed email dell'Admin.");
+      return;
+    }
+
+    try {
+      setSavingPerimeterAdmin(true);
+      setError(null);
+      await appApi.platformAddPerimeterAdmin(companyId, selectedPerimeterForAdmins.id, { first_name, last_name, email });
+      const rows = await appApi.platformGetPerimeterAdmins(companyId, selectedPerimeterForAdmins.id);
+      setPerimeterAdmins(rows ?? []);
+      setAdminFirstName("");
+      setAdminLastName("");
+      setAdminEmail("");
+      await loadPage();
+      emitTenantStructureChanged();
+    } catch (e: any) {
+      setError(e?.message ?? "Errore aggiunta Admin");
+    } finally {
+      setSavingPerimeterAdmin(false);
+    }
+  };
+
+  const handleRemovePerimeterAdmin = async (userId: string) => {
+    if (!companyId || !selectedPerimeterForAdmins) return;
+    try {
+      setSavingPerimeterAdmin(true);
+      setError(null);
+      await appApi.platformRemovePerimeterAdmin(companyId, selectedPerimeterForAdmins.id, userId);
+      const rows = await appApi.platformGetPerimeterAdmins(companyId, selectedPerimeterForAdmins.id);
+      setPerimeterAdmins(rows ?? []);
+      await loadPage();
+      emitTenantStructureChanged();
+    } catch (e: any) {
+      setError(e?.message ?? "Errore rimozione Admin");
+    } finally {
+      setSavingPerimeterAdmin(false);
+    }
+  };
 
   return (
     <div
@@ -147,14 +294,16 @@ const CompanyPerimetersPage: React.FC = () => {
             </p>
           </div>
           <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-            <button
-              className="db-btn owner-primary-btn"
-              onClick={() => {
-                setSuperAdminHint("Usa il flusso Owner per associare un nuovo Super Admin alla company.");
-              }}
-            >
-              + New Super Admin
-            </button>
+            {meData?.isOwner === true && (
+              <button
+                className="db-btn owner-primary-btn"
+                onClick={() => {
+                  setSuperAdminHint("Compila i campi Super Admin nella sezione dedicata qui sotto.");
+                }}
+              >
+                + New Super Admin
+              </button>
+            )}
             <button className="db-btn db-btn-outline" onClick={loadPage} disabled={loading || creating}>
               Refresh
             </button>
@@ -168,58 +317,83 @@ const CompanyPerimetersPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="db-card owner-super-admin-panel" style={{ marginBottom: "18px" }}>
-        <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border)" }}>
-          <h2 style={{ margin: 0, fontSize: "15px", color: "var(--text-primary)" }}>Super Admins</h2>
-          <p style={{ margin: "6px 0 0", fontSize: "12px", color: "var(--text-secondary)" }}>
-            Gestione accessi company-level.
-          </p>
-        </div>
-
-        {superAdminHint && (
-          <div className="owner-inline-note" style={{ margin: "12px 20px 0" }}>
-            {superAdminHint}
+      {meData?.isOwner === true && (
+        <div className="db-card owner-super-admin-panel" style={{ marginBottom: "18px" }}>
+          <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border)" }}>
+            <h2 style={{ margin: 0, fontSize: "15px", color: "var(--text-primary)" }}>Super Admins</h2>
+            <p style={{ margin: "6px 0 0", fontSize: "12px", color: "var(--text-secondary)" }}>
+              L'owner configura e visualizza i Super Admin per questa company.
+            </p>
           </div>
-        )}
 
-        <div className="owner-super-admin-list">
-          {superAdmins.length > 0 ? (
-            superAdmins.map((superAdmin) => (
-              <div key={superAdmin.id} className="owner-super-admin-card">
-                <div className="owner-super-admin-main">
-                  <div className="owner-super-admin-name">{superAdmin.full_name ?? "Super Admin"}</div>
-                  <div className="owner-super-admin-email">{superAdmin.email ?? "email non disponibile"}</div>
-                </div>
-                <div className="owner-super-admin-side">
-                  <span className="owner-chip">{superAdmin.role ?? "super_admin"}</span>
-                  <div style={{ display: "flex", gap: "8px" }}>
-                    <button className="db-btn db-btn-outline" disabled>
-                      Edit
-                    </button>
-                    <button className="db-btn db-btn-outline" disabled>
-                      Remove
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))
-          ) : (
-            <div className="db-empty-state">
-              <div className="db-empty-state-title">Nessun Super Admin assegnato</div>
-              <div className="db-empty-state-desc">
-                Definisci almeno un Super Admin per completare il setup company-level.
-              </div>
-              <button
-                className="db-btn owner-primary-btn"
-                onClick={() => setSuperAdminHint("Apri il flusso Owner e aggiungi il prossimo Super Admin per questa company.")}
-                style={{ marginTop: "12px" }}
-              >
-                Add first Super Admin
-              </button>
+          {superAdminHint && (
+            <div className="owner-inline-note" style={{ margin: "12px 20px 0" }}>
+              {superAdminHint}
             </div>
           )}
+
+          <div style={{ padding: "12px 16px 0", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "10px" }}>
+            <input
+              className="db-filter-select"
+              style={{ height: "36px" }}
+              placeholder="Nome"
+              value={superAdminFirstName}
+              onChange={(e) => setSuperAdminFirstName(e.target.value)}
+              disabled={savingSuperAdmin}
+            />
+            <input
+              className="db-filter-select"
+              style={{ height: "36px" }}
+              placeholder="Cognome"
+              value={superAdminLastName}
+              onChange={(e) => setSuperAdminLastName(e.target.value)}
+              disabled={savingSuperAdmin}
+            />
+            <input
+              className="db-filter-select"
+              style={{ height: "36px" }}
+              placeholder="Email"
+              value={superAdminEmail}
+              onChange={(e) => setSuperAdminEmail(e.target.value)}
+              disabled={savingSuperAdmin}
+              type="email"
+            />
+          </div>
+          <div style={{ padding: "10px 16px 0" }}>
+            <button className="db-btn owner-primary-btn" onClick={handleAddSuperAdmin} disabled={savingSuperAdmin}>
+              + Add Super Admin
+            </button>
+          </div>
+
+          <div className="owner-super-admin-list">
+            {superAdmins.length > 0 ? (
+              superAdmins.map((superAdmin) => (
+                <div key={superAdmin.id} className="owner-super-admin-card">
+                  <div className="owner-super-admin-main">
+                    <div className="owner-super-admin-name">{superAdmin.full_name ?? "Super Admin"}</div>
+                    <div className="owner-super-admin-email">{superAdmin.email ?? "email non disponibile"}</div>
+                  </div>
+                  <div className="owner-super-admin-side">
+                    <span className="owner-chip">{superAdmin.role ?? "super_admin"}</span>
+                    <div style={{ display: "flex", gap: "8px" }}>
+                      <button className="db-btn db-btn-outline" onClick={() => handleRemoveSuperAdmin(superAdmin.id)} disabled={savingSuperAdmin}>
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="db-empty-state">
+                <div className="db-empty-state-title">Nessun Super Admin assegnato</div>
+                <div className="db-empty-state-desc">
+                  Definisci almeno un Super Admin per completare il setup company-level.
+                </div>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="db-card" style={{ padding: "18px 20px", marginBottom: "18px" }}>
         <h2 style={{ margin: 0, fontSize: "15px", color: "var(--text-primary)" }}>Create perimeter / area</h2>
@@ -266,6 +440,14 @@ const CompanyPerimetersPage: React.FC = () => {
                 <button className="db-btn owner-primary-btn" onClick={() => handleEnterPerimeter(perimeter)}>
                   Enter
                 </button>
+                <button className="db-btn db-btn-outline" onClick={() => handleRenamePerimeter(perimeter)}>
+                  Rename
+                </button>
+                {(meData?.isSuperAdmin === true || meData?.isOwner === true) && (
+                  <button className="db-btn db-btn-outline" onClick={() => openPerimeterAdmins(perimeter)}>
+                    Manage Admins
+                  </button>
+                )}
               </div>
             </div>
           ))}
@@ -279,6 +461,87 @@ const CompanyPerimetersPage: React.FC = () => {
           )}
         </div>
       </div>
+
+      {(meData?.isSuperAdmin === true || meData?.isOwner === true) && selectedPerimeterForAdmins && (
+        <div className="db-card owner-super-admin-panel" style={{ marginTop: "18px" }}>
+          <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border)" }}>
+            <h2 style={{ margin: 0, fontSize: "15px", color: "var(--text-primary)" }}>
+              Admins — {selectedPerimeterForAdmins.name}
+            </h2>
+            <p style={{ margin: "6px 0 0", fontSize: "12px", color: "var(--text-secondary)" }}>
+              Il Super Admin configura gli Admin del perimeter selezionato.
+            </p>
+          </div>
+
+          <div style={{ padding: "12px 16px 0", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "10px" }}>
+            <input
+              className="db-filter-select"
+              style={{ height: "36px" }}
+              placeholder="Nome Admin"
+              value={adminFirstName}
+              onChange={(e) => setAdminFirstName(e.target.value)}
+              disabled={savingPerimeterAdmin}
+            />
+            <input
+              className="db-filter-select"
+              style={{ height: "36px" }}
+              placeholder="Cognome Admin"
+              value={adminLastName}
+              onChange={(e) => setAdminLastName(e.target.value)}
+              disabled={savingPerimeterAdmin}
+            />
+            <input
+              className="db-filter-select"
+              style={{ height: "36px" }}
+              placeholder="Email Admin"
+              value={adminEmail}
+              onChange={(e) => setAdminEmail(e.target.value)}
+              disabled={savingPerimeterAdmin}
+              type="email"
+            />
+          </div>
+          <div style={{ padding: "10px 16px 0", display: "flex", gap: "8px", flexWrap: "wrap" }}>
+            <button className="db-btn owner-primary-btn" onClick={handleAddPerimeterAdmin} disabled={savingPerimeterAdmin}>
+              + Add Admin
+            </button>
+            <button className="db-btn db-btn-outline" onClick={() => setSelectedPerimeterForAdmins(null)}>
+              Close
+            </button>
+          </div>
+
+          <div className="owner-super-admin-list">
+            {loadingPerimeterAdmins ? (
+              <div style={{ fontSize: "13px", color: "var(--text-secondary)" }}>Caricamento admins…</div>
+            ) : perimeterAdmins.length > 0 ? (
+              perimeterAdmins.map((admin) => (
+                <div key={admin.id} className="owner-super-admin-card">
+                  <div className="owner-super-admin-main">
+                    <div className="owner-super-admin-name">{admin.full_name ?? "Admin"}</div>
+                    <div className="owner-super-admin-email">{admin.email ?? "email non disponibile"}</div>
+                  </div>
+                  <div className="owner-super-admin-side">
+                    <span className="owner-chip">{admin.access_role ?? "admin_user"}</span>
+                    <button
+                      className="db-btn db-btn-outline"
+                      onClick={() => handleRemovePerimeterAdmin(admin.id)}
+                      disabled={savingPerimeterAdmin}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="db-empty-state">
+                <div className="db-empty-state-title">Nessun Admin su questo perimeter</div>
+                <div className="db-empty-state-desc">
+                  Aggiungi il primo Admin per abilitare la gestione operativa locale.
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {error && (
         <div style={{ marginTop: "14px", color: "#b91c1c", fontSize: "13px" }}>
