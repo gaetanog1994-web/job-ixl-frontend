@@ -235,6 +235,20 @@
   color: #e2e8f0;
 }
 
+.db-admin-sub-item.active {
+  background: rgba(232, 81, 26, 0.18);
+  color: #ffffff;
+}
+
+.db-super-company-block + .db-super-company-block {
+  margin-top: 2px;
+}
+
+.db-super-sub-item {
+  padding-left: 52px;
+  font-size: 12.5px;
+}
+
 /* Sidebar footer */
 .db-sidebar-footer {
   padding: 12px 10px 14px;
@@ -356,6 +370,28 @@
 
 .db-logout-btn:hover {
   background: rgba(239, 68, 68, 0.1);
+}
+
+.db-floating-hamburger {
+  position: fixed;
+  top: 14px;
+  left: 14px;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: #ffffff;
+  color: #334155;
+  cursor: pointer;
+  font-size: 18px;
+  z-index: 901;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.db-floating-hamburger:hover {
+  background: var(--surface);
+  border-color: #cbd5e1;
 }
 
 /* ==========================================================================

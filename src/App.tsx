@@ -19,9 +19,11 @@ import LoginPage from "./pages/LoginPage";
 import RequireAdmin from "./components/RequireAdmin";
 import RequireOwner from "./components/RequireOwner";
 import RequireCompanyAdmin from "./components/RequireCompanyAdmin";
+import { useSidebar } from "./lib/SidebarContext";
 
 function App() {
   const { user, loading } = useAuth();
+  const { toggle: toggleSidebar } = useSidebar();
   const location = useLocation();
 
   if (loading) {
@@ -44,11 +46,23 @@ function App() {
   }
 
   const isAdminRoute = location.pathname.startsWith("/admin");
+  const hasLocalHamburger = isAdminRoute || location.pathname.startsWith("/dashboard");
 
   return (
     <>
       {/* TopBar only for admin routes (dashboard has its own inline topbar) */}
       {user && isAdminRoute && <TopBar />}
+
+      {user && !hasLocalHamburger && (
+        <button
+          id="global-floating-hamburger"
+          className="db-floating-hamburger"
+          onClick={toggleSidebar}
+          title="Apri menu navigazione"
+        >
+          ☰
+        </button>
+      )}
 
       <div style={{ paddingTop: user && isAdminRoute ? "64px" : "0" }}>
         <Routes>

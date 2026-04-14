@@ -7,6 +7,11 @@ import { useAvailability } from "../lib/AvailabilityContext";
 import { labelAccessRole, labelHighestRole } from "../lib/accessLabels";
 import "../styles/dashboard.css";
 
+type PlatformCompany = {
+  id: string;
+  name: string;
+};
+
 /**
  * GlobalSidebar — drawer a scomparsa, montato a livello di root (in main.tsx).
  * È completamente self-contained: carica i propri dati (user, isAdmin, availabilityStatus)
@@ -20,6 +25,9 @@ const GlobalSidebar: React.FC = () => {
   const [userData, setUserData] = useState<any>(null);
   const [meData, setMeData] = useState<any>(null);
   const [adminOpen, setAdminOpen] = useState(false);
+  const [ownerOpen, setOwnerOpen] = useState(true);
+  const [superAdminOpen, setSuperAdminOpen] = useState(true);
+  const [ownerCompanies, setOwnerCompanies] = useState<PlatformCompany[]>([]);
   const { availabilityStatus, isAdmin, toggleAvailability } = useAvailability();
 
   /* ---- load user data ---- */
@@ -36,7 +44,22 @@ const GlobalSidebar: React.FC = () => {
           setUserData(userInfo.value);
         }
         if (me.status === "fulfilled") {
-          setMeData(me.value);
+          const mePayload = me.value;
+          setMeData(mePayload);
+
+          if (mePayload?.isOwner === true) {
+            const companyRows = await appApi.platformGetCompanies();
+            if (!cancelled) {
+              setOwnerCompanies(
+                (companyRows ?? []).map((company: any) => ({
+                  id: String(company?.id ?? company?.company_id ?? ""),
+                  name: String(company?.name ?? company?.company_name ?? "Company"),
+                })).filter((company: PlatformCompany) => company.id)
+              );
+            }
+          } else if (!cancelled) {
+            setOwnerCompanies([]);
+          }
         }
       } catch {
         // silently ignore — sidebar works even without data
@@ -69,9 +92,11 @@ const GlobalSidebar: React.FC = () => {
   const isActive = (path: string) => location.pathname === path;
   const activeAccess = meData?.access ?? null;
   const hasActivePerimeter = !!activeAccess?.currentPerimeterId;
-  const activeCompanyId = activeAccess?.currentCompanyId ?? null;
   const isOwner = meData?.isOwner === true;
   const isSuperAdmin = meData?.isSuperAdmin === true;
+  const accessCompanies = Array.isArray(activeAccess?.companies) ? activeAccess.companies : [];
+  const accessPerimeters = Array.isArray(activeAccess?.perimeters) ? activeAccess.perimeters : [];
+  const hasSuperAdminArea = isSuperAdmin && accessCompanies.length > 0;
   const accessRoleLabel = labelAccessRole(activeAccess?.accessRole);
   const highestRoleLabel = labelHighestRole(activeAccess?.highestRole);
 
@@ -223,31 +248,89 @@ const GlobalSidebar: React.FC = () => {
             </button>
           )}
 
-          {(isOwner || isSuperAdmin) && (
+          {(isOwner || hasSuperAdminArea) && <div className="db-section-label" style={{ marginTop: 12 }}>Multi-tenant</div>}
+
+          {isOwner && (
             <>
-              <div className="db-section-label" style={{ marginTop: 12 }}>Multi-tenant</div>
+              <button
+                id="global-nav-owner"
+                className={`db-nav-item ${isActive("/owner") ? "active" : ""}`}
+                onClick={() => go("/owner")}
+              >
+                <span className="db-nav-icon">🏢</span>
+                <span className="db-nav-label">Owner</span>
+                <span className={`db-nav-chevron ${ownerOpen ? "open" : ""}`} onClick={(event) => { event.stopPropagation(); setOwnerOpen((prev) => !prev); }}>
+                  ▶
+                </span>
+              </button>
+              <div className="db-admin-submenu" style={{ maxHeight: ownerOpen ? "900px" : "0" }}>
+                {ownerCompanies.map((company) => (
+                  <button
+                    key={company.id}
+                    className="db-admin-sub-item db-super-sub-item"
+                    onClick={() => {
+                      appApi.setTenantContext({ companyId: company.id, perimeterId: null });
+                      go(`/companies/${company.id}/perimeters`);
+                    }}
+                  >
+                    {company.name}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
 
-              {isOwner && (
-                <button
-                  id="global-nav-owner"
-                  className={`db-nav-item ${isActive("/owner") ? "active" : ""}`}
-                  onClick={() => go("/owner")}
-                >
-                  <span className="db-nav-icon">🏢</span>
-                  <span className="db-nav-label">Owner Area</span>
-                </button>
-              )}
+          {hasSuperAdminArea && (
+            <>
+              <button
+                id="global-nav-super-admin-toggle"
+                className="db-nav-item"
+                onClick={() => setSuperAdminOpen((prev) => !prev)}
+              >
+                <span className="db-nav-icon">🧩</span>
+                <span className="db-nav-label">Super Admin</span>
+                <span className={`db-nav-chevron ${superAdminOpen ? "open" : ""}`}>▶</span>
+              </button>
+              <div className="db-admin-submenu" style={{ maxHeight: superAdminOpen ? "900px" : "0" }}>
+                {accessCompanies.map((company: any) => {
+                  const companyId = String(company?.company_id ?? "");
+                  const companyName = String(company?.company_name ?? "Company");
+                  const perimeters = accessPerimeters.filter((perimeter: any) => String(perimeter?.company_id ?? "") === companyId);
 
-              {activeCompanyId && (
-                <button
-                  id="global-nav-company-perimeters"
-                  className={`db-nav-item ${location.pathname.includes("/perimeters") ? "active" : ""}`}
-                  onClick={() => go(`/companies/${activeCompanyId}/perimeters`)}
-                >
-                  <span className="db-nav-icon">📍</span>
-                  <span className="db-nav-label">Company / Perimeters</span>
-                </button>
-              )}
+                  return (
+                    <div key={companyId} className="db-super-company-block">
+                      <button
+                        className={`db-admin-sub-item ${location.pathname === `/companies/${companyId}/perimeters` ? "active" : ""}`}
+                        onClick={() => {
+                          appApi.setTenantContext({ companyId, perimeterId: null });
+                          go(`/companies/${companyId}/perimeters`);
+                        }}
+                      >
+                        {companyName}
+                      </button>
+                      {perimeters.map((perimeter: any) => {
+                        const perimeterId = String(perimeter?.perimeter_id ?? "");
+                        const perimeterName = String(perimeter?.name ?? perimeter?.perimeter_name ?? "Perimeter");
+                        const canManage = perimeter?.access_role === "admin" || perimeter?.access_role === "admin_user";
+                        const destination = canManage ? "/admin/interlocking" : "/dashboard";
+
+                        return (
+                          <button
+                            key={perimeterId}
+                            className="db-admin-sub-item db-super-sub-item"
+                            onClick={() => {
+                              appApi.setTenantContext({ companyId, perimeterId });
+                              go(destination);
+                            }}
+                          >
+                            {perimeterName}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  );
+                })}
+              </div>
             </>
           )}
 
