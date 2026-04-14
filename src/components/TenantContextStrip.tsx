@@ -1,28 +1,12 @@
 import { useEffect, useState, type CSSProperties } from "react";
-import { useNavigate } from "react-router-dom";
 import { appApi } from "../lib/appApi";
-import { labelAccessRole, labelAdminContext, labelHighestRole } from "../lib/accessLabels";
 
 type Props = {
   sectionLabel?: string;
   style?: CSSProperties;
 };
 
-const badgeStyle: CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  gap: 6,
-  border: "1px solid var(--border)",
-  borderRadius: 10,
-  background: "#fff",
-  padding: "5px 9px",
-  fontSize: 12,
-  color: "var(--text-secondary)",
-  fontWeight: 600,
-};
-
 const TenantContextStrip: React.FC<Props> = ({ sectionLabel, style }) => {
-  const navigate = useNavigate();
   const [meData, setMeData] = useState<any>(null);
 
   useEffect(() => {
@@ -43,13 +27,6 @@ const TenantContextStrip: React.FC<Props> = ({ sectionLabel, style }) => {
   const access = meData?.access ?? {};
   const companyName = access?.currentCompanyName ?? "Company non selezionata";
   const perimeterName = access?.currentPerimeterName ?? "Perimeter non selezionato";
-  const accessRoleLabel = labelAccessRole(access?.accessRole);
-  const highestRoleLabel = labelHighestRole(access?.highestRole);
-  const adminLevelLabel = labelAdminContext({
-    isOwner: meData?.isOwner === true,
-    isSuperAdmin: meData?.isSuperAdmin === true,
-    isAdmin: meData?.isAdmin === true,
-  });
 
   return (
     <div
@@ -84,20 +61,6 @@ const TenantContextStrip: React.FC<Props> = ({ sectionLabel, style }) => {
           ) : null}
         </div>
 
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <span style={badgeStyle}>Company: {companyName}</span>
-          <span style={badgeStyle}>Perimeter: {perimeterName}</span>
-          <span style={badgeStyle}>Access role: {accessRoleLabel}</span>
-          <span style={badgeStyle}>Livello: {highestRoleLabel}</span>
-          <span style={badgeStyle}>{adminLevelLabel}</span>
-          <button
-            className="db-btn db-btn-outline"
-            style={{ height: 28, padding: "0 10px", fontSize: 12 }}
-            onClick={() => navigate("/select-context")}
-          >
-            Cambia contesto
-          </button>
-        </div>
       </div>
     </div>
   );
