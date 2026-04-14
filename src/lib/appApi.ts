@@ -498,6 +498,14 @@ export const appApi = {
         return json.company;
     },
 
+    async platformRenameCompany(companyId: string, params: { name: string }) {
+        const json = await apiFetch(`/api/platform/companies/${companyId}`, {
+            method: "PATCH",
+            body: JSON.stringify(params),
+        });
+        return json.company;
+    },
+
     async platformGetPerimeters(companyId: string) {
         const json = await apiFetch(`/api/platform/companies/${companyId}/perimeters`, { method: "GET" });
         return json.perimeters ?? [];

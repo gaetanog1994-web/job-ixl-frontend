@@ -21,6 +21,12 @@ const formatDate = (value?: string) => {
   return date.toLocaleDateString("it-IT", { day: "2-digit", month: "short", year: "numeric" });
 };
 
+const emitTenantStructureChanged = () => {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("tenant-structure-changed"));
+  }
+};
+
 const OwnerAreaPage: React.FC = () => {
   const navigate = useNavigate();
   const [companies, setCompanies] = useState<CompanyRow[]>([]);
@@ -83,6 +89,7 @@ const OwnerAreaPage: React.FC = () => {
 
       appApi.setTenantContext({ companyId: created.id, perimeterId: null });
       await loadCompanies();
+      emitTenantStructureChanged();
       setCreatedCompanyFlow({ id: created.id, name: created.name ?? name });
       setShowCreatePanel(false);
       setCompanyName("");
@@ -93,6 +100,22 @@ const OwnerAreaPage: React.FC = () => {
       setError(e?.message ?? "Errore creazione company");
     } finally {
       setCreating(false);
+    }
+  };
+
+  const handleRenameCompany = async (company: CompanyRow) => {
+    const nextNameRaw = window.prompt("Nuovo nome company", company.name);
+    if (nextNameRaw === null) return;
+    const nextName = nextNameRaw.trim();
+    if (!nextName || nextName === company.name) return;
+
+    try {
+      setError(null);
+      await appApi.platformRenameCompany(company.id, { name: nextName });
+      await loadCompanies();
+      emitTenantStructureChanged();
+    } catch (e: any) {
+      setError(e?.message ?? "Errore rinomina company");
     }
   };
 
@@ -243,7 +266,7 @@ const OwnerAreaPage: React.FC = () => {
                 >
                   Enter
                 </Link>
-                <button className="db-btn db-btn-outline" disabled>
+                <button className="db-btn db-btn-outline" onClick={() => handleRenameCompany(company)}>
                   Edit
                 </button>
                 <button className="db-btn db-btn-outline" disabled>

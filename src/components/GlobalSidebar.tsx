@@ -28,11 +28,13 @@ const GlobalSidebar: React.FC = () => {
   const [ownerOpen, setOwnerOpen] = useState(true);
   const [superAdminOpen, setSuperAdminOpen] = useState(true);
   const [ownerCompanies, setOwnerCompanies] = useState<PlatformCompany[]>([]);
+  const [superAdminPerimetersByCompany, setSuperAdminPerimetersByCompany] = useState<Record<string, any[]>>({});
   const { availabilityStatus, isAdmin, toggleAvailability } = useAvailability();
 
   /* ---- load user data ---- */
   useEffect(() => {
     let cancelled = false;
+
     const load = async () => {
       try {
         const [userInfo, me] = await Promise.allSettled([
@@ -46,6 +48,8 @@ const GlobalSidebar: React.FC = () => {
         if (me.status === "fulfilled") {
           const mePayload = me.value;
           setMeData(mePayload);
+          const access = mePayload?.access ?? null;
+          const companyMemberships = Array.isArray(access?.companies) ? access.companies : [];
 
           if (mePayload?.isOwner === true) {
             const companyRows = await appApi.platformGetCompanies();
@@ -60,14 +64,49 @@ const GlobalSidebar: React.FC = () => {
           } else if (!cancelled) {
             setOwnerCompanies([]);
           }
+
+          if (companyMemberships.length > 0) {
+            const prevTenantContext = appApi.getTenantContext();
+            const map: Record<string, any[]> = {};
+            try {
+              await Promise.all(
+                companyMemberships.map(async (company: any) => {
+                  const companyId = String(company?.company_id ?? "");
+                  if (!companyId) return;
+                  try {
+                    appApi.setTenantContext({ companyId, perimeterId: null });
+                    const rows = await appApi.platformGetPerimeters(companyId);
+                    map[companyId] = rows ?? [];
+                  } catch {
+                    map[companyId] = [];
+                  }
+                })
+              );
+            } finally {
+              appApi.setTenantContext(prevTenantContext);
+            }
+            if (!cancelled) setSuperAdminPerimetersByCompany(map);
+          } else if (!cancelled) {
+            setSuperAdminPerimetersByCompany({});
+          }
         }
       } catch {
         // silently ignore — sidebar works even without data
       }
     };
+
+    const handleTenantStructureChanged = () => {
+      load();
+    };
+
     load();
-    return () => { cancelled = true; };
-  }, []);
+    window.addEventListener("tenant-structure-changed", handleTenantStructureChanged);
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener("tenant-structure-changed", handleTenantStructureChanged);
+    };
+  }, [location.pathname]);
 
   useEffect(() => {
     if (location.pathname.startsWith("/admin")) {
@@ -95,7 +134,6 @@ const GlobalSidebar: React.FC = () => {
   const isOwner = meData?.isOwner === true;
   const isSuperAdmin = meData?.isSuperAdmin === true;
   const accessCompanies = Array.isArray(activeAccess?.companies) ? activeAccess.companies : [];
-  const accessPerimeters = Array.isArray(activeAccess?.perimeters) ? activeAccess.perimeters : [];
   const hasSuperAdminArea = isSuperAdmin && accessCompanies.length > 0;
   const accessRoleLabel = labelAccessRole(activeAccess?.accessRole);
   const highestRoleLabel = labelHighestRole(activeAccess?.highestRole);
@@ -295,7 +333,7 @@ const GlobalSidebar: React.FC = () => {
                 {accessCompanies.map((company: any) => {
                   const companyId = String(company?.company_id ?? "");
                   const companyName = String(company?.company_name ?? "Company");
-                  const perimeters = accessPerimeters.filter((perimeter: any) => String(perimeter?.company_id ?? "") === companyId);
+                  const perimeters = superAdminPerimetersByCompany[companyId] ?? [];
 
                   return (
                     <div key={companyId} className="db-super-company-block">
@@ -309,9 +347,12 @@ const GlobalSidebar: React.FC = () => {
                         {companyName}
                       </button>
                       {perimeters.map((perimeter: any) => {
-                        const perimeterId = String(perimeter?.perimeter_id ?? "");
+                        const perimeterId = String(perimeter?.id ?? perimeter?.perimeter_id ?? "");
                         const perimeterName = String(perimeter?.name ?? perimeter?.perimeter_name ?? "Perimeter");
-                        const canManage = perimeter?.access_role === "admin" || perimeter?.access_role === "admin_user";
+                        const canManage =
+                          isSuperAdmin ||
+                          perimeter?.access_role === "admin" ||
+                          perimeter?.access_role === "admin_user";
                         const destination = canManage ? "/admin/interlocking" : "/dashboard";
 
                         return (

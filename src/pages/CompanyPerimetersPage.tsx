@@ -33,6 +33,12 @@ type CompanyDetailsRow = {
   super_admins?: SuperAdminRow[];
 };
 
+const emitTenantStructureChanged = () => {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("tenant-structure-changed"));
+  }
+};
+
 const CompanyPerimetersPage: React.FC = () => {
   const navigate = useNavigate();
   const { companyId } = useParams<{ companyId: string }>();
@@ -95,6 +101,7 @@ const CompanyPerimetersPage: React.FC = () => {
       await appApi.platformCreatePerimeter(companyId, { name });
       setNewPerimeterName("");
       await loadPage();
+      emitTenantStructureChanged();
     } catch (e: any) {
       setError(e?.message ?? "Errore creazione perimeter");
     } finally {
