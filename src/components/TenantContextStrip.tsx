@@ -11,16 +11,25 @@ const TenantContextStrip: React.FC<Props> = ({ sectionLabel, style }) => {
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
+    const loadContext = async () => {
       try {
         const me = await appApi.getMe();
         if (!cancelled) setMeData(me ?? null);
       } catch {
         if (!cancelled) setMeData(null);
       }
-    })();
+    };
+
+    const handleTenantContextChanged = () => {
+      loadContext();
+    };
+
+    loadContext();
+    window.addEventListener("tenant-context-changed", handleTenantContextChanged);
+
     return () => {
       cancelled = true;
+      window.removeEventListener("tenant-context-changed", handleTenantContextChanged);
     };
   }, []);
 

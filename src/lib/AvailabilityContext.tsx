@@ -44,6 +44,16 @@ export const AvailabilityProvider: React.FC<{ children: React.ReactNode }> = ({ 
     return () => clearInterval(interval);
   }, [reload]);
 
+  useEffect(() => {
+    const handleTenantContextChanged = () => {
+      reload();
+    };
+    window.addEventListener("tenant-context-changed", handleTenantContextChanged);
+    return () => {
+      window.removeEventListener("tenant-context-changed", handleTenantContextChanged);
+    };
+  }, [reload]);
+
   const toggleAvailability = useCallback(async () => {
     if (!isAdmin) return;
     try {

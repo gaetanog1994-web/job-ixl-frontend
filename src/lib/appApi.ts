@@ -5,6 +5,7 @@ import { supabase } from "./supabaseClient";
 
 const BASE = (import.meta.env.VITE_APP_API_URL || "").replace(/\/+$/, "");
 const TENANT_CONTEXT_STORAGE_KEY = "jip_tenant_context_v1";
+const TENANT_CONTEXT_CHANGED_EVENT = "tenant-context-changed";
 
 export class AppApiError extends Error {
     status: number;
@@ -70,6 +71,39 @@ function writeTenantContext(next: TenantContextSelection) {
         JSON.stringify({
             companyId: next.companyId ?? null,
             perimeterId: next.perimeterId ?? null,
+        })
+    );
+}
+
+function normalizeTenantContext(input: TenantContextSelection | null | undefined): TenantContextSelection {
+    return {
+        companyId: typeof input?.companyId === "string" && input.companyId.trim()
+            ? input.companyId
+            : null,
+        perimeterId: typeof input?.perimeterId === "string" && input.perimeterId.trim()
+            ? input.perimeterId
+            : null,
+    };
+}
+
+function isSameTenantContext(
+    a: TenantContextSelection | null | undefined,
+    b: TenantContextSelection | null | undefined
+): boolean {
+    const normalizedA = normalizeTenantContext(a);
+    const normalizedB = normalizeTenantContext(b);
+    return normalizedA.companyId === normalizedB.companyId
+        && normalizedA.perimeterId === normalizedB.perimeterId;
+}
+
+function emitTenantContextChanged(previous: TenantContextSelection, next: TenantContextSelection) {
+    if (typeof window === "undefined") return;
+    window.dispatchEvent(
+        new CustomEvent(TENANT_CONTEXT_CHANGED_EVENT, {
+            detail: {
+                previous,
+                next,
+            },
         })
     );
 }
@@ -194,14 +228,21 @@ export const appApi = {
     },
 
     setTenantContext(next: TenantContextSelection) {
-        writeTenantContext({
-            companyId: next.companyId ?? null,
-            perimeterId: next.perimeterId ?? null,
-        });
+        const previous = readTenantContext();
+        const normalized = normalizeTenantContext(next);
+        writeTenantContext(normalized);
+        if (!isSameTenantContext(previous, normalized)) {
+            emitTenantContextChanged(previous, normalized);
+        }
     },
 
     clearTenantContext() {
-        writeTenantContext({ companyId: null, perimeterId: null });
+        const previous = readTenantContext();
+        const cleared = { companyId: null, perimeterId: null };
+        writeTenantContext(cleared);
+        if (!isSameTenantContext(previous, cleared)) {
+            emitTenantContextChanged(previous, cleared);
+        }
     },
 
     async createTestScenario(name: string): Promise<{ id: string; name: string }> {
