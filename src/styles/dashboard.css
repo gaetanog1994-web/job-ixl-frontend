@@ -513,6 +513,60 @@
   z-index: 960;
 }
 
+.app-topbar-tree-dropdown {
+  min-width: 270px;
+  max-width: 320px;
+}
+
+.app-topbar-tree-node + .app-topbar-tree-node {
+  margin-top: 2px;
+}
+
+.app-topbar-tree-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.app-topbar-tree-label {
+  flex: 1;
+}
+
+.app-topbar-tree-toggle {
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: #fff;
+  color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s, transform 0.15s, color 0.15s;
+}
+
+.app-topbar-tree-toggle:hover {
+  background: #f8fafc;
+  color: var(--text-primary);
+}
+
+.app-topbar-tree-toggle.expanded {
+  transform: rotate(90deg);
+  color: var(--brand);
+  border-color: #fed7aa;
+  background: #fff7ed;
+}
+
+.app-topbar-tree-children {
+  margin-top: 3px;
+  padding-left: 16px;
+  border-left: 1px solid #e2e8f0;
+  display: grid;
+  gap: 2px;
+}
+
 .app-topbar-dropdown-right {
   right: 0;
   left: auto;

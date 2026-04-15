@@ -4,7 +4,13 @@ import { supabase } from "../lib/supabaseClient";
 import { useSidebar } from "../lib/SidebarContext";
 import { appApi } from "../lib/appApi";
 import { labelAccessRole } from "../lib/accessLabels";
-import { buildPrimaryNavigationModel, type NavLeafItem } from "../lib/navigationModel";
+import {
+  buildPrimaryNavigationModel,
+  buildTopBarHierarchy,
+  type AccessiblePerimeterMembership,
+  type NavLeafItem,
+  type TopBarSectionTree,
+} from "../lib/navigationModel";
 import {
   getAccessibleCompanies,
   getAccessiblePerimetersForCompany,
@@ -19,6 +25,16 @@ import "../styles/dashboard.css";
 type PlatformCompany = {
   id: string;
   name: string;
+};
+
+type PlatformPerimeter = {
+  id: string;
+  name: string;
+  company_id?: string;
+  company_name?: string;
+  perimeter_id?: string;
+  perimeter_name?: string;
+  access_role?: string;
 };
 
 type ContextData = {
@@ -36,8 +52,10 @@ const TopBar: React.FC = () => {
   const [contextData, setContextData] = useState<ContextData | null>(null);
   const [meData, setMeData] = useState<any>(null);
   const [ownerCompanies, setOwnerCompanies] = useState<PlatformCompany[]>([]);
-  const [superAdminPerimetersByCompany, setSuperAdminPerimetersByCompany] = useState<Record<string, any[]>>({});
+  const [superAdminPerimetersByCompany, setSuperAdminPerimetersByCompany] = useState<Record<string, PlatformPerimeter[]>>({});
   const [openSection, setOpenSection] = useState<string | null>(null);
+  const [expandedSuperAdminNodes, setExpandedSuperAdminNodes] = useState<Record<string, boolean>>({});
+  const [expandedAdminNodes, setExpandedAdminNodes] = useState<Record<string, boolean>>({});
   const [openContextMenu, setOpenContextMenu] = useState<"company" | "perimeter" | null>(null);
   const [switchingContext, setSwitchingContext] = useState(false);
 
@@ -61,7 +79,7 @@ const TopBar: React.FC = () => {
           const companyRows = await appApi.platformGetCompanies();
           if (!cancelled) {
             setOwnerCompanies(
-              (companyRows ?? []).map((company: any) => ({
+              (companyRows ?? []).map((company: { id?: string; company_id?: string; name?: string; company_name?: string }) => ({
                 id: String(company?.id ?? company?.company_id ?? ""),
                 name: String(company?.name ?? company?.company_name ?? "Company"),
               })).filter((company: PlatformCompany) => company.id)
@@ -74,16 +92,16 @@ const TopBar: React.FC = () => {
         const companyMemberships = Array.isArray(access?.companies) ? access.companies : [];
         if (companyMemberships.length > 0) {
           const prevTenantContext = appApi.getTenantContext();
-          const map: Record<string, any[]> = {};
+          const map: Record<string, PlatformPerimeter[]> = {};
           try {
             await Promise.all(
-              companyMemberships.map(async (company: any) => {
+              companyMemberships.map(async (company: { company_id?: string }) => {
                 const companyId = String(company?.company_id ?? "");
                 if (!companyId) return;
                 try {
                   appApi.setTenantContext({ companyId, perimeterId: null });
                   const rows = await appApi.platformGetPerimeters(companyId);
-                  map[companyId] = rows ?? [];
+                  map[companyId] = (rows ?? []) as PlatformPerimeter[];
                 } catch {
                   map[companyId] = [];
                 }
@@ -169,6 +187,57 @@ const TopBar: React.FC = () => {
     accessCompanies,
     superAdminPerimetersByCompany,
   ]);
+  const accessPerimeters = useMemo(
+    () => ((Array.isArray(meData?.access?.perimeters) ? meData.access.perimeters : []) as AccessiblePerimeterMembership[]),
+    [meData?.access?.perimeters]
+  );
+  const topBarTreesBySection = useMemo(() => {
+    const trees = buildTopBarHierarchy({
+      pathname: location.pathname,
+      currentCompanyId: meData?.access?.currentCompanyId ?? null,
+      currentPerimeterId: meData?.access?.currentPerimeterId ?? null,
+      hasActivePerimeter,
+      isOwner,
+      isSuperAdmin,
+      isAdmin,
+      ownerCompanies,
+      accessCompanies,
+      superAdminPerimetersByCompany,
+      accessPerimeters,
+    });
+    return trees.reduce<Record<string, TopBarSectionTree>>((acc, tree) => {
+      acc[tree.sectionId] = tree;
+      return acc;
+    }, {});
+  }, [
+    location.pathname,
+    meData?.access?.currentCompanyId,
+    meData?.access?.currentPerimeterId,
+    hasActivePerimeter,
+    isOwner,
+    isSuperAdmin,
+    isAdmin,
+    ownerCompanies,
+    accessCompanies,
+    superAdminPerimetersByCompany,
+    accessPerimeters,
+  ]);
+
+  useEffect(() => {
+    const superAdminTree = topBarTreesBySection.super_admin;
+    if (openSection !== "super_admin" || !superAdminTree) return;
+    const activeNode = superAdminTree.nodes.find((node) => node.isActive);
+    if (!activeNode || activeNode.children.length === 0) return;
+    setExpandedSuperAdminNodes((prev) => ({ ...prev, [activeNode.id]: true }));
+  }, [openSection, topBarTreesBySection]);
+
+  useEffect(() => {
+    const adminTree = topBarTreesBySection.admin;
+    if (openSection !== "admin" || !adminTree) return;
+    const activeNode = adminTree.nodes.find((node) => node.isActive);
+    if (!activeNode || activeNode.children.length === 0) return;
+    setExpandedAdminNodes((prev) => ({ ...prev, [activeNode.id]: true }));
+  }, [openSection, topBarTreesBySection]);
 
   const goToItem = (item: NavLeafItem) => {
     setOpenSection(null);
@@ -177,6 +246,14 @@ const TopBar: React.FC = () => {
       appApi.setTenantContext(item.tenantContext);
     }
     navigate(item.path);
+  };
+
+  const toggleSuperAdminNode = (nodeId: string) => {
+    setExpandedSuperAdminNodes((prev) => ({ ...prev, [nodeId]: !prev[nodeId] }));
+  };
+
+  const toggleAdminNode = (nodeId: string) => {
+    setExpandedAdminNodes((prev) => ({ ...prev, [nodeId]: !prev[nodeId] }));
   };
 
   const canSwitchCompany = useMemo(
@@ -264,6 +341,132 @@ const TopBar: React.FC = () => {
 
         <nav className="app-topbar-primary-nav" aria-label="Navigazione primaria">
           {navSections.map((section) => {
+            if (section.id === "super_admin" && topBarTreesBySection.super_admin) {
+              const tree = topBarTreesBySection.super_admin;
+              const isOpen = openSection === section.id;
+              return (
+                <div key={section.id} className="app-topbar-nav-group">
+                  <button
+                    type="button"
+                    className={`app-topbar-nav-item ${section.isActive ? "active" : ""}`}
+                    onClick={() => setOpenSection((prev) => (prev === section.id ? null : section.id))}
+                  >
+                    {section.label}
+                    <span className={`app-topbar-nav-caret ${isOpen ? "open" : ""}`}>▾</span>
+                  </button>
+                  {isOpen && (
+                    <div className="app-topbar-dropdown app-topbar-tree-dropdown">
+                      {tree.nodes.map((node) => {
+                        const isExpanded = expandedSuperAdminNodes[node.id] === true;
+                        const hasChildren = node.children.length > 0;
+                        return (
+                          <div key={node.id} className="app-topbar-tree-node">
+                            <div className="app-topbar-tree-row">
+                              <button
+                                type="button"
+                                className={`app-topbar-tree-label app-topbar-dropdown-item ${node.isActive ? "active" : ""}`}
+                                onClick={() => node.navigationItem && goToItem(node.navigationItem)}
+                                disabled={!node.navigationItem}
+                              >
+                                {node.label}
+                              </button>
+                              {hasChildren && (
+                                <button
+                                  type="button"
+                                  className={`app-topbar-tree-toggle ${isExpanded ? "expanded" : ""}`}
+                                  onClick={() => toggleSuperAdminNode(node.id)}
+                                  aria-label={isExpanded ? "Chiudi perimetri" : "Apri perimetri"}
+                                >
+                                  ▸
+                                </button>
+                              )}
+                            </div>
+                            {hasChildren && isExpanded && (
+                              <div className="app-topbar-tree-children">
+                                {node.children.map((child) => (
+                                  <button
+                                    key={child.id}
+                                    type="button"
+                                    className={`app-topbar-dropdown-item ${child.isActive ? "active" : ""}`}
+                                    onClick={() => goToItem(child)}
+                                  >
+                                    {child.label}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
+            if (section.id === "admin" && topBarTreesBySection.admin) {
+              const tree = topBarTreesBySection.admin;
+              const isOpen = openSection === section.id;
+              return (
+                <div key={section.id} className="app-topbar-nav-group">
+                  <button
+                    type="button"
+                    className={`app-topbar-nav-item ${section.isActive ? "active" : ""}`}
+                    onClick={() => setOpenSection((prev) => (prev === section.id ? null : section.id))}
+                  >
+                    {section.label}
+                    <span className={`app-topbar-nav-caret ${isOpen ? "open" : ""}`}>▾</span>
+                  </button>
+                  {isOpen && (
+                    <div className="app-topbar-dropdown app-topbar-tree-dropdown">
+                      {tree.nodes.map((node) => {
+                        const isExpanded = expandedAdminNodes[node.id] === true;
+                        const hasChildren = node.children.length > 0;
+                        return (
+                          <div key={node.id} className="app-topbar-tree-node">
+                            <div className="app-topbar-tree-row">
+                              <button
+                                type="button"
+                                className={`app-topbar-tree-label app-topbar-dropdown-item ${node.isActive ? "active" : ""}`}
+                                onClick={() => node.navigationItem && goToItem(node.navigationItem)}
+                                disabled={!node.navigationItem}
+                              >
+                                {node.label}
+                              </button>
+                              {hasChildren && (
+                                <button
+                                  type="button"
+                                  className={`app-topbar-tree-toggle ${isExpanded ? "expanded" : ""}`}
+                                  onClick={() => toggleAdminNode(node.id)}
+                                  aria-label={isExpanded ? "Chiudi sezioni" : "Apri sezioni"}
+                                >
+                                  ▸
+                                </button>
+                              )}
+                            </div>
+                            {hasChildren && isExpanded && (
+                              <div className="app-topbar-tree-children">
+                                {node.children.map((child) => (
+                                  <button
+                                    key={child.id}
+                                    type="button"
+                                    className={`app-topbar-dropdown-item ${child.isActive ? "active" : ""}`}
+                                    onClick={() => goToItem(child)}
+                                  >
+                                    {child.label}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
             if (section.items.length === 1) {
               const onlyItem = section.items[0];
               return (

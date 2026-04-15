@@ -11,9 +11,19 @@ type AccessCompany = {
 };
 
 type AccessPerimeter = {
+  company_id?: string;
+  company_name?: string;
   id?: string;
   perimeter_id?: string;
   name?: string;
+  perimeter_name?: string;
+  access_role?: string;
+};
+
+export type AccessiblePerimeterMembership = {
+  company_id?: string;
+  company_name?: string;
+  perimeter_id?: string;
   perimeter_name?: string;
   access_role?: string;
 };
@@ -47,6 +57,21 @@ type BuildModelInput = {
   superAdminPerimetersByCompany: Record<string, AccessPerimeter[]>;
 };
 
+export type TopBarSectionTree = {
+  sectionId: "super_admin" | "admin";
+  nodes: TopBarTreeNode[];
+};
+
+export type TopBarTreeNode = {
+  id: string;
+  label: string;
+  isActive: boolean;
+  navigationItem?: NavLeafItem;
+  children: NavLeafItem[];
+};
+
+const ADMIN_ACCESS_ROLES = new Set(["admin", "admin_user"]);
+
 function isPathActive(pathname: string, targetPath: string): boolean {
   if (targetPath === "/dashboard") {
     return pathname === "/dashboard";
@@ -61,6 +86,10 @@ function isPathActive(pathname: string, targetPath: string): boolean {
     return pathname === targetPath || pathname.startsWith(`${targetPath}/`);
   }
   return pathname === targetPath;
+}
+
+function isOperationalAdminAccess(role: unknown): boolean {
+  return typeof role === "string" && ADMIN_ACCESS_ROLES.has(role);
 }
 
 export function buildPrimaryNavigationModel(input: BuildModelInput): NavSection[] {
@@ -183,4 +212,130 @@ export function buildPrimaryNavigationModel(input: BuildModelInput): NavSection[
   ];
 
   return sections.filter((section) => section.isVisible);
+}
+
+export function buildTopBarHierarchy(
+  input: BuildModelInput & { accessPerimeters: AccessiblePerimeterMembership[] }
+): TopBarSectionTree[] {
+  const superAdminNodes: TopBarTreeNode[] = input.isSuperAdmin
+    ? input.accessCompanies.flatMap((company) => {
+      const companyId = String(company?.company_id ?? "");
+      if (!companyId) return [];
+      const companyName = String(company?.company_name ?? "Company");
+      const companyPath = `/companies/${companyId}/perimeters`;
+      const companyNavigationItem: NavLeafItem = {
+        id: `super-admin-company-${companyId}`,
+        label: companyName,
+        path: companyPath,
+        isActive: input.currentCompanyId === companyId
+          && (input.currentPerimeterId === null || isPathActive(input.pathname, companyPath)),
+        tenantContext: { companyId, perimeterId: null },
+      };
+
+      const perimeterChildren: NavLeafItem[] = (input.superAdminPerimetersByCompany[companyId] ?? [])
+        .reduce<NavLeafItem[]>((acc, perimeter) => {
+          const perimeterId = String(perimeter?.id ?? perimeter?.perimeter_id ?? "");
+          if (!perimeterId) return acc;
+          const perimeterName = String(perimeter?.name ?? perimeter?.perimeter_name ?? "Perimeter");
+          acc.push({
+            id: `super-admin-perimeter-${companyId}-${perimeterId}`,
+            label: perimeterName,
+            path: "/admin/interlocking",
+            isActive:
+              input.currentCompanyId === companyId
+              && input.currentPerimeterId === perimeterId
+              && input.pathname.startsWith("/admin"),
+            tenantContext: { companyId, perimeterId },
+          });
+          return acc;
+        }, []);
+
+      return [{
+        id: `super-admin-node-${companyId}`,
+        label: companyName,
+        isActive: companyNavigationItem.isActive || perimeterChildren.some((child) => child.isActive),
+        navigationItem: companyNavigationItem,
+        children: perimeterChildren,
+      }];
+    })
+    : [];
+
+  const perimeterNodesMap = new Map<string, TopBarTreeNode>();
+  if (input.isAdmin) {
+    for (const perimeter of input.accessPerimeters) {
+      const companyId = String(perimeter?.company_id ?? "");
+      const perimeterId = String(perimeter?.perimeter_id ?? "");
+      if (!companyId || !perimeterId) continue;
+      const companyName = String(perimeter?.company_name ?? "Company");
+      const perimeterName = String(perimeter?.perimeter_name ?? "Perimeter");
+      const hasOperationalAccess = input.isSuperAdmin || isOperationalAdminAccess(perimeter?.access_role);
+
+      const adminChildren: NavLeafItem[] = [];
+      if (hasOperationalAccess) {
+        adminChildren.push(
+          {
+            id: `area-admin-candidatures-${companyId}-${perimeterId}`,
+            label: "Candidature",
+            path: "/admin/candidatures",
+            isActive:
+              input.currentCompanyId === companyId
+              && input.currentPerimeterId === perimeterId
+              && isPathActive(input.pathname, "/admin/candidatures"),
+            tenantContext: { companyId, perimeterId },
+          },
+          {
+            id: `area-admin-maps-${companyId}-${perimeterId}`,
+            label: "Mappe utenti",
+            path: "/admin/maps",
+            isActive:
+              input.currentCompanyId === companyId
+              && input.currentPerimeterId === perimeterId
+              && isPathActive(input.pathname, "/admin/maps"),
+            tenantContext: { companyId, perimeterId },
+          },
+          {
+            id: `area-admin-config-${companyId}-${perimeterId}`,
+            label: "Configurazione",
+            path: "/admin/test-users",
+            isActive:
+              input.currentCompanyId === companyId
+              && input.currentPerimeterId === perimeterId
+              && isPathActive(input.pathname, "/admin/test-users"),
+            tenantContext: { companyId, perimeterId },
+          }
+        );
+      }
+      adminChildren.push({
+        id: `area-admin-interlocking-${companyId}-${perimeterId}`,
+        label: "Interlocking",
+        path: "/admin/interlocking",
+        isActive:
+          input.currentCompanyId === companyId
+          && input.currentPerimeterId === perimeterId
+          && input.pathname.startsWith("/admin/interlocking"),
+        tenantContext: { companyId, perimeterId },
+      });
+
+      const nodeId = `area-admin-node-${companyId}-${perimeterId}`;
+      if (perimeterNodesMap.has(nodeId)) continue;
+      const parentNavigationItem = adminChildren.find((item) => item.path === "/admin/interlocking");
+      perimeterNodesMap.set(nodeId, {
+        id: nodeId,
+        label: `${companyName} / ${perimeterName}`,
+        isActive: adminChildren.some((child) => child.isActive),
+        navigationItem: parentNavigationItem,
+        children: adminChildren,
+      });
+    }
+  }
+
+  const adminNodes = Array.from(perimeterNodesMap.values()).sort((a, b) => a.label.localeCompare(b.label));
+  const trees: TopBarSectionTree[] = [];
+  if (superAdminNodes.length > 0) {
+    trees.push({ sectionId: "super_admin", nodes: superAdminNodes });
+  }
+  if (adminNodes.length > 0) {
+    trees.push({ sectionId: "admin", nodes: adminNodes });
+  }
+  return trees;
 }
