@@ -6,6 +6,23 @@ import { supabase } from "./supabaseClient";
 const BASE = (import.meta.env.VITE_APP_API_URL || "").replace(/\/+$/, "");
 const TENANT_CONTEXT_STORAGE_KEY = "jip_tenant_context_v1";
 
+export class AppApiError extends Error {
+    status: number;
+    code: string;
+    action: "relogin" | "forbidden" | "retry" | "none";
+
+    constructor(
+        message: string,
+        opts: { status: number; code: string; action: "relogin" | "forbidden" | "retry" | "none" }
+    ) {
+        super(message);
+        this.name = "AppApiError";
+        this.status = opts.status;
+        this.code = opts.code;
+        this.action = opts.action;
+    }
+}
+
 if (!BASE) {
     throw new Error(
         "❌ Missing VITE_APP_API_URL: frontend must call backend-api"
@@ -16,7 +33,13 @@ async function getAccessToken(): Promise<string> {
     const { data, error } = await supabase.auth.getSession();
     if (error) throw new Error(error.message);
     const token = data.session?.access_token;
-    if (!token) throw new Error("Sessione non valida: access_token mancante");
+    if (!token) {
+        throw new AppApiError("Sessione non valida. Effettua di nuovo il login.", {
+            status: 401,
+            code: "SESSION_MISSING",
+            action: "relogin",
+        });
+    }
     return token;
 }
 
@@ -71,7 +94,17 @@ function mergeHeaders(base: HeadersInit | undefined, tenant: TenantContextSelect
 }
 
 async function apiFetch(path: string, init?: RequestInit) {
-    const token = await getAccessToken();
+    let token: string;
+    try {
+        token = await getAccessToken();
+    } catch (err: any) {
+        // Keep frontend auth state consistent when the local session is gone/corrupted.
+        if (err instanceof AppApiError && err.status === 401) {
+            writeTenantContext({ companyId: null, perimeterId: null });
+            await supabase.auth.signOut();
+        }
+        throw err;
+    }
     const tenant = readTenantContext();
 
     const res = await fetch(`${BASE}${path}`, {
@@ -86,10 +119,50 @@ async function apiFetch(path: string, init?: RequestInit) {
     const json = await res.json().catch(() => null);
 
     if (!res.ok) {
+        const codeFromBody =
+            typeof json?.error?.code === "string"
+                ? json.error.code
+                : typeof json?.code === "string"
+                    ? json.code
+                    : null;
+
         if (res.status === 429) {
             const retryAfter = res.headers.get("retry-after");
             const extra = retryAfter ? ` (riprova tra ~${retryAfter}s)` : "";
-            throw new Error(`HTTP 429: troppe richieste${extra}`);
+            throw new AppApiError(`HTTP 429: troppe richieste${extra}`, {
+                status: 429,
+                code: codeFromBody ?? "RATE_LIMITED",
+                action: "retry",
+            });
+        }
+
+        if (res.status === 503) {
+            const retryAfter = res.headers.get("retry-after");
+            const extra = retryAfter ? ` (riprova tra ~${retryAfter}s)` : "";
+            throw new AppApiError(`HTTP 503: servizio non disponibile${extra}`, {
+                status: 503,
+                code: codeFromBody ?? "SERVICE_UNAVAILABLE",
+                action: "retry",
+            });
+        }
+
+        if (res.status === 401) {
+            // Token invalid/expired or missing: clear tenant context + end session.
+            writeTenantContext({ companyId: null, perimeterId: null });
+            await supabase.auth.signOut();
+            throw new AppApiError("Sessione scaduta o non valida. Effettua di nuovo il login.", {
+                status: 401,
+                code: codeFromBody ?? "UNAUTHORIZED",
+                action: "relogin",
+            });
+        }
+
+        if (res.status === 403) {
+            throw new AppApiError("Non hai i permessi per questa operazione.", {
+                status: 403,
+                code: codeFromBody ?? "FORBIDDEN",
+                action: "forbidden",
+            });
         }
 
         const msg =
@@ -97,13 +170,25 @@ async function apiFetch(path: string, init?: RequestInit) {
             json?.message ||
             (typeof json?.error === "string" ? json.error : null) ||
             `HTTP ${res.status}`;
-        throw new Error(msg);
+        throw new AppApiError(msg, {
+            status: res.status,
+            code: codeFromBody ?? "API_ERROR",
+            action: "none",
+        });
     }
 
     return json;
 }
 
 export const appApi = {
+    isAuthError(error: unknown): boolean {
+        return error instanceof AppApiError && error.status === 401;
+    },
+
+    isForbiddenError(error: unknown): boolean {
+        return error instanceof AppApiError && error.status === 403;
+    },
+
     getTenantContext(): TenantContextSelection {
         return readTenantContext();
     },
@@ -269,7 +354,7 @@ export const appApi = {
     },
 
     async adminWarmupNeo4j() {
-        return apiFetch(`/api/admin/graph/warmup`, { method: "GET" });
+        return apiFetch(`/api/admin/graph/warmup`, { method: "POST", body: JSON.stringify({}) });
     },
 
     async syncGraph() {

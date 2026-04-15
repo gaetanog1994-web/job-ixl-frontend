@@ -67,7 +67,14 @@ export function solveOptimalChains(
     function search(i: number) {
         explored++;
 
-        if (chosen.length + (ordered.length - i) < best.length) return;
+        // Count-based pruning is safe only for MAX_IMPACT.
+        // For QUALITY_FIRST a solution with fewer chains can still be better.
+        if (
+            strategy === "MAX_IMPACT" &&
+            chosen.length + (ordered.length - i) < best.length
+        ) {
+            return;
+        }
 
         if (i === ordered.length) {
             if (betterThan(chosen, best, strategy)) best = [...chosen];

@@ -733,6 +733,8 @@ const AdminInterlocking = () => {
             const user = usersById.get(userId);
             let location = user?.location_id ? locationsById.get(user.location_id) ?? null : null;
 
+            // Compat fallback: if legacy payloads miss location_id, try label lookup.
+            // Source of truth remains relational location_id -> locations.id.
             if (!location && user?.location_name) {
                 location = locationsDirectory.find(l => l.name?.toLowerCase() === user.location_name?.toLowerCase()) ?? null;
             }
