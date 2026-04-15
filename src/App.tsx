@@ -19,6 +19,7 @@ import LoginPage from "./pages/LoginPage";
 import RequireAdmin from "./components/RequireAdmin";
 import RequireOwner from "./components/RequireOwner";
 import RequireCompanyAdmin from "./components/RequireCompanyAdmin";
+import RequirePerimeterAccess from "./components/RequirePerimeterAccess";
 import { useSidebar } from "./lib/SidebarContext";
 
 function App() {
@@ -101,7 +102,14 @@ function App() {
               <Route path="/admin" element={<Navigate to="/admin/interlocking" replace />} />
               <Route path="/admin/candidatures" element={<RequireAdmin><AdminCandidatures /></RequireAdmin>} />
               <Route path="/admin/maps" element={<RequireAdmin><AdminMaps /></RequireAdmin>} />
-              <Route path="/admin/interlocking" element={<RequireAdmin><AdminInterlocking /></RequireAdmin>} />
+              <Route
+                path="/admin/interlocking"
+                element={
+                  <RequirePerimeterAccess>
+                    <AdminInterlocking />
+                  </RequirePerimeterAccess>
+                }
+              />
               <Route path="/admin/test-users" element={<RequireAdmin><AdminTestUsers /></RequireAdmin>} />
 
               {/* Fallback */}

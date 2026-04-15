@@ -283,6 +283,7 @@ const AdminInterlocking = () => {
 
     const [usersDirectory, setUsersDirectory] = useState<AdminUserRow[]>([]);
     const [locationsDirectory, setLocationsDirectory] = useState<LocationRow[]>([]);
+    const isRestrictedReadOnly = !canManageCampaign;
 
 
 
@@ -638,12 +639,14 @@ const AdminInterlocking = () => {
     useEffect(() => {
         const run = async () => {
             const canManage = await loadCampaignPermission();
-            await Promise.all([
-                loadScenarios(),
-                loadReferenceData(),
-                canManage ? loadCampaignStatus() : Promise.resolve(),
-            ]);
-            if (!canManage) setCampaignStatus(null);
+            if (canManage) {
+                await Promise.all([loadScenarios(), loadReferenceData(), loadCampaignStatus()]);
+                return;
+            }
+            setScenarios([]);
+            setUsersDirectory([]);
+            setLocationsDirectory([]);
+            setCampaignStatus(null);
         };
         void run();
     }, []);
@@ -917,6 +920,10 @@ const AdminInterlocking = () => {
     const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
     const handleBuildGraph = async () => {
+        if (isRestrictedReadOnly) {
+            setError("Disponibile solo per Admin del perimetro.");
+            return;
+        }
         if (loadingGraph) return;
 
         try {
@@ -954,6 +961,10 @@ const AdminInterlocking = () => {
     };
 
     const handleAnalyzeScenarios = async () => {
+        if (isRestrictedReadOnly) {
+            setError("Disponibile solo per Admin del perimetro.");
+            return;
+        }
         try {
             setLoadingAnalyze(true);
             setError(null);
@@ -1043,6 +1054,7 @@ const AdminInterlocking = () => {
     };
 
     const handleDeleteSelected = async () => {
+        if (isRestrictedReadOnly) return;
         if (selectedScenarioIds.length === 0) return;
 
         try {
@@ -1066,6 +1078,7 @@ const AdminInterlocking = () => {
     };
 
     const handleScenarioRowClick = (scenarioId: string) => {
+        if (isRestrictedReadOnly) return;
         setActiveScenarioId(scenarioId);
         setFocusedPersonId(null);
         setSelectedChainIndex(null);
@@ -1157,11 +1170,13 @@ const AdminInterlocking = () => {
     };
 
     const exportScenarioCsv = (scenario: SavedScenario) => {
+        if (isRestrictedReadOnly) return;
         const rows = buildInterlockingCsvRows(scenario);
         downloadCsv(`scenario_${scenario.scenario_code}`, INTERLOCKING_CSV_HEADERS, rows);
     };
 
     const exportPeopleListCsv = () => {
+        if (isRestrictedReadOnly) return;
         if (!activeScenario) return;
         const selectedChainIndexes =
             selectedChainIndex !== null ? [selectedChainIndex] : undefined;
@@ -1231,6 +1246,21 @@ const AdminInterlocking = () => {
                     </div>
                 </div>
                 <TenantContextStrip sectionLabel="Admin / Interlocking" style={{ marginBottom: 0 }} />
+                {isRestrictedReadOnly && (
+                    <div
+                        style={{
+                            border: "1px solid #FCD34D",
+                            background: "#FFFBEB",
+                            color: "#92400E",
+                            borderRadius: "12px",
+                            padding: "10px 14px",
+                            fontSize: "13px",
+                            fontWeight: 600,
+                        }}
+                    >
+                        Disponibile solo per Admin del perimetro. La shell resta visibile in read-only, ma azioni operative e dati sensibili sono bloccati.
+                    </div>
+                )}
 
                 {/* ── Campaign status toggle (compact) ── */}
                 {campaignStatus !== null && (
@@ -1284,7 +1314,7 @@ const AdminInterlocking = () => {
                                     <div style={sectionSubtitleStyle}>Click sulla riga per attivare scenario, mappa e analytics</div>
                                 </div>
                                 <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                                    <button onClick={toggleSelectionMode} style={ghostButtonStyle}>
+                                    <button onClick={toggleSelectionMode} disabled={isRestrictedReadOnly} style={ghostButtonStyle}>
                                         {selectionMode ? "Annulla" : "Seleziona"}
                                     </button>
                                     {selectionMode && (
@@ -1305,6 +1335,7 @@ const AdminInterlocking = () => {
                             <div style={{ marginBottom: "14px" }}>
                                 <button
                                     onClick={(e) => { e.stopPropagation(); setShowNewSimPanel((prev) => !prev); }}
+                                    disabled={isRestrictedReadOnly}
                                     style={{
                                         display: "flex", alignItems: "center", gap: "6px",
                                         padding: "9px 16px", borderRadius: "12px",
@@ -1329,7 +1360,7 @@ const AdminInterlocking = () => {
                                         <div style={{ display: "flex", gap: "12px", alignItems: "center", flexWrap: "wrap" }}>
                                             <button
                                                 onClick={handleBuildGraph}
-                                                disabled={loadingGraph}
+                                                disabled={loadingGraph || isRestrictedReadOnly}
                                                 style={{
                                                     ...ghostButtonStyle,
                                                     background: buildResult ? "#ECFDF5" : "#FFFFFF",
@@ -1375,7 +1406,7 @@ const AdminInterlocking = () => {
                                             </label>
                                             <button
                                                 onClick={handleAnalyzeScenarios}
-                                                disabled={loadingAnalyze || !buildResult}
+                                                disabled={loadingAnalyze || !buildResult || isRestrictedReadOnly}
                                                 style={{ ...ghostButtonStyle, background: "#6366F1", color: "#FFFFFF", border: "1px solid #4F46E5", fontWeight: 600, whiteSpace: "nowrap" }}
                                             >
                                                 {loadingAnalyze ? "Analisi…" : "Analizza scenari"}
@@ -1412,6 +1443,10 @@ const AdminInterlocking = () => {
                             <div style={{ display: "grid", gap: "8px", maxHeight: expandedBox === "scenarios" ? "calc(100vh - 320px)" : "420px", overflowY: "auto", paddingRight: "2px" }}>
                                 {loadingScenarios ? (
                                     <div style={{ color: "#9CA3AF", fontSize: "13px" }}>Caricamento scenari...</div>
+                                ) : isRestrictedReadOnly ? (
+                                    <div style={{ color: "#9CA3AF", fontSize: "13px" }}>
+                                        Disponibile solo per Admin del perimetro.
+                                    </div>
                                 ) : scenarios.length === 0 ? (
                                     <div style={{ color: "#9CA3AF", fontSize: "13px" }}>Nessuno scenario disponibile.</div>
                                 ) : (
@@ -1432,7 +1467,7 @@ const AdminInterlocking = () => {
                                                     border: isActive ? "1px solid #6366F1" : "1px solid #E5E7EB",
                                                     borderRadius: "12px",
                                                     background: isActive ? "#EFF6FF" : isSelected ? "#F3F4F6" : "#FFFFFF",
-                                                    cursor: "pointer", overflow: "hidden",
+                                                    cursor: isRestrictedReadOnly ? "not-allowed" : "pointer", overflow: "hidden",
                                                     boxShadow: isActive ? "0 0 0 1px rgba(99,102,241,0.2), 0 4px 6px -1px rgba(0,0,0,0.08)" : "none",
                                                 }}
                                             >
@@ -1462,6 +1497,7 @@ const AdminInterlocking = () => {
                                                     <div style={{ color: "#6B7280", fontSize: "11px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{getStrategyLabel(scenario.strategy)}</div>
                                                     <div>
                                                         <button onClick={(e) => { e.stopPropagation(); exportScenarioCsv(scenario); }}
+                                                            disabled={isRestrictedReadOnly}
                                                             style={{ ...ghostButtonStyle, padding: "5px 8px", fontSize: "11px" }}>CSV</button>
                                                     </div>
                                                     <div>
@@ -1550,11 +1586,15 @@ const AdminInterlocking = () => {
                                 <div>
                                     <h4 style={sectionTitleStyle}>World Map & People</h4>
                                     <div style={sectionSubtitleStyle}>
-                                        {activeScenario ? `Scenario attivo: ${activeScenario.scenario_code}` : "Vista globale sedi in verde — seleziona uno scenario per dettaglio"}
+                                        {isRestrictedReadOnly
+                                            ? "Modalità read-only: dettaglio scenario, persone e catene non disponibile"
+                                            : activeScenario
+                                                ? `Scenario attivo: ${activeScenario.scenario_code}`
+                                                : "Vista globale sedi in verde — seleziona uno scenario per dettaglio"}
                                     </div>
                                 </div>
                                 <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                                    {activeScenario && (
+                                    {activeScenario && !isRestrictedReadOnly && (
                                         <button
                                             onClick={(e) => {
                                                 e.stopPropagation();
@@ -1597,7 +1637,11 @@ const AdminInterlocking = () => {
                                         visibility: viewMode === "map" ? "visible" : "hidden",
                                         pointerEvents: viewMode === "map" ? "auto" : "none",
                                     }}>
-                                        {displayedMapMarkers.length > 0 ? (
+                                        {isRestrictedReadOnly ? (
+                                            <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#9CA3AF", padding: "20px", textAlign: "center" }}>
+                                                Disponibile solo per Admin del perimetro.
+                                            </div>
+                                        ) : displayedMapMarkers.length > 0 ? (
                                             <MapContainer center={mapCenter} zoom={6} style={{ width: "100%", height: "100%" }}>
                                                 <TileLayer attribution='&copy; OpenStreetMap contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                                                 <FitBounds markers={displayedMapMarkers} />
@@ -1677,7 +1721,7 @@ const AdminInterlocking = () => {
                                     </div>
 
                                     {/* Lista persone: sovrapposta, visibile solo in peopleList mode */}
-                                    {viewMode === "peopleList" && activeScenario && (() => {
+                                    {viewMode === "peopleList" && activeScenario && !isRestrictedReadOnly && (() => {
                                         const cc = selectedChainIndex !== null ? getChainColor(selectedChainIndex) : null;
                                         return (
                                             <div style={{ position: "absolute", inset: 0, background: "#FFFFFF", display: "grid", gridTemplateRows: "auto auto auto 1fr", overflow: "hidden" }}>
@@ -1969,7 +2013,9 @@ const AdminInterlocking = () => {
                             </div>
 
                             <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.max(analyticsSeries.length, 1)}, minmax(28px, 1fr))`, gap: "14px", alignItems: "end", minHeight: expandedBox === "analytics" ? "380px" : "120px", paddingTop: "16px", borderTop: "1px solid #E5E7EB" }}>
-                                {analyticsSeries.length > 0 ? (
+                                {isRestrictedReadOnly ? (
+                                    <div style={{ color: "#9CA3AF", fontSize: "13px" }}>Disponibile solo per Admin del perimetro.</div>
+                                ) : analyticsSeries.length > 0 ? (
                                     analyticsSeries.map((item) => (
                                         <div key={item.id} style={{ display: "grid", gap: "10px", alignItems: "end", cursor: "pointer" }}
                                             onClick={(e) => { e.stopPropagation(); setActiveScenarioId((prev) => prev === item.id ? null : item.id); setFocusedPersonId(null); }}
