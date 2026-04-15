@@ -5,6 +5,7 @@ import type {
     OptimizationStrategy,
 } from "../lib/optimalChainsSolver";
 import { appApi } from "../lib/appApi";
+import { canManageCampaignInCurrentPerimeter } from "../lib/operationalAccess";
 import {
     MapContainer,
     TileLayer,
@@ -257,6 +258,7 @@ const AdminInterlocking = () => {
     const [loadingReferenceData, setLoadingReferenceData] = useState(false);
     const [deleting, setDeleting] = useState(false);
     const [campaignStatus, setCampaignStatus] = useState<"open" | "closed" | null>(null);
+    const [canManageCampaign, setCanManageCampaign] = useState(false);
 
     const [buildResult, setBuildResult] = useState<BuildResult | null>(null);
     const [strategy, setStrategy] = useState<UiStrategy>("NONE");
@@ -611,6 +613,18 @@ const AdminInterlocking = () => {
         }
     };
 
+    const loadCampaignPermission = async () => {
+        try {
+            const me = await appApi.getMe();
+            const canManage = canManageCampaignInCurrentPerimeter(me);
+            setCanManageCampaign(canManage);
+            return canManage;
+        } catch {
+            setCanManageCampaign(false);
+            return false;
+        }
+    };
+
     const toggleCampaignStatus = async () => {
         const next = campaignStatus === "open" ? "closed" : "open";
         try {
@@ -622,9 +636,16 @@ const AdminInterlocking = () => {
     };
 
     useEffect(() => {
-        loadScenarios();
-        loadReferenceData();
-        loadCampaignStatus();
+        const run = async () => {
+            const canManage = await loadCampaignPermission();
+            await Promise.all([
+                loadScenarios(),
+                loadReferenceData(),
+                canManage ? loadCampaignStatus() : Promise.resolve(),
+            ]);
+            if (!canManage) setCampaignStatus(null);
+        };
+        void run();
     }, []);
 
     const usersById = useMemo(() => {
@@ -1227,18 +1248,24 @@ const AdminInterlocking = () => {
                             <div style={{ width: 7, height: 7, borderRadius: "50%", background: campaignStatus === "open" ? "#10b981" : "#ef4444" }} />
                             {campaignStatus === "open" ? "Aperta" : "Chiusa"}
                         </div>
-                        <button
-                            style={{
-                                border: `1px solid ${campaignStatus === "open" ? "#fca5a5" : "#a7f3d0"}`,
-                                background: campaignStatus === "open" ? "#fef2f2" : "#ecfdf5",
-                                color: campaignStatus === "open" ? "#dc2626" : "#059669",
-                                borderRadius: "10px", padding: "5px 12px", cursor: "pointer",
-                                fontSize: "12px", fontWeight: 600,
-                            }}
-                            onClick={toggleCampaignStatus}
-                        >
-                            {campaignStatus === "open" ? "Chiudi campagna" : "Apri campagna"}
-                        </button>
+                        {canManageCampaign ? (
+                            <button
+                                style={{
+                                    border: `1px solid ${campaignStatus === "open" ? "#fca5a5" : "#a7f3d0"}`,
+                                    background: campaignStatus === "open" ? "#fef2f2" : "#ecfdf5",
+                                    color: campaignStatus === "open" ? "#dc2626" : "#059669",
+                                    borderRadius: "10px", padding: "5px 12px", cursor: "pointer",
+                                    fontSize: "12px", fontWeight: 600,
+                                }}
+                                onClick={toggleCampaignStatus}
+                            >
+                                {campaignStatus === "open" ? "Chiudi campagna" : "Apri campagna"}
+                            </button>
+                        ) : (
+                            <span style={{ fontSize: "12px", color: "#6B7280", fontWeight: 500 }}>
+                                Solo admin del perimeter
+                            </span>
+                        )}
                     </div>
                 )}
 

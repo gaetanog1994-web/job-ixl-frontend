@@ -3,6 +3,7 @@ import AdminScenariosManager from "./AdminScenariosManager";
 import AdminLocationsManager from "./AdminLocationsManager";
 import AdminRolesManager from "./AdminRolesManager";
 import { appApi } from "../lib/appApi";
+import { canManageCampaignInCurrentPerimeter } from "../lib/operationalAccess";
 import TenantContextStrip from "../components/TenantContextStrip";
 import "../styles/dashboard.css";
 
@@ -63,6 +64,7 @@ const AdminTestUsers = () => {
   const [errorTop, setErrorTop] = useState<string | null>(null);
   const [maxApplications, setMaxApplications] = useState<number | null>(null);
   const [campaignStatus, setCampaignStatus] = useState<"open" | "closed" | null>(null);
+  const [canManageCampaign, setCanManageCampaign] = useState(false);
   const [inviteFirstName, setInviteFirstName] = useState("");
   const [inviteLastName, setInviteLastName] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
@@ -156,6 +158,18 @@ const AdminTestUsers = () => {
     }
   };
 
+  const loadCampaignPermission = async () => {
+    try {
+      const me = await appApi.getMe();
+      const canManage = canManageCampaignInCurrentPerimeter(me);
+      setCanManageCampaign(canManage);
+      return canManage;
+    } catch {
+      setCanManageCampaign(false);
+      return false;
+    }
+  };
+
   const toggleCampaignStatus = async () => {
     const next = campaignStatus === "open" ? "closed" : "open";
     try {
@@ -168,6 +182,7 @@ const AdminTestUsers = () => {
 
 
   const loadAll = async () => {
+    const canManage = await loadCampaignPermission();
     await Promise.all([
       loadUsers(),
       loadLocations(),
@@ -175,8 +190,9 @@ const AdminTestUsers = () => {
       loadScenarios(),
       loadRoles(),
       loadAppConfig(),
-      loadCampaignStatus(),
+      canManage ? loadCampaignStatus() : Promise.resolve(),
     ]);
+    if (!canManage) setCampaignStatus(null);
   };
 
   useEffect(() => {
@@ -455,7 +471,11 @@ const AdminTestUsers = () => {
           <div className="db-card" style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", padding: "24px", gap: "12px" }}>
             <div style={{ fontSize: "38px" }}>📣</div>
             <h3 style={{ margin: 0, fontSize: "16px", color: "var(--text-primary)" }}>Campagna di mobilità</h3>
-            {campaignStatus !== null ? (
+            {!canManageCampaign ? (
+              <span style={{ fontSize: "12px", color: "var(--text-secondary)", textAlign: "center" }}>
+                Solo admin del perimeter possono aprire o chiudere la campagna.
+              </span>
+            ) : campaignStatus !== null ? (
               <>
                 <div style={{
                   display: "inline-flex", alignItems: "center", gap: "6px",
