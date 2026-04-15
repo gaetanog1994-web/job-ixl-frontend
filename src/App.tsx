@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import { useAuth } from "./lib/AuthContext";
 
 import MobilityDashboard from "./pages/MobilityDashboard";
@@ -20,12 +20,9 @@ import RequireAdmin from "./components/RequireAdmin";
 import RequireOwner from "./components/RequireOwner";
 import RequireCompanyAdmin from "./components/RequireCompanyAdmin";
 import RequirePerimeterAccess from "./components/RequirePerimeterAccess";
-import { useSidebar } from "./lib/SidebarContext";
 
 function App() {
   const { user, loading } = useAuth();
-  const { toggle: toggleSidebar } = useSidebar();
-  const location = useLocation();
 
   if (loading) {
     return (
@@ -46,26 +43,13 @@ function App() {
     );
   }
 
-  const isAdminRoute = location.pathname.startsWith("/admin");
-  const hasLocalHamburger = isAdminRoute || location.pathname.startsWith("/dashboard");
+  const showTopBar = Boolean(user);
 
   return (
     <>
-      {/* TopBar only for admin routes (dashboard has its own inline topbar) */}
-      {user && isAdminRoute && <TopBar />}
+      {showTopBar && <TopBar />}
 
-      {user && !hasLocalHamburger && (
-        <button
-          id="global-floating-hamburger"
-          className="db-floating-hamburger"
-          onClick={toggleSidebar}
-          title="Apri menu navigazione"
-        >
-          ☰
-        </button>
-      )}
-
-      <div style={{ paddingTop: user && isAdminRoute ? "64px" : "0" }}>
+      <div style={{ paddingTop: showTopBar ? "48px" : "0" }}>
         <Routes>
           {/* ---------- PUBLIC ---------- */}
           {!user && (

@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useAuth } from "../lib/AuthContext";
 import { appApi } from "../lib/appApi";
-import { useSidebar } from "../lib/SidebarContext";
 import { useAvailability } from "../lib/AvailabilityContext";
 
 import MapPanel from "../components/dashboard/MapPanel";
@@ -12,23 +11,19 @@ import UserStatsCard from "../components/dashboard/UserStatsCard";
 import MyApplicationsPanel from "../components/dashboard/MyApplicationsPanel";
 import type { MapLocation } from "../components/PositionsMap";
 import TenantContextStrip from "../components/TenantContextStrip";
-import { labelAccessRole } from "../lib/accessLabels";
 
 import "../styles/dashboard.css";
 
 const MobilityDashboard: React.FC = () => {
   const { user, loading: authLoading } = useAuth();
-  const { toggle: toggleSidebar } = useSidebar();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const { availabilityStatus, isAdmin, toggleAvailability } = useAvailability();
+  const { availabilityStatus, isAdmin } = useAvailability();
 
   /* ---------- data state ---------- */
   const [userData, setUserData] = useState<any>(null);
   const [myApplications, setMyApplications] = useState<any[]>([]);
   const [maxApplications, setMaxApplications] = useState<number>(10);
-
-  const [dataLoading, setDataLoading] = useState(true);
 
   /* ---------- map state ---------- */
   const [mapLocations, setMapLocations] = useState<MapLocation[]>([]);
@@ -37,12 +32,6 @@ const MobilityDashboard: React.FC = () => {
     roleName: "",
     onlyNonFixed: false,
   });
-  const [tenantContextData, setTenantContextData] = useState<{
-    company: string;
-    perimeter: string;
-    accessRole: string;
-  } | null>(null);
-
   /* ---------- campaign status ---------- */
   const [campaignStatus, setCampaignStatus] = useState<"open" | "closed" | null>(null);
 
@@ -58,31 +47,6 @@ const MobilityDashboard: React.FC = () => {
     setHighlightPositionId(id);
   }, [searchParams]);
 
-  useEffect(() => {
-    let cancelled = false;
-    const loadContext = async () => {
-      try {
-        const me = await appApi.getMe();
-        const company = me?.access?.currentCompanyName ?? "";
-        const perimeter = me?.access?.currentPerimeterName ?? "";
-        const accessRole = labelAccessRole(me?.access?.accessRole);
-        if (!cancelled) {
-          setTenantContextData({
-            company: company || "Company non selezionata",
-            perimeter: perimeter || "Perimeter non selezionato",
-            accessRole,
-          });
-        }
-      } catch {
-        if (!cancelled) setTenantContextData(null);
-      }
-    };
-    loadContext();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
   const handleHighlightPosition = (positionId: string) => {
     setSearchParams({ highlightPositionId: positionId });
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -96,12 +60,10 @@ const MobilityDashboard: React.FC = () => {
   /* ---------- data loading ---------- */
   useEffect(() => {
     if (!user) {
-      setDataLoading(false);
       return;
     }
     let cancelled = false;
     const load = async () => {
-      setDataLoading(true);
       try {
         const [userInfo, cfg, apps] = await Promise.allSettled([
           appApi.getMyUser(),
@@ -117,8 +79,6 @@ const MobilityDashboard: React.FC = () => {
       } catch (e: any) {
         if (cancelled) return;
         console.error("[MobilityDashboard] load error:", e?.message ?? e);
-      } finally {
-        if (!cancelled) setDataLoading(false);
       }
     };
     load();
@@ -152,13 +112,6 @@ const MobilityDashboard: React.FC = () => {
     return keys.size;
   }, [myApplications]);
 
-  /* ---------- availability toggle (clears apps on deactivate) ---------- */
-  const handleToggleAvailability = async () => {
-    const wasAvailable = availabilityStatus === "available";
-    await toggleAvailability();
-    if (wasAvailable) setMyApplications([]);
-  };
-
   /* ---------- reload applications (used when map updates) ---------- */
   const handleApplicationUpdate = useCallback(async () => {
     try {
@@ -184,147 +137,9 @@ const MobilityDashboard: React.FC = () => {
     );
   }
 
-  const initials = userData?.full_name
-    ? userData.full_name.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase()
-    : "U";
-
   /* ---------- render ---------- */
   return (
     <div className="db-shell" style={{ flexDirection: "column" }}>
-
-      {/* ===== TOP BAR (hamburger + title + actions) ===== */}
-      <header className="db-topbar" style={{ flexShrink: 0 }}>
-        <div className="db-topbar-left">
-
-          {/* Hamburger */}
-          <button
-            id="dashboard-hamburger"
-            onClick={toggleSidebar}
-            style={{
-              background: "transparent",
-              border: "1px solid var(--border)",
-              borderRadius: "10px",
-              width: 38, height: 38,
-              display: "flex", alignItems: "center", justifyContent: "center",
-              cursor: "pointer", fontSize: "18px", flexShrink: 0,
-              transition: "background 0.15s",
-            }}
-            onMouseEnter={e => (e.currentTarget.style.background = "var(--surface)")}
-            onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
-            title="Apri menu"
-          >
-            ☰
-          </button>
-
-          <span className="db-topbar-title">My Mobility Dashboard</span>
-          {tenantContextData ? (
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <span
-                style={{
-                  marginLeft: 8,
-                  padding: "5px 10px",
-                  border: "1px solid var(--border)",
-                  borderRadius: "10px",
-                  fontSize: "12px",
-                  color: "var(--text-secondary)",
-                  background: "var(--surface)",
-                  fontWeight: 600,
-                }}
-              >
-                {tenantContextData.company}
-              </span>
-              <span
-                style={{
-                  padding: "5px 10px",
-                  border: "1px solid var(--border)",
-                  borderRadius: "10px",
-                  fontSize: "12px",
-                  color: "var(--text-secondary)",
-                  background: "var(--surface)",
-                  fontWeight: 600,
-                }}
-              >
-                {tenantContextData.perimeter}
-              </span>
-              <span
-                style={{
-                  padding: "5px 10px",
-                  border: "1px solid var(--border)",
-                  borderRadius: "10px",
-                  fontSize: "12px",
-                  color: "var(--text-secondary)",
-                  background: "var(--surface)",
-                  fontWeight: 600,
-                }}
-              >
-                {tenantContextData.accessRole}
-              </span>
-            </div>
-          ) : null}
-        </div>
-
-        <div className="db-topbar-right">
-          {/* Availability badge */}
-          <button
-            onClick={isAdmin ? handleToggleAvailability : undefined}
-            disabled={!isAdmin}
-            id="topbar-availability-toggle"
-            title={isAdmin ? (availabilityStatus === "available" ? "Clicca per disattivarti" : "Clicca per attivarti") : "Solo gli admin possono modificare la disponibilità"}
-            style={{
-              display: "flex", alignItems: "center", gap: "7px",
-              padding: "6px 12px",
-              borderRadius: "10px",
-              fontSize: "13px", fontWeight: 600,
-              fontFamily: "var(--font)",
-              cursor: isAdmin ? "pointer" : "default",
-              opacity: isAdmin ? 1 : 0.7,
-              transition: "all 0.15s",
-              border: availabilityStatus === "available"
-                ? "1.5px solid #a7f3d0"
-                : "1.5px solid var(--border)",
-              background: availabilityStatus === "available" ? "#f0fdf4" : "var(--surface)",
-              color: availabilityStatus === "available"
-                ? "var(--available-color)"
-                : "var(--text-secondary)",
-            }}
-          >
-            <div style={{
-              width: 8, height: 8, borderRadius: "50%",
-              background: availabilityStatus === "available"
-                ? "var(--available-color)"
-                : "var(--inactive-color)",
-              boxShadow: availabilityStatus === "available"
-                ? "0 0 0 3px rgba(16,185,129,0.2)"
-                : "none",
-            }} />
-            {availabilityStatus === "available" ? "Disponibile" : "Non disponibile"}
-          </button>
-
-          {dataLoading && (
-            <div style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--text-secondary)", fontSize: "13px" }}>
-              <div className="db-spinner" style={{ width: 14, height: 14 }} />
-              Aggiornamento…
-            </div>
-          )}
-
-          {/* User avatar */}
-          <div style={{
-            width: 34, height: 34,
-            borderRadius: "9px",
-            background: "var(--brand)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: "13px", fontWeight: 700, color: "white",
-            flexShrink: 0, cursor: "pointer",
-          }}
-            title={userData?.full_name ?? "Utente"}
-            onClick={toggleSidebar}
-            id="topbar-user-avatar"
-          >
-            {initials}
-          </div>
-        </div>
-      </header>
-
       {/* ===== CONTENT ===== */}
       <div className="db-content" style={{ flex: 1 }}>
         <TenantContextStrip sectionLabel="Dashboard utente" />

@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
 import { appApi } from "../lib/appApi";
 import { useSidebar } from "../lib/SidebarContext";
 import { useAvailability } from "../lib/AvailabilityContext";
 import { labelAccessRole, labelHighestRole } from "../lib/accessLabels";
+import { buildPrimaryNavigationModel, type NavLeafItem } from "../lib/navigationModel";
 import "../styles/dashboard.css";
 
 type PlatformCompany = {
@@ -135,15 +136,52 @@ const GlobalSidebar: React.FC = () => {
     navigate(path);
   };
 
-  const isActive = (path: string) => location.pathname === path;
   const activeAccess = meData?.access ?? null;
   const hasActivePerimeter = !!activeAccess?.currentPerimeterId;
   const isOwner = meData?.isOwner === true;
   const isSuperAdmin = meData?.isSuperAdmin === true;
-  const accessCompanies = Array.isArray(activeAccess?.companies) ? activeAccess.companies : [];
-  const hasSuperAdminArea = isSuperAdmin && accessCompanies.length > 0;
+  const accessCompanies = useMemo(
+    () => (Array.isArray(activeAccess?.companies) ? activeAccess.companies : []),
+    [activeAccess?.companies]
+  );
   const accessRoleLabel = labelAccessRole(activeAccess?.accessRole);
   const highestRoleLabel = labelHighestRole(activeAccess?.highestRole);
+  const primarySections = useMemo(() => buildPrimaryNavigationModel({
+    pathname: location.pathname,
+    currentCompanyId: activeAccess?.currentCompanyId ?? null,
+    currentPerimeterId: activeAccess?.currentPerimeterId ?? null,
+    hasActivePerimeter,
+    isOwner,
+    isSuperAdmin,
+    isAdmin,
+    ownerCompanies,
+    accessCompanies,
+    superAdminPerimetersByCompany,
+  }), [
+    location.pathname,
+    hasActivePerimeter,
+    isOwner,
+    isSuperAdmin,
+    isAdmin,
+    ownerCompanies,
+    accessCompanies,
+    superAdminPerimetersByCompany,
+  ]);
+  const dashboardSection = primarySections.find((section) => section.id === "dashboard");
+  const ownerSection = primarySections.find((section) => section.id === "owner");
+  const superAdminSection = primarySections.find((section) => section.id === "super_admin");
+  const adminSection = primarySections.find((section) => section.id === "admin");
+  const ownerItems = ownerSection?.items ?? [];
+  const ownerHomeItem = ownerItems.find((item) => item.id === "owner-home") ?? null;
+  const ownerCompanyItems = ownerItems.filter((item) => item.id !== "owner-home");
+  const hasMultiTenantSection = Boolean(ownerSection || superAdminSection);
+
+  const goToItem = (item: NavLeafItem) => {
+    if (item.tenantContext) {
+      appApi.setTenantContext(item.tenantContext);
+    }
+    go(item.path);
+  };
 
   const initials = userData?.full_name
     ? userData.full_name.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase()
@@ -282,50 +320,47 @@ const GlobalSidebar: React.FC = () => {
 
           <div className="db-section-label">Principale</div>
 
-          {hasActivePerimeter && (
+          {dashboardSection?.items[0] && (
             <button
               id="global-nav-dashboard"
-              className={`db-nav-item ${isActive("/dashboard") ? "active" : ""}`}
-              onClick={() => go("/dashboard")}
+              className={`db-nav-item ${dashboardSection.isActive ? "active" : ""}`}
+              onClick={() => goToItem(dashboardSection.items[0])}
             >
               <span className="db-nav-icon">🗺️</span>
-              <span className="db-nav-label">Dashboard</span>
+              <span className="db-nav-label">{dashboardSection.label}</span>
             </button>
           )}
 
-          {(isOwner || hasSuperAdminArea) && <div className="db-section-label" style={{ marginTop: 12 }}>Multi-tenant</div>}
+          {hasMultiTenantSection && <div className="db-section-label" style={{ marginTop: 12 }}>Multi-tenant</div>}
 
-          {isOwner && (
+          {ownerSection && ownerHomeItem && (
             <>
               <button
                 id="global-nav-owner"
-                className={`db-nav-item ${isActive("/owner") ? "active" : ""}`}
-                onClick={() => go("/owner")}
+                className={`db-nav-item ${ownerSection.isActive ? "active" : ""}`}
+                onClick={() => goToItem(ownerHomeItem)}
               >
                 <span className="db-nav-icon">🏢</span>
-                <span className="db-nav-label">Owner</span>
+                <span className="db-nav-label">{ownerSection.label}</span>
                 <span className={`db-nav-chevron ${ownerOpen ? "open" : ""}`} onClick={(event) => { event.stopPropagation(); setOwnerOpen((prev) => !prev); }}>
                   ▶
                 </span>
               </button>
               <div className="db-admin-submenu" style={{ maxHeight: ownerOpen ? "900px" : "0" }}>
-                {ownerCompanies.map((company) => (
+                {ownerCompanyItems.map((item) => (
                   <button
-                    key={company.id}
+                    key={item.id}
                     className="db-admin-sub-item db-super-sub-item"
-                    onClick={() => {
-                      appApi.setTenantContext({ companyId: company.id, perimeterId: null });
-                      go(`/companies/${company.id}/perimeters`);
-                    }}
+                    onClick={() => goToItem(item)}
                   >
-                    {company.name}
+                    {item.label}
                   </button>
                 ))}
               </div>
             </>
           )}
 
-          {hasSuperAdminArea && (
+          {superAdminSection && (
             <>
               <button
                 id="global-nav-super-admin-toggle"
@@ -333,56 +368,24 @@ const GlobalSidebar: React.FC = () => {
                 onClick={() => setSuperAdminOpen((prev) => !prev)}
               >
                 <span className="db-nav-icon">🧩</span>
-                <span className="db-nav-label">Super Admin</span>
+                <span className="db-nav-label">{superAdminSection.label}</span>
                 <span className={`db-nav-chevron ${superAdminOpen ? "open" : ""}`}>▶</span>
               </button>
               <div className="db-admin-submenu" style={{ maxHeight: superAdminOpen ? "900px" : "0" }}>
-                {accessCompanies.map((company: any) => {
-                  const companyId = String(company?.company_id ?? "");
-                  const companyName = String(company?.company_name ?? "Company");
-                  const perimeters = superAdminPerimetersByCompany[companyId] ?? [];
-
-                  return (
-                    <div key={companyId} className="db-super-company-block">
-                      <button
-                        className={`db-admin-sub-item ${location.pathname === `/companies/${companyId}/perimeters` ? "active" : ""}`}
-                        onClick={() => {
-                          appApi.setTenantContext({ companyId, perimeterId: null });
-                          go(`/companies/${companyId}/perimeters`);
-                        }}
-                      >
-                        {companyName}
-                      </button>
-                      {perimeters.map((perimeter: any) => {
-                        const perimeterId = String(perimeter?.id ?? perimeter?.perimeter_id ?? "");
-                        const perimeterName = String(perimeter?.name ?? perimeter?.perimeter_name ?? "Perimeter");
-                        const canManage =
-                          isSuperAdmin ||
-                          perimeter?.access_role === "admin" ||
-                          perimeter?.access_role === "admin_user";
-                        const destination = canManage ? "/admin/interlocking" : "/dashboard";
-
-                        return (
-                          <button
-                            key={perimeterId}
-                            className="db-admin-sub-item db-super-sub-item"
-                            onClick={() => {
-                              appApi.setTenantContext({ companyId, perimeterId });
-                              go(destination);
-                            }}
-                          >
-                            {perimeterName}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  );
-                })}
+                {superAdminSection.items.map((item) => (
+                  <button
+                    key={item.id}
+                    className={`db-admin-sub-item ${item.isActive ? "active" : ""}`}
+                    onClick={() => goToItem(item)}
+                  >
+                    {item.label}
+                  </button>
+                ))}
               </div>
             </>
           )}
 
-          {isAdmin && (
+          {adminSection && (
             <>
               <div className="db-section-label" style={{ marginTop: 12 }}>Amministrazione</div>
 
@@ -392,7 +395,7 @@ const GlobalSidebar: React.FC = () => {
                 onClick={() => setAdminOpen(o => !o)}
               >
                 <span className="db-nav-icon">⚙️</span>
-                <span className="db-nav-label">Area Admin</span>
+                <span className="db-nav-label">{adminSection.label}</span>
                 <span className={`db-nav-chevron ${adminOpen ? "open" : ""}`}>▶</span>
               </button>
 
@@ -400,10 +403,15 @@ const GlobalSidebar: React.FC = () => {
                 className="db-admin-submenu"
                 style={{ maxHeight: adminOpen ? "300px" : "0" }}
               >
-                <button className="db-admin-sub-item" onClick={() => go("/admin/candidatures")} id="gn-cadidatures">Candidature</button>
-                <button className="db-admin-sub-item" onClick={() => go("/admin/maps")} id="gn-maps">Mappe utenti</button>
-                <button className="db-admin-sub-item" onClick={() => go("/admin/interlocking")} id="gn-interlocking">Interlocking</button>
-                <button className="db-admin-sub-item" onClick={() => go("/admin/test-users")} id="gn-config">Configurazione</button>
+                {adminSection.items.map((item) => (
+                  <button
+                    key={item.id}
+                    className={`db-admin-sub-item ${item.isActive ? "active" : ""}`}
+                    onClick={() => goToItem(item)}
+                  >
+                    {item.label}
+                  </button>
+                ))}
               </div>
             </>
           )}
