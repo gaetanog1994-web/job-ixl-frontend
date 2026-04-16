@@ -7,16 +7,14 @@ export default function RequirePerimeterAccess({ children }: { children: React.R
   const { user, loading: authLoading } = useAuth();
   const [checking, setChecking] = useState(true);
   const [allowed, setAllowed] = useState(false);
-  const [needsContext, setNeedsContext] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
 
     const run = async () => {
-      if (!user) {
+        if (!user) {
         if (!cancelled) {
           setAllowed(false);
-          setNeedsContext(false);
           setChecking(false);
         }
         return;
@@ -28,12 +26,10 @@ export default function RequirePerimeterAccess({ children }: { children: React.R
         const canAccess = me?.access?.canAccessPerimeter === true;
         if (!cancelled) {
           setAllowed(hasPerimeter && canAccess);
-          setNeedsContext(!hasPerimeter && (me?.access?.perimeters?.length ?? 0) > 0);
         }
       } catch {
         if (!cancelled) {
           setAllowed(false);
-          setNeedsContext(false);
         }
       } finally {
         if (!cancelled) setChecking(false);
@@ -51,7 +47,7 @@ export default function RequirePerimeterAccess({ children }: { children: React.R
 
   if (authLoading || checking) return <p style={{ padding: 20 }}>Verifica accesso perimetro…</p>;
   if (!user) return <Navigate to="/login" replace />;
-  if (!allowed) return <Navigate to={needsContext ? "/select-context" : "/"} replace />;
+  if (!allowed) return <Navigate to="/" replace />;
 
   return <>{children}</>;
 }

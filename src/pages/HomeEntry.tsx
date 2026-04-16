@@ -1,7 +1,13 @@
 import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { appApi } from "../lib/appApi";
-import { getAvailableContexts, isContextMatch, toTenantSelection } from "../lib/contextRouting";
+import {
+  buildActiveContextSource,
+  getContextDestinationPath,
+  resolveDefaultSelection,
+  toTenantContext,
+  writeStoredActiveProfile,
+} from "../lib/activeContextModel";
 
 const HomeEntry: React.FC = () => {
   const [targetPath, setTargetPath] = useState<string | null>(null);
@@ -19,34 +25,19 @@ const HomeEntry: React.FC = () => {
           appApi.clearTenantContext();
           me = await appApi.getMe();
         }
-        const availableContexts = getAvailableContexts(me);
-        const lastSelection = appApi.getTenantContext();
+        const source = buildActiveContextSource(me);
+        const defaultSelection = resolveDefaultSelection(source);
 
-        if (availableContexts.length === 1) {
-          const onlyContext = availableContexts[0];
-          appApi.setTenantContext(toTenantSelection(onlyContext));
-          if (!cancelled) setTargetPath(onlyContext.destination);
-          return;
-        }
-
-        if (availableContexts.length > 1) {
-          const lastContext = availableContexts.find((context) =>
-            isContextMatch(context, lastSelection)
-          );
-
-          if (lastContext) {
-            appApi.setTenantContext(toTenantSelection(lastContext));
-            if (!cancelled) setTargetPath(lastContext.destination);
-            return;
+        if (!defaultSelection) {
+          if (!cancelled) {
+            setError("Nessun contesto tenant disponibile per questo account.");
           }
-
-          if (!cancelled) setTargetPath("/select-context");
           return;
         }
 
-        if (!cancelled) {
-          setError("Nessun contesto tenant disponibile per questo account.");
-        }
+        writeStoredActiveProfile(defaultSelection.profile);
+        appApi.setTenantContext(toTenantContext(defaultSelection));
+        if (!cancelled) setTargetPath(getContextDestinationPath(defaultSelection, "/"));
       } catch (e: unknown) {
         if (!cancelled) {
           setError(e instanceof Error ? e.message : "Errore risoluzione contesto");

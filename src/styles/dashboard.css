@@ -428,6 +428,14 @@
   justify-content: flex-end;
 }
 
+.app-context-bar-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
 .app-topbar-hamburger {
   background: transparent;
   border: 1px solid var(--border);
@@ -604,6 +612,61 @@
   min-width: 0;
 }
 
+.app-context-bar {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.app-context-box {
+  border: 1px solid var(--border);
+  background: #f8fafc;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 5px 10px;
+  white-space: nowrap;
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.app-context-box-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.app-context-box-value {
+  color: var(--text-primary);
+  font-size: 11px;
+  font-weight: 700;
+  max-width: 170px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.app-context-box-btn {
+  cursor: pointer;
+  font-family: var(--font);
+}
+
+.app-context-box-btn:hover {
+  background: #f1f5f9;
+}
+
+.app-context-box-btn.open {
+  background: #fff7ed;
+  border-color: #fed7aa;
+}
+
 .app-topbar-context-pill {
   border: 1px solid var(--border);
   background: #f8fafc;
@@ -670,7 +733,11 @@
 }
 
 @media (max-width: 1260px) {
-  .app-topbar-context-pill-wrap {
+  .app-context-bar-title {
+    display: none;
+  }
+
+  .app-context-bar {
     display: none;
   }
 }

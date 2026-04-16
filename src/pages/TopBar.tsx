@@ -3,58 +3,26 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
 import { useSidebar } from "../lib/SidebarContext";
 import { appApi } from "../lib/appApi";
-import { labelAccessRole } from "../lib/accessLabels";
 import {
-  buildPrimaryNavigationModel,
-  buildTopBarHierarchy,
-  type AccessiblePerimeterMembership,
-  type NavLeafItem,
-  type TopBarSectionTree,
-} from "../lib/navigationModel";
-import {
-  getAccessibleCompanies,
-  getAccessiblePerimetersForCompany,
-  hasMultipleCompanyChoices,
-  hasMultiplePerimeterChoicesInCurrentCompany,
-  resolveContextForCompanyChange,
-  resolveContextForPerimeterChange,
-  type AccessPayload,
-} from "../lib/tenantContextResolver";
+  buildActiveContextSource,
+  deriveProfileFromPath,
+  getContextDestinationPath,
+  getDefaultProfile,
+  isSameSelection,
+  PROFILE_LABELS,
+  readStoredActiveProfile,
+  resolveDefaultSelection,
+  resolveSelectionForProfile,
+  toTenantContext,
+  type ActiveContextSelection,
+  type ActiveContextSource,
+  type ActiveProfile,
+  writeStoredActiveProfile,
+} from "../lib/activeContextModel";
 import "../styles/dashboard.css";
 
-type PlatformCompany = {
-  id: string;
-  name: string;
-};
-
-type PlatformPerimeter = {
-  id: string;
-  name: string;
-  company_id?: string;
-  company_name?: string;
-  perimeter_id?: string;
-  perimeter_name?: string;
-  access_role?: string;
-};
-
-type ContextData = {
-  company: string;
-  perimeter: string;
-  accessRole: string;
-};
-
-type TopBarMeData = {
-  isOwner?: boolean;
-  isSuperAdmin?: boolean;
-  isAdmin?: boolean;
-  access?: (AccessPayload & {
-    currentCompanyName?: string | null;
-    currentPerimeterName?: string | null;
-    highestRole?: string | null;
-    [key: string]: unknown;
-  }) | null;
-  [key: string]: unknown;
-};
+type TopBarMeData = Awaited<ReturnType<typeof appApi.getMe>>;
+type ContextMenuKey = "profile" | "company" | "perimeter" | null;
 
 const TopBar: React.FC = () => {
   const navigate = useNavigate();
@@ -62,14 +30,10 @@ const TopBar: React.FC = () => {
   const { toggle: toggleSidebar } = useSidebar();
   const rootRef = useRef<HTMLDivElement | null>(null);
 
-  const [contextData, setContextData] = useState<ContextData | null>(null);
   const [meData, setMeData] = useState<TopBarMeData | null>(null);
-  const [ownerCompanies, setOwnerCompanies] = useState<PlatformCompany[]>([]);
-  const [superAdminPerimetersByCompany, setSuperAdminPerimetersByCompany] = useState<Record<string, PlatformPerimeter[]>>({});
-  const [openSection, setOpenSection] = useState<string | null>(null);
-  const [expandedSuperAdminNodes, setExpandedSuperAdminNodes] = useState<Record<string, boolean>>({});
-  const [expandedAdminNodes, setExpandedAdminNodes] = useState<Record<string, boolean>>({});
-  const [openContextMenu, setOpenContextMenu] = useState<"company" | "perimeter" | null>(null);
+  const [contextSource, setContextSource] = useState<ActiveContextSource | null>(null);
+  const [activeSelection, setActiveSelection] = useState<ActiveContextSelection | null>(null);
+  const [openMenu, setOpenMenu] = useState<ContextMenuKey>(null);
   const [switchingContext, setSwitchingContext] = useState(false);
 
   useEffect(() => {
@@ -77,77 +41,63 @@ const TopBar: React.FC = () => {
 
     const load = async () => {
       try {
-        const mePayload = await appApi.getMe();
+        const me = await appApi.getMe();
         if (cancelled) return;
 
-        setMeData(mePayload as TopBarMeData);
-        const access = (mePayload?.access ?? null) as TopBarMeData["access"];
-        setContextData({
-          company: (typeof access?.currentCompanyName === "string" ? access.currentCompanyName : null) || "Company non selezionata",
-          perimeter: (typeof access?.currentPerimeterName === "string" ? access.currentPerimeterName : null) || "Perimeter non selezionato",
-          accessRole: labelAccessRole(typeof access?.accessRole === "string" ? access.accessRole : null),
-        });
+        const source = buildActiveContextSource(me);
+        const defaultProfile = getDefaultProfile(source);
+        const preferredProfile =
+          readStoredActiveProfile() ??
+          deriveProfileFromPath(location.pathname, source) ??
+          defaultProfile;
 
-        if (mePayload?.isOwner === true) {
-          const companyRows = await appApi.platformGetCompanies();
-          if (!cancelled) {
-            setOwnerCompanies(
-              (companyRows ?? []).map((company: { id?: string; company_id?: string; name?: string; company_name?: string }) => ({
-                id: String(company?.id ?? company?.company_id ?? ""),
-                name: String(company?.name ?? company?.company_name ?? "Company"),
-              })).filter((company: PlatformCompany) => company.id)
-            );
-          }
-        } else if (!cancelled) {
-          setOwnerCompanies([]);
-        }
+        const resolved =
+          (preferredProfile
+            ? resolveSelectionForProfile(source, {
+              profile: preferredProfile,
+              preferredCompanyId: me?.access?.currentCompanyId ?? null,
+              preferredPerimeterId: me?.access?.currentPerimeterId ?? null,
+            })
+            : null) ??
+          resolveDefaultSelection(source);
 
-        const companyMemberships = Array.isArray(access?.companies) ? access.companies : [];
-        if (companyMemberships.length > 0) {
-          const prevTenantContext = appApi.getTenantContext();
-          const map: Record<string, PlatformPerimeter[]> = {};
-          try {
-            await Promise.all(
-              companyMemberships.map(async (company) => {
-                const companyId = String(company?.company_id ?? "");
-                if (!companyId) return;
-                try {
-                  appApi.setTenantContext({ companyId, perimeterId: null });
-                  const rows = await appApi.platformGetPerimeters(companyId);
-                  map[companyId] = (rows ?? []) as PlatformPerimeter[];
-                } catch {
-                  map[companyId] = [];
-                }
-              })
-            );
-          } finally {
-            appApi.setTenantContext(prevTenantContext);
+        setMeData(me);
+        setContextSource(source);
+        setActiveSelection(resolved);
+
+        if (resolved) {
+          writeStoredActiveProfile(resolved.profile);
+          const currentTenant = appApi.getTenantContext();
+          const expectedTenant = toTenantContext(resolved);
+          if (
+            currentTenant.companyId !== expectedTenant.companyId ||
+            currentTenant.perimeterId !== expectedTenant.perimeterId
+          ) {
+            appApi.setTenantContext(expectedTenant);
           }
-          if (!cancelled) setSuperAdminPerimetersByCompany(map);
-        } else if (!cancelled) {
-          setSuperAdminPerimetersByCompany({});
         }
       } catch {
         if (!cancelled) {
           setMeData(null);
-          setContextData(null);
-          setOwnerCompanies([]);
-          setSuperAdminPerimetersByCompany({});
+          setContextSource(null);
+          setActiveSelection(null);
         }
       }
     };
 
-    const handleStructureRefresh = () => {
-      setOpenSection(null);
+    const handleRefresh = () => {
+      setOpenMenu(null);
       load();
     };
 
     load();
-    window.addEventListener("tenant-structure-changed", handleStructureRefresh);
+    window.addEventListener("tenant-structure-changed", handleRefresh);
+    window.addEventListener("tenant-context-changed", handleRefresh);
 
     return () => {
       cancelled = true;
-      window.removeEventListener("tenant-structure-changed", handleStructureRefresh);
+      window.removeEventListener("tenant-structure-changed", handleRefresh);
+      window.removeEventListener("tenant-context-changed", handleRefresh);
     };
   }, [location.pathname]);
 
@@ -155,8 +105,7 @@ const TopBar: React.FC = () => {
     const handlePointerDown = (event: MouseEvent) => {
       if (!rootRef.current) return;
       if (!rootRef.current.contains(event.target as Node)) {
-        setOpenSection(null);
-        setOpenContextMenu(null);
+        setOpenMenu(null);
       }
     };
     window.addEventListener("mousedown", handlePointerDown);
@@ -166,174 +115,93 @@ const TopBar: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    setOpenSection(null);
-    setOpenContextMenu(null);
+    setOpenMenu(null);
   }, [location.pathname]);
 
-  const hasActivePerimeter = Boolean(meData?.access?.currentPerimeterId);
-  const isOwner = meData?.isOwner === true;
-  const isSuperAdmin = meData?.isSuperAdmin === true;
-  const isAdmin = meData?.isAdmin === true;
-  const accessCompanies = useMemo(
-    () => (Array.isArray(meData?.access?.companies) ? meData?.access?.companies ?? [] : []) as { company_id?: string; company_name?: string }[],
-    [meData?.access?.companies]
-  );
+  const activeProfile = activeSelection?.profile ?? null;
+  const availableProfiles = contextSource?.availableProfiles ?? [];
+  const canSwitchProfile = availableProfiles.length > 1;
 
-  const navSections = useMemo(() => buildPrimaryNavigationModel({
-    pathname: location.pathname,
-    currentCompanyId: meData?.access?.currentCompanyId ?? null,
-    currentPerimeterId: meData?.access?.currentPerimeterId ?? null,
-    hasActivePerimeter,
-    isOwner,
-    isSuperAdmin,
-    isAdmin,
-    ownerCompanies,
-    accessCompanies,
-    superAdminPerimetersByCompany,
-  }), [
-    location.pathname,
-    meData?.access?.currentCompanyId,
-    meData?.access?.currentPerimeterId,
-    hasActivePerimeter,
-    isOwner,
-    isSuperAdmin,
-    isAdmin,
-    ownerCompanies,
-    accessCompanies,
-    superAdminPerimetersByCompany,
-  ]);
-  const accessPerimeters = useMemo(
-    () => ((Array.isArray(meData?.access?.perimeters) ? meData?.access?.perimeters ?? [] : []) as AccessiblePerimeterMembership[]),
-    [meData?.access?.perimeters]
-  );
-  const topBarTreesBySection = useMemo(() => {
-    const trees = buildTopBarHierarchy({
-      pathname: location.pathname,
-      currentCompanyId: meData?.access?.currentCompanyId ?? null,
-      currentPerimeterId: meData?.access?.currentPerimeterId ?? null,
-      hasActivePerimeter,
-      isOwner,
-      isSuperAdmin,
-      isAdmin,
-      ownerCompanies,
-      accessCompanies,
-      superAdminPerimetersByCompany,
-      accessPerimeters,
-    });
-    return trees.reduce<Record<string, TopBarSectionTree>>((acc, tree) => {
-      acc[tree.sectionId] = tree;
-      return acc;
-    }, {});
-  }, [
-    location.pathname,
-    meData?.access?.currentCompanyId,
-    meData?.access?.currentPerimeterId,
-    hasActivePerimeter,
-    isOwner,
-    isSuperAdmin,
-    isAdmin,
-    ownerCompanies,
-    accessCompanies,
-    superAdminPerimetersByCompany,
-    accessPerimeters,
-  ]);
+  const companyOptions = useMemo(() => {
+    if (!contextSource || !activeProfile) return [];
+    return contextSource.availableCompaniesByProfile[activeProfile] ?? [];
+  }, [contextSource, activeProfile]);
 
-  useEffect(() => {
-    const superAdminTree = topBarTreesBySection.super_admin;
-    if (openSection !== "super_admin" || !superAdminTree) return;
-    const activeNode = superAdminTree.nodes.find((node) => node.isActive);
-    if (!activeNode || activeNode.children.length === 0) return;
-    setExpandedSuperAdminNodes((prev) => ({ ...prev, [activeNode.id]: true }));
-  }, [openSection, topBarTreesBySection]);
+  const perimeterOptions = useMemo(() => {
+    if (!contextSource || !activeProfile || !activeSelection?.companyId) return [];
+    return (
+      contextSource.availablePerimetersByProfileAndCompany[activeProfile]?.[activeSelection.companyId] ??
+      []
+    );
+  }, [contextSource, activeProfile, activeSelection?.companyId]);
 
-  useEffect(() => {
-    const adminTree = topBarTreesBySection.admin;
-    if (openSection !== "admin" || !adminTree) return;
-    const activeNode = adminTree.nodes.find((node) => node.isActive);
-    if (!activeNode || activeNode.children.length === 0) return;
-    setExpandedAdminNodes((prev) => ({ ...prev, [activeNode.id]: true }));
-  }, [openSection, topBarTreesBySection]);
+  const showCompany = activeProfile === "user" || activeProfile === "admin" || activeProfile === "super_admin";
+  const showPerimeter = activeProfile === "user" || activeProfile === "admin";
+  const canSwitchCompany = showCompany && companyOptions.length > 1;
+  const canSwitchPerimeter = showPerimeter && perimeterOptions.length > 1;
 
-  const goToItem = (item: NavLeafItem) => {
-    setOpenSection(null);
-    setOpenContextMenu(null);
-    if (item.tenantContext) {
-      appApi.setTenantContext(item.tenantContext);
+  const profileLabel = activeProfile ? PROFILE_LABELS[activeProfile] : "—";
+  const companyLabel =
+    companyOptions.find((company) => company.companyId === activeSelection?.companyId)?.companyName ??
+    meData?.access?.currentCompanyName ??
+    "Company";
+  const perimeterLabel =
+    perimeterOptions.find((perimeter) => perimeter.perimeterId === activeSelection?.perimeterId)?.perimeterName ??
+    meData?.access?.currentPerimeterName ??
+    "Perimetro";
+
+  const hardNavigateTo = (path: string) => {
+    if (window.location.pathname === path) {
+      window.location.reload();
+      return;
     }
-    navigate(item.path);
+    window.location.assign(path);
   };
 
-  const toggleSuperAdminNode = (nodeId: string) => {
-    setExpandedSuperAdminNodes((prev) => ({ ...prev, [nodeId]: !prev[nodeId] }));
-  };
-
-  const toggleAdminNode = (nodeId: string) => {
-    setExpandedAdminNodes((prev) => ({ ...prev, [nodeId]: !prev[nodeId] }));
-  };
-
-  const canSwitchCompany = useMemo(
-    () => hasMultipleCompanyChoices((meData?.access ?? null) as AccessPayload | null),
-    [meData?.access]
-  );
-
-  const canSwitchPerimeter = useMemo(
-    () => hasMultiplePerimeterChoicesInCurrentCompany((meData?.access ?? null) as AccessPayload | null),
-    [meData?.access]
-  );
-
-  const companyOptions = useMemo(
-    () => getAccessibleCompanies((meData?.access ?? null) as AccessPayload | null),
-    [meData?.access]
-  );
-
-  const perimeterOptions = useMemo(
-    () => getAccessiblePerimetersForCompany(
-      (meData?.access ?? null) as AccessPayload | null,
-      meData?.access?.currentCompanyId ?? null
-    ),
-    [meData?.access]
-  );
-
-  const handleCompanyChange = (targetCompanyId: string) => {
-    if (switchingContext) return;
-    const nextContext = resolveContextForCompanyChange(
-      (meData?.access ?? null) as AccessPayload | null,
-      targetCompanyId
-    );
-    if (!nextContext) return;
-
-    const currentCompanyId = meData?.access?.currentCompanyId ?? null;
-    const currentPerimeterId = meData?.access?.currentPerimeterId ?? null;
-    const isSameSelection = currentCompanyId === nextContext.companyId
-      && currentPerimeterId === nextContext.perimeterId;
-
-    setOpenContextMenu(null);
-    if (isSameSelection) return;
+  const applySelection = (nextSelection: ActiveContextSelection) => {
+    if (switchingContext || !contextSource) return;
+    const isSame = isSameSelection(activeSelection, nextSelection);
+    setOpenMenu(null);
+    if (isSame) return;
 
     setSwitchingContext(true);
-    appApi.setTenantContext(nextContext);
-    window.location.reload();
+    writeStoredActiveProfile(nextSelection.profile);
+    appApi.setTenantContext(toTenantContext(nextSelection));
+    const destination = getContextDestinationPath(nextSelection, location.pathname);
+    hardNavigateTo(destination);
   };
 
-  const handlePerimeterChange = (targetPerimeterId: string) => {
-    if (switchingContext) return;
-    const nextContext = resolveContextForPerimeterChange(
-      (meData?.access ?? null) as AccessPayload | null,
-      targetPerimeterId
-    );
-    if (!nextContext) return;
+  const handleProfileChange = (profile: ActiveProfile) => {
+    if (!contextSource) return;
+    const nextSelection = resolveSelectionForProfile(contextSource, {
+      profile,
+      preferredCompanyId: activeSelection?.companyId ?? null,
+      preferredPerimeterId: activeSelection?.perimeterId ?? null,
+    });
+    if (!nextSelection) return;
+    applySelection(nextSelection);
+  };
 
-    const currentCompanyId = meData?.access?.currentCompanyId ?? null;
-    const currentPerimeterId = meData?.access?.currentPerimeterId ?? null;
-    const isSameSelection = currentCompanyId === nextContext.companyId
-      && currentPerimeterId === nextContext.perimeterId;
+  const handleCompanyChange = (companyId: string) => {
+    if (!contextSource || !activeSelection) return;
+    const nextSelection = resolveSelectionForProfile(contextSource, {
+      profile: activeSelection.profile,
+      preferredCompanyId: companyId,
+      preferredPerimeterId: activeSelection.perimeterId,
+    });
+    if (!nextSelection) return;
+    applySelection(nextSelection);
+  };
 
-    setOpenContextMenu(null);
-    if (isSameSelection) return;
-
-    setSwitchingContext(true);
-    appApi.setTenantContext(nextContext);
-    window.location.reload();
+  const handlePerimeterChange = (perimeterId: string) => {
+    if (!contextSource || !activeSelection) return;
+    const nextSelection = resolveSelectionForProfile(contextSource, {
+      profile: activeSelection.profile,
+      preferredCompanyId: activeSelection.companyId,
+      preferredPerimeterId: perimeterId,
+    });
+    if (!nextSelection) return;
+    applySelection(nextSelection);
   };
 
   const handleLogout = async () => {
@@ -353,246 +221,120 @@ const TopBar: React.FC = () => {
         >
           ☰
         </button>
+        <span className="app-context-bar-title">Contesto attivo</span>
+      </div>
 
-        <nav className="app-topbar-primary-nav" aria-label="Navigazione primaria">
-          {navSections.map((section) => {
-            if (section.id === "super_admin" && topBarTreesBySection.super_admin) {
-              const tree = topBarTreesBySection.super_admin;
-              const isOpen = openSection === section.id;
-              return (
-                <div key={section.id} className="app-topbar-nav-group">
-                  <button
-                    type="button"
-                    className={`app-topbar-nav-item ${section.isActive ? "active" : ""}`}
-                    onClick={() => setOpenSection((prev) => (prev === section.id ? null : section.id))}
-                  >
-                    {section.label}
-                    <span className={`app-topbar-nav-caret ${isOpen ? "open" : ""}`}>▾</span>
-                  </button>
-                  {isOpen && (
-                    <div className="app-topbar-dropdown app-topbar-tree-dropdown">
-                      {tree.nodes.map((node) => {
-                        const isExpanded = expandedSuperAdminNodes[node.id] === true;
-                        const hasChildren = node.children.length > 0;
-                        return (
-                          <div key={node.id} className="app-topbar-tree-node">
-                            <div className="app-topbar-tree-row">
-                              <button
-                                type="button"
-                                className={`app-topbar-tree-label app-topbar-dropdown-item ${node.isActive ? "active" : ""}`}
-                                onClick={() => node.navigationItem && goToItem(node.navigationItem)}
-                                disabled={!node.navigationItem}
-                              >
-                                {node.label}
-                              </button>
-                              {hasChildren && (
-                                <button
-                                  type="button"
-                                  className={`app-topbar-tree-toggle ${isExpanded ? "expanded" : ""}`}
-                                  onClick={() => toggleSuperAdminNode(node.id)}
-                                  aria-label={isExpanded ? "Chiudi perimetri" : "Apri perimetri"}
-                                >
-                                  ▸
-                                </button>
-                              )}
-                            </div>
-                            {hasChildren && isExpanded && (
-                              <div className="app-topbar-tree-children">
-                                {node.children.map((child) => (
-                                  <button
-                                    key={child.id}
-                                    type="button"
-                                    className={`app-topbar-dropdown-item ${child.isActive ? "active" : ""}`}
-                                    onClick={() => goToItem(child)}
-                                  >
-                                    {child.label}
-                                  </button>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              );
-            }
-
-            if (section.id === "admin" && topBarTreesBySection.admin) {
-              const tree = topBarTreesBySection.admin;
-              const isOpen = openSection === section.id;
-              return (
-                <div key={section.id} className="app-topbar-nav-group">
-                  <button
-                    type="button"
-                    className={`app-topbar-nav-item ${section.isActive ? "active" : ""}`}
-                    onClick={() => setOpenSection((prev) => (prev === section.id ? null : section.id))}
-                  >
-                    {section.label}
-                    <span className={`app-topbar-nav-caret ${isOpen ? "open" : ""}`}>▾</span>
-                  </button>
-                  {isOpen && (
-                    <div className="app-topbar-dropdown app-topbar-tree-dropdown">
-                      {tree.nodes.map((node) => {
-                        const isExpanded = expandedAdminNodes[node.id] === true;
-                        const hasChildren = node.children.length > 0;
-                        return (
-                          <div key={node.id} className="app-topbar-tree-node">
-                            <div className="app-topbar-tree-row">
-                              <button
-                                type="button"
-                                className={`app-topbar-tree-label app-topbar-dropdown-item ${node.isActive ? "active" : ""}`}
-                                onClick={() => node.navigationItem && goToItem(node.navigationItem)}
-                                disabled={!node.navigationItem}
-                              >
-                                {node.label}
-                              </button>
-                              {hasChildren && (
-                                <button
-                                  type="button"
-                                  className={`app-topbar-tree-toggle ${isExpanded ? "expanded" : ""}`}
-                                  onClick={() => toggleAdminNode(node.id)}
-                                  aria-label={isExpanded ? "Chiudi sezioni" : "Apri sezioni"}
-                                >
-                                  ▸
-                                </button>
-                              )}
-                            </div>
-                            {hasChildren && isExpanded && (
-                              <div className="app-topbar-tree-children">
-                                {node.children.map((child) => (
-                                  <button
-                                    key={child.id}
-                                    type="button"
-                                    className={`app-topbar-dropdown-item ${child.isActive ? "active" : ""}`}
-                                    onClick={() => goToItem(child)}
-                                  >
-                                    {child.label}
-                                  </button>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              );
-            }
-
-            if (section.items.length === 1) {
-              const onlyItem = section.items[0];
-              return (
-                <button
-                  key={section.id}
-                  type="button"
-                  className={`app-topbar-nav-item ${section.isActive ? "active" : ""}`}
-                  onClick={() => goToItem(onlyItem)}
-                >
-                  {section.label}
-                </button>
-              );
-            }
-
-            const isOpen = openSection === section.id;
-            return (
-              <div key={section.id} className="app-topbar-nav-group">
+      <div className="app-topbar-slim-right">
+        {contextSource && activeSelection && (
+          <div className="app-context-bar" aria-label="Barra di contesto">
+            <div className="app-topbar-nav-group">
+              {canSwitchProfile ? (
                 <button
                   type="button"
-                  className={`app-topbar-nav-item ${section.isActive ? "active" : ""}`}
-                  onClick={() => setOpenSection((prev) => (prev === section.id ? null : section.id))}
+                  className={`app-context-box app-context-box-btn ${openMenu === "profile" ? "open" : ""}`}
+                  onClick={() => setOpenMenu((prev) => (prev === "profile" ? null : "profile"))}
+                  disabled={switchingContext}
                 >
-                  {section.label}
-                  <span className={`app-topbar-nav-caret ${isOpen ? "open" : ""}`}>▾</span>
+                  <span className="app-context-box-label">Profilo</span>
+                  <span className="app-context-box-value">{profileLabel}</span>
+                  <span className={`app-topbar-nav-caret ${openMenu === "profile" ? "open" : ""}`}>▾</span>
                 </button>
-                {isOpen && (
-                  <div className="app-topbar-dropdown">
-                    {section.items.map((item) => (
+              ) : (
+                <span className="app-context-box">
+                  <span className="app-context-box-label">Profilo</span>
+                  <span className="app-context-box-value">{profileLabel}</span>
+                </span>
+              )}
+              {canSwitchProfile && openMenu === "profile" && (
+                <div className="app-topbar-dropdown app-topbar-dropdown-right">
+                  {availableProfiles.map((profile) => (
+                    <button
+                      key={profile}
+                      type="button"
+                      className={`app-topbar-dropdown-item ${profile === activeSelection.profile ? "active" : ""}`}
+                      onClick={() => handleProfileChange(profile)}
+                      disabled={switchingContext}
+                    >
+                      {PROFILE_LABELS[profile]}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {showCompany && (
+              <div className="app-topbar-nav-group">
+                {canSwitchCompany ? (
+                  <button
+                    type="button"
+                    className={`app-context-box app-context-box-btn ${openMenu === "company" ? "open" : ""}`}
+                    onClick={() => setOpenMenu((prev) => (prev === "company" ? null : "company"))}
+                    disabled={switchingContext}
+                  >
+                    <span className="app-context-box-label">Azienda</span>
+                    <span className="app-context-box-value">{companyLabel}</span>
+                    <span className={`app-topbar-nav-caret ${openMenu === "company" ? "open" : ""}`}>▾</span>
+                  </button>
+                ) : (
+                  <span className="app-context-box">
+                    <span className="app-context-box-label">Azienda</span>
+                    <span className="app-context-box-value">{companyLabel}</span>
+                  </span>
+                )}
+                {canSwitchCompany && openMenu === "company" && (
+                  <div className="app-topbar-dropdown app-topbar-dropdown-right">
+                    {companyOptions.map((company) => (
                       <button
-                        key={item.id}
+                        key={company.companyId}
                         type="button"
-                        className={`app-topbar-dropdown-item ${item.isActive ? "active" : ""}`}
-                        onClick={() => goToItem(item)}
+                        className={`app-topbar-dropdown-item ${company.companyId === activeSelection.companyId ? "active" : ""}`}
+                        onClick={() => handleCompanyChange(company.companyId)}
+                        disabled={switchingContext}
                       >
-                        {item.label}
+                        {company.companyName}
                       </button>
                     ))}
                   </div>
                 )}
               </div>
-            );
-          })}
-        </nav>
-      </div>
+            )}
 
-      <div className="app-topbar-slim-right">
-        {contextData && (
-          <div className="app-topbar-context-pill-wrap" aria-label="Contesto attivo">
-            <div className="app-topbar-nav-group">
-              {canSwitchCompany ? (
-                <button
-                  type="button"
-                  className={`app-topbar-context-pill app-topbar-context-pill-btn ${openContextMenu === "company" ? "open" : ""}`}
-                  onClick={() => setOpenContextMenu((prev) => (prev === "company" ? null : "company"))}
-                  disabled={switchingContext}
-                >
-                  {contextData.company}
-                  <span className={`app-topbar-nav-caret ${openContextMenu === "company" ? "open" : ""}`}>▾</span>
-                </button>
-              ) : (
-                <span className="app-topbar-context-pill">{contextData.company}</span>
-              )}
-              {canSwitchCompany && openContextMenu === "company" && (
-                <div className="app-topbar-dropdown app-topbar-dropdown-right">
-                  {companyOptions.map((company) => (
-                    <button
-                      key={company.companyId}
-                      type="button"
-                      className={`app-topbar-dropdown-item ${company.companyId === meData?.access?.currentCompanyId ? "active" : ""}`}
-                      onClick={() => handleCompanyChange(company.companyId)}
-                      disabled={switchingContext}
-                    >
-                      {company.companyName}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="app-topbar-nav-group">
-              {canSwitchPerimeter ? (
-                <button
-                  type="button"
-                  className={`app-topbar-context-pill app-topbar-context-pill-btn ${openContextMenu === "perimeter" ? "open" : ""}`}
-                  onClick={() => setOpenContextMenu((prev) => (prev === "perimeter" ? null : "perimeter"))}
-                  disabled={switchingContext}
-                >
-                  {contextData.perimeter}
-                  <span className={`app-topbar-nav-caret ${openContextMenu === "perimeter" ? "open" : ""}`}>▾</span>
-                </button>
-              ) : (
-                <span className="app-topbar-context-pill">{contextData.perimeter}</span>
-              )}
-              {canSwitchPerimeter && openContextMenu === "perimeter" && (
-                <div className="app-topbar-dropdown app-topbar-dropdown-right">
-                  {perimeterOptions.map((perimeter) => (
-                    <button
-                      key={perimeter.perimeterId}
-                      type="button"
-                      className={`app-topbar-dropdown-item ${perimeter.perimeterId === meData?.access?.currentPerimeterId ? "active" : ""}`}
-                      onClick={() => handlePerimeterChange(perimeter.perimeterId)}
-                      disabled={switchingContext}
-                    >
-                      {perimeter.perimeterName}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <span className="app-topbar-context-pill">{contextData.accessRole}</span>
+            {showPerimeter && (
+              <div className="app-topbar-nav-group">
+                {canSwitchPerimeter ? (
+                  <button
+                    type="button"
+                    className={`app-context-box app-context-box-btn ${openMenu === "perimeter" ? "open" : ""}`}
+                    onClick={() => setOpenMenu((prev) => (prev === "perimeter" ? null : "perimeter"))}
+                    disabled={switchingContext}
+                  >
+                    <span className="app-context-box-label">Perimetro</span>
+                    <span className="app-context-box-value">{perimeterLabel}</span>
+                    <span className={`app-topbar-nav-caret ${openMenu === "perimeter" ? "open" : ""}`}>▾</span>
+                  </button>
+                ) : (
+                  <span className="app-context-box">
+                    <span className="app-context-box-label">Perimetro</span>
+                    <span className="app-context-box-value">{perimeterLabel}</span>
+                  </span>
+                )}
+                {canSwitchPerimeter && openMenu === "perimeter" && (
+                  <div className="app-topbar-dropdown app-topbar-dropdown-right">
+                    {perimeterOptions.map((perimeter) => (
+                      <button
+                        key={perimeter.perimeterId}
+                        type="button"
+                        className={`app-topbar-dropdown-item ${perimeter.perimeterId === activeSelection.perimeterId ? "active" : ""}`}
+                        onClick={() => handlePerimeterChange(perimeter.perimeterId)}
+                        disabled={switchingContext}
+                      >
+                        {perimeter.perimeterName}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 
