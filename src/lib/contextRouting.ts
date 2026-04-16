@@ -1,6 +1,7 @@
 import { labelAccessRole } from "./accessLabels";
 import type { AccessRole, HighestRole } from "./accessLabels";
 import type { TenantContextSelection } from "./appApi";
+import { resolveRouteForContext, type ActiveContextSelection } from "./activeContextModel";
 
 type CompanyMembership = {
   company_id: string;
@@ -83,6 +84,11 @@ export function getAvailableContexts(me: MePayload | null | undefined): Availabl
   const contexts: AvailableContext[] = [];
 
   if (me?.isOwner === true) {
+    const ownerSelection: ActiveContextSelection = {
+      profile: "owner",
+      companyId: null,
+      perimeterId: null,
+    };
     // Owner context always routes to /owner (platform area). No companyId/perimeterId needed.
     contexts.push({
       key: "platform-owner",
@@ -91,7 +97,7 @@ export function getAvailableContexts(me: MePayload | null | undefined): Availabl
       subtitle: "Gestione livello piattaforma",
       companyId: null,
       perimeterId: null,
-      destination: "/owner",
+      destination: resolveRouteForContext(ownerSelection),
       accessRoleLabel: "Owner",
       sortWeight: roleWeight("platform"),
     });
@@ -99,6 +105,11 @@ export function getAvailableContexts(me: MePayload | null | undefined): Availabl
 
   for (const company of dedupeCompanies(access)) {
     const companyName = company.company_name?.trim() || "Company";
+    const superAdminSelection: ActiveContextSelection = {
+      profile: "super_admin",
+      companyId: company.company_id,
+      perimeterId: null,
+    };
     contexts.push({
       key: `company-${company.company_id}`,
       level: "company",
@@ -106,7 +117,7 @@ export function getAvailableContexts(me: MePayload | null | undefined): Availabl
       subtitle: "Gestione company / perimeters",
       companyId: company.company_id,
       perimeterId: null,
-      destination: `/companies/${company.company_id}/perimeters`,
+      destination: resolveRouteForContext(superAdminSelection),
       accessRoleLabel: "Super Admin",
       sortWeight: roleWeight("company"),
     });
@@ -117,6 +128,11 @@ export function getAvailableContexts(me: MePayload | null | undefined): Availabl
     const perimeterName = perimeter.perimeter_name?.trim() || "Perimeter";
     const roleLabel = labelAccessRole(perimeter.access_role);
     const canManage = perimeter.access_role === "admin" || perimeter.access_role === "admin_user";
+    const workspaceSelection: ActiveContextSelection = {
+      profile: canManage ? "admin" : "user",
+      companyId: perimeter.company_id,
+      perimeterId: perimeter.perimeter_id,
+    };
 
     contexts.push({
       key: `workspace-${perimeter.perimeter_id}`,
@@ -125,7 +141,7 @@ export function getAvailableContexts(me: MePayload | null | undefined): Availabl
       subtitle: "Contesto operativo perimeter",
       companyId: perimeter.company_id,
       perimeterId: perimeter.perimeter_id,
-      destination: canManage ? "/admin/interlocking" : "/dashboard",
+      destination: resolveRouteForContext(workspaceSelection),
       accessRoleLabel: roleLabel,
       sortWeight: roleWeight("workspace"),
     });

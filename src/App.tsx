@@ -20,41 +20,20 @@ import RequireAdmin from "./components/RequireAdmin";
 import RequireOwner from "./components/RequireOwner";
 import RequireCompanyAdmin from "./components/RequireCompanyAdmin";
 import RequirePerimeterAccess from "./components/RequirePerimeterAccess";
-import { ActiveContextProvider } from "./lib/ActiveContextProvider";
+import { ActiveContextProvider, useActiveContext } from "./lib/ActiveContextProvider";
 
-function App() {
-  const { user, loading } = useAuth();
-
-  if (loading) {
-    return (
-      <div style={{
-        display: "flex", height: "100vh", alignItems: "center",
-        justifyContent: "center",
-        fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif",
-        color: "#64748b", fontSize: "14px", gap: "10px", background: "#f1f5f9",
-      }}>
-        <div style={{
-          width: 18, height: 18,
-          border: "2px solid #e2e8f0", borderTopColor: "#e8511a",
-          borderRadius: "50%", animation: "spin 0.6s linear infinite",
-        }} />
-        Caricamento…
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-      </div>
-    );
-  }
-
-  const showTopBar = Boolean(user);
+function AppShell({ showTopBar }: { showTopBar: boolean }) {
+  const { activeSelection } = useActiveContext();
+  const contextRouteKey = `${activeSelection?.profile ?? "none"}:${activeSelection?.companyId ?? "none"}:${activeSelection?.perimeterId ?? "none"}`;
 
   return (
-    <ActiveContextProvider>
-      <>
-        {showTopBar && <TopBar />}
+    <>
+      {showTopBar && <TopBar />}
 
-        <div style={{ paddingTop: showTopBar ? "48px" : "0" }}>
-          <Routes>
+      <div style={{ paddingTop: showTopBar ? "48px" : "0" }}>
+        <Routes key={contextRouteKey}>
           {/* ---------- PUBLIC ---------- */}
-          {!user && (
+          {!showTopBar && (
             <>
               <Route path="/" element={<PreAuthPage />} />
               <Route path="/login" element={<LoginPage />} />
@@ -65,7 +44,7 @@ function App() {
           )}
 
           {/* ---------- PROTECTED ---------- */}
-          {user && (
+          {showTopBar && (
             <>
               {/* Unified dashboard (replaces DashboardPage + AccountPage) */}
               <Route path="/" element={<HomeEntry />} />
@@ -102,9 +81,39 @@ function App() {
               <Route path="*" element={<Navigate to="/" replace />} />
             </>
           )}
-          </Routes>
-        </div>
-      </>
+        </Routes>
+      </div>
+    </>
+  );
+}
+
+function App() {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div style={{
+        display: "flex", height: "100vh", alignItems: "center",
+        justifyContent: "center",
+        fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif",
+        color: "#64748b", fontSize: "14px", gap: "10px", background: "#f1f5f9",
+      }}>
+        <div style={{
+          width: 18, height: 18,
+          border: "2px solid #e2e8f0", borderTopColor: "#e8511a",
+          borderRadius: "50%", animation: "spin 0.6s linear infinite",
+        }} />
+        Caricamento…
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
+
+  const showTopBar = Boolean(user);
+
+  return (
+    <ActiveContextProvider>
+      <AppShell showTopBar={showTopBar} />
     </ActiveContextProvider>
   );
 }

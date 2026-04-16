@@ -68,22 +68,15 @@ const TopBar: React.FC = () => {
     perimeterOptions.find((perimeter) => perimeter.perimeterId === activeSelection?.perimeterId)?.perimeterName ??
     "Perimetro";
 
-  const hardNavigateTo = (path: string | null) => {
-    if (!path) return;
-    if (window.location.pathname === path) {
-      window.location.reload();
-      return;
-    }
-    window.location.assign(path);
-  };
-
   const handleProfileChange = (profile: (typeof availableProfiles)[number]) => {
     if (switchingContext || isBootstrappingContext) return;
     setSwitchingContext(true);
     setOpenMenu(null);
     try {
       const destination = switchProfile(profile);
-      hardNavigateTo(destination);
+      if (destination) {
+        navigate(destination, { replace: true });
+      }
     } finally {
       setSwitchingContext(false);
     }
@@ -95,7 +88,9 @@ const TopBar: React.FC = () => {
     setOpenMenu(null);
     try {
       const destination = switchCompany(companyId);
-      hardNavigateTo(destination);
+      if (destination) {
+        navigate(destination, { replace: true });
+      }
     } finally {
       setSwitchingContext(false);
     }
@@ -107,7 +102,9 @@ const TopBar: React.FC = () => {
     setOpenMenu(null);
     try {
       const destination = switchPerimeter(perimeterId);
-      hardNavigateTo(destination);
+      if (destination) {
+        navigate(destination, { replace: true });
+      }
     } finally {
       setSwitchingContext(false);
     }

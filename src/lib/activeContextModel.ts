@@ -53,6 +53,13 @@ export const PROFILE_LABELS: Record<ActiveProfile, string> = {
   owner: "Owner",
 };
 
+export const CANONICAL_PROFILE_ROUTES: Record<ActiveProfile, string> = {
+  owner: "/owner",
+  super_admin: "/companies/:companyId/perimeters",
+  admin: "/admin/interlocking",
+  user: "/dashboard",
+};
+
 function normalizeId(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const trimmed = value.trim();
@@ -270,20 +277,38 @@ export function deriveProfileFromPath(
   return null;
 }
 
+export function resolveRouteForContext(selection: ActiveContextSelection): string {
+  if (selection.profile === "owner") {
+    return CANONICAL_PROFILE_ROUTES.owner;
+  }
+
+  if (selection.profile === "super_admin") {
+    if (!selection.companyId) {
+      return CANONICAL_PROFILE_ROUTES.owner;
+    }
+    return CANONICAL_PROFILE_ROUTES.super_admin.replace(":companyId", selection.companyId);
+  }
+
+  if (selection.profile === "admin") {
+    if (!selection.companyId || !selection.perimeterId) {
+      return selection.companyId
+        ? CANONICAL_PROFILE_ROUTES.super_admin.replace(":companyId", selection.companyId)
+        : CANONICAL_PROFILE_ROUTES.user;
+    }
+    return CANONICAL_PROFILE_ROUTES.admin;
+  }
+
+  if (!selection.companyId || !selection.perimeterId) {
+    return CANONICAL_PROFILE_ROUTES.user;
+  }
+  return CANONICAL_PROFILE_ROUTES.user;
+}
+
 export function getContextDestinationPath(
   selection: ActiveContextSelection,
-  currentPathname: string
+  _currentPathname: string
 ): string {
-  if (selection.profile === "owner") return "/owner";
-  if (selection.profile === "super_admin") {
-    if (!selection.companyId) return "/owner";
-    return `/companies/${selection.companyId}/perimeters`;
-  }
-  if (selection.profile === "admin") {
-    if (currentPathname.startsWith("/admin/")) return currentPathname;
-    return "/admin/interlocking";
-  }
-  return "/dashboard";
+  return resolveRouteForContext(selection);
 }
 
 export function toTenantContext(selection: ActiveContextSelection): TenantContextSelection {
