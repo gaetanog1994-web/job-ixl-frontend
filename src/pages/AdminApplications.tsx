@@ -4,7 +4,13 @@ import { useNavigate, useLocation } from "react-router-dom";
 
 const AdminApplications = () => {
     const navigate = useNavigate();
-    const [applications, setApplications] = useState<any[]>([]);
+    type AppRow = {
+        id: string;
+        created_at: string;
+        users?: { full_name?: string };
+        positions?: { title?: string; users?: { full_name?: string } };
+    };
+    const [applications, setApplications] = useState<AppRow[]>([]);
     const location = useLocation();
 
     useEffect(() => {
@@ -22,7 +28,7 @@ const AdminApplications = () => {
         `)
                 .order("created_at", { ascending: false });
 
-            if (data) setApplications(data);
+            if (data) setApplications(data as AppRow[]);
         };
 
         load();

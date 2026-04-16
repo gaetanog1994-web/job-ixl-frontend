@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { useAuth } from "../lib/AuthContext";
 import { appApi } from "../lib/appApi";
 import { useAvailability } from "../lib/AvailabilityContext";
+import type { RawApplication } from "../lib/appApi";
 
 import MapPanel from "../components/dashboard/MapPanel";
 import FiltersCard from "../components/dashboard/FiltersCard";
@@ -21,8 +22,8 @@ const MobilityDashboard: React.FC = () => {
   const { availabilityStatus, isAdmin } = useAvailability();
 
   /* ---------- data state ---------- */
-  const [userData, setUserData] = useState<any>(null);
-  const [myApplications, setMyApplications] = useState<any[]>([]);
+  const [userData, setUserData] = useState<{ id: string; [key: string]: unknown } | null>(null);
+  const [myApplications, setMyApplications] = useState<RawApplication[]>([]);
   const [maxApplications, setMaxApplications] = useState<number>(10);
 
   /* ---------- map state ---------- */
@@ -40,12 +41,8 @@ const MobilityDashboard: React.FC = () => {
   }, []);
 
   /* ---------- map highlight from URL ---------- */
-  const [highlightPositionId, setHighlightPositionId] = useState<string | undefined>(undefined);
-
-  useEffect(() => {
-    const id = searchParams.get("highlightPositionId") ?? undefined;
-    setHighlightPositionId(id);
-  }, [searchParams]);
+  // single source of truth for highlightPositionId
+  const highlightPositionId = searchParams.get("highlightPositionId") ?? undefined;
 
   const handleHighlightPosition = (positionId: string) => {
     setSearchParams({ highlightPositionId: positionId });
@@ -71,14 +68,14 @@ const MobilityDashboard: React.FC = () => {
           appApi.getMyApplications(),
         ]);
         if (cancelled) return;
-        if (userInfo.status === "fulfilled") setUserData(userInfo.value);
+        if (userInfo.status === "fulfilled") setUserData(userInfo.value as { id: string; [key: string]: unknown });
         if (cfg.status === "fulfilled" && cfg.value?.maxApplications != null) {
           setMaxApplications(cfg.value.maxApplications);
         }
         if (apps.status === "fulfilled") setMyApplications(apps.value ?? []);
-      } catch (e: any) {
+      } catch (e: unknown) {
         if (cancelled) return;
-        console.error("[MobilityDashboard] load error:", e?.message ?? e);
+        console.error("[MobilityDashboard] load error:", e instanceof Error ? e.message : e);
       }
     };
     load();
@@ -87,10 +84,13 @@ const MobilityDashboard: React.FC = () => {
 
   /* ---------- sync availabilityStatus → userData (admin may change it externally) ---------- */
   useEffect(() => {
-    if (availabilityStatus !== null && userData) {
-      setUserData((prev: any) => ({ ...prev, availability_status: availabilityStatus }));
-    }
-  }, [availabilityStatus]);
+    const syncStatus = () => {
+      if (availabilityStatus !== null && userData) {
+        setUserData((prev) => prev ? { ...prev, availability_status: availabilityStatus } : prev);
+      }
+    };
+    syncStatus();
+  }, [availabilityStatus]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /* ---------- unique locations count for UserStats ---------- */
   const locationsCount = useMemo(
@@ -117,8 +117,8 @@ const MobilityDashboard: React.FC = () => {
     try {
       const apps = await appApi.getMyApplications();
       setMyApplications(apps ?? []);
-    } catch (e: any) {
-      console.error("[MobilityDashboard] reload apps:", e?.message ?? e);
+    } catch (e: unknown) {
+      console.error("[MobilityDashboard] reload apps:", e instanceof Error ? e.message : e);
     }
   }, []);
 

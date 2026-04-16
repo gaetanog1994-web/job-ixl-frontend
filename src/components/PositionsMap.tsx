@@ -35,9 +35,10 @@ const icons = {
         iconUrl: iconBase + "marker-icon-yellow.png",
         shadowUrl: iconBase + "marker-shadow.png",
         iconSize: [25, 41],
-        iconIconSize: [25, 41],
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        iconIconSize: [25, 41] as any,
         iconAnchor: [12, 41],
-    } as any),
+    }),
     grey: new L.Icon({
         iconUrl: iconBase + "marker-icon-grey.png",
         shadowUrl: iconBase + "marker-shadow.png",
@@ -150,7 +151,7 @@ const PositionsMap = ({
         {}
     );
 
-    const locationMarkerRefs = useRef<Record<string, any>>({});
+    const locationMarkerRefs = useRef<Record<string, { openPopup?: () => void }>>({});
     const [highlightLocationId, setHighlightLocationId] = useState<string | null>(null);
     const consumedHighlightRef = useRef<string | null>(null);
     const autoMoveRef = useRef(false);
@@ -162,6 +163,7 @@ const PositionsMap = ({
     const availablePriorities = ALL_PRIORITIES.filter((p) => !usedPriorities.includes(p));
 
     // Mantieni consistenza: se cambia maxApplications o usedPriorities, pulisci scelte non più valide
+    const availablePrioritiesKey = availablePriorities.join(",");
     useEffect(() => {
         setSelectedPriorities((prev) => {
             const next: Record<string, number> = {};
@@ -170,7 +172,8 @@ const PositionsMap = ({
             }
             return next;
         });
-    }, [availablePriorities.join(",")]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [availablePrioritiesKey]);
 
     /* ---------- BOOT ---------- */
 
@@ -216,9 +219,9 @@ const PositionsMap = ({
             );
             setLocations(filteredLocations);
             onLocationsLoaded?.(filteredLocations);
-        } catch (e: any) {
+        } catch (e: unknown) {
             if (seq !== bootSeq.current) return;
-            console.error("[PositionsMap] boot() via backend failed:", e?.message ?? e);
+            console.error("[PositionsMap] boot() via backend failed:", e instanceof Error ? e.message : e);
             setLocations([]);
             setMeLocation(null);
         }
@@ -252,8 +255,8 @@ const PositionsMap = ({
                 positionIds: role.users.map((u) => u.position_id),
                 priority,
             });
-        } catch (e: any) {
-            console.error("Apply role error:", e?.message ?? e);
+        } catch (e: unknown) {
+            console.error("Apply role error:", e instanceof Error ? e.message : e);
             return;
         }
 
@@ -277,8 +280,8 @@ const PositionsMap = ({
                 userId: myUserId,
                 positionIds,
             });
-        } catch (e: any) {
-            console.error("Withdraw role error:", e?.message ?? e);
+        } catch (e: unknown) {
+            console.error("Withdraw role error:", e instanceof Error ? e.message : e);
             return;
         }
 
@@ -395,8 +398,10 @@ const PositionsMap = ({
 
             const marker = locationMarkerRefs.current[targetLoc.location_id];
             if (marker && typeof marker.openPopup === "function") {
-                setTimeout(() => marker.openPopup(), 150);
+                const openFn = marker.openPopup.bind(marker);
+                setTimeout(() => openFn(), 150);
             }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
         }, [highlightPositionId, locations, map, suppressAutoFocusOnHighlight]);
 
         // ---- filter by location name: fly + open popup ----

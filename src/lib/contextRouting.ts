@@ -27,7 +27,7 @@ export type MePayload = {
   isOwner?: boolean;
   isSuperAdmin?: boolean;
   isAdmin?: boolean;
-  access?: AccessPayload | null;
+  access?: Record<string, unknown> | null;
 };
 
 export type AvailableContext = {

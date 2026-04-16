@@ -7,7 +7,7 @@ type Props = {
 };
 
 const TenantContextStrip: React.FC<Props> = ({ sectionLabel, style }) => {
-  const [meData, setMeData] = useState<any>(null);
+  const [meData, setMeData] = useState<Record<string, unknown> | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -33,9 +33,9 @@ const TenantContextStrip: React.FC<Props> = ({ sectionLabel, style }) => {
     };
   }, []);
 
-  const access = meData?.access ?? {};
-  const companyName = access?.currentCompanyName ?? "Company non selezionata";
-  const perimeterName = access?.currentPerimeterName ?? "Perimeter non selezionato";
+  const access = (meData?.access ?? {}) as Record<string, unknown>;
+  const companyName = typeof access?.currentCompanyName === "string" ? access.currentCompanyName : "Company non selezionata";
+  const perimeterName = typeof access?.currentPerimeterName === "string" ? access.currentPerimeterName : "Perimeter non selezionato";
 
   return (
     <div

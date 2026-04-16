@@ -12,7 +12,7 @@ const HomeEntry: React.FC = () => {
 
     const resolveHome = async () => {
       try {
-        let me: any;
+        let me: Awaited<ReturnType<typeof appApi.getMe>>;
         try {
           me = await appApi.getMe();
         } catch {
@@ -47,9 +47,9 @@ const HomeEntry: React.FC = () => {
         if (!cancelled) {
           setError("Nessun contesto tenant disponibile per questo account.");
         }
-      } catch (e: any) {
+      } catch (e: unknown) {
         if (!cancelled) {
-          setError(e?.message ?? "Errore risoluzione contesto");
+          setError(e instanceof Error ? e.message : "Errore risoluzione contesto");
         }
       }
     };

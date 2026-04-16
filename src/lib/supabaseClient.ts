@@ -8,5 +8,5 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // 👇 SOLO DEBUG
 if (import.meta.env.DEV) {
-    (window as any).supabase = supabase;
+    (window as unknown as Record<string, unknown>).supabase = supabase;
 }

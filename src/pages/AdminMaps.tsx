@@ -24,8 +24,8 @@ const AdminMaps = () => {
       try {
         const users = await appApi.adminGetActiveUsers();
         if (!cancelled) setActiveUsers(users ?? []);
-      } catch (e: any) {
-        console.error("[AdminMaps] load error:", e?.message ?? e);
+      } catch (e: unknown) {
+        console.error("[AdminMaps] load error:", e instanceof Error ? e.message : e);
         if (!cancelled) setActiveUsers([]);
       }
     })();
@@ -37,7 +37,8 @@ const AdminMaps = () => {
   );
 
   useEffect(() => {
-    setSelectedPositionId(null);
+    const reset = () => { setSelectedPositionId(null); };
+    reset();
   }, [selectedUserId, mode]);
 
   const rightPanelEntries = useMemo(() => {

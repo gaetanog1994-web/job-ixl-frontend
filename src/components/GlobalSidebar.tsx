@@ -13,6 +13,25 @@ type PlatformCompany = {
   name: string;
 };
 
+type AccessPayloadShape = {
+  currentCompanyId?: string | null;
+  currentPerimeterId?: string | null;
+  currentCompanyName?: string | null;
+  currentPerimeterName?: string | null;
+  accessRole?: string | null;
+  highestRole?: string | null;
+  companies?: Record<string, unknown>[];
+  [key: string]: unknown;
+};
+
+type MeDataShape = {
+  isOwner?: boolean;
+  isSuperAdmin?: boolean;
+  isAdmin?: boolean;
+  access?: AccessPayloadShape | null;
+  [key: string]: unknown;
+};
+
 /**
  * GlobalSidebar — drawer a scomparsa, montato a livello di root (in main.tsx).
  * È completamente self-contained: carica i propri dati (user, isAdmin, availabilityStatus)
@@ -23,13 +42,13 @@ const GlobalSidebar: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [userData, setUserData] = useState<any>(null);
-  const [meData, setMeData] = useState<any>(null);
+  const [userData, setUserData] = useState<Record<string, unknown> | null>(null);
+  const [meData, setMeData] = useState<MeDataShape | null>(null);
   const [adminOpen, setAdminOpen] = useState(false);
   const [ownerOpen, setOwnerOpen] = useState(true);
   const [superAdminOpen, setSuperAdminOpen] = useState(true);
   const [ownerCompanies, setOwnerCompanies] = useState<PlatformCompany[]>([]);
-  const [superAdminPerimetersByCompany, setSuperAdminPerimetersByCompany] = useState<Record<string, any[]>>({});
+  const [superAdminPerimetersByCompany, setSuperAdminPerimetersByCompany] = useState<Record<string, Record<string, unknown>[]>>({});
   const { availabilityStatus, isAdmin, toggleAvailability } = useAvailability();
 
   /* ---- load user data ---- */
@@ -38,7 +57,7 @@ const GlobalSidebar: React.FC = () => {
 
     const load = async () => {
       try {
-        const mePayload = await appApi.getMe();
+        const mePayload = await appApi.getMe() as MeDataShape;
         if (cancelled) return;
         setMeData(mePayload);
 
@@ -55,7 +74,7 @@ const GlobalSidebar: React.FC = () => {
         }
 
         if (mePayload) {
-          setMeData(mePayload);
+          setMeData(mePayload as MeDataShape);
           const access = mePayload?.access ?? null;
           const companyMemberships = Array.isArray(access?.companies) ? access.companies : [];
 
@@ -63,7 +82,7 @@ const GlobalSidebar: React.FC = () => {
             const companyRows = await appApi.platformGetCompanies();
             if (!cancelled) {
               setOwnerCompanies(
-                (companyRows ?? []).map((company: any) => ({
+                (companyRows ?? []).map((company: Record<string, unknown>) => ({
                   id: String(company?.id ?? company?.company_id ?? ""),
                   name: String(company?.name ?? company?.company_name ?? "Company"),
                 })).filter((company: PlatformCompany) => company.id)
@@ -75,10 +94,10 @@ const GlobalSidebar: React.FC = () => {
 
           if (companyMemberships.length > 0) {
             const prevTenantContext = appApi.getTenantContext();
-            const map: Record<string, any[]> = {};
+            const map: Record<string, Record<string, unknown>[]> = {};
             try {
               await Promise.all(
-                companyMemberships.map(async (company: any) => {
+                companyMemberships.map(async (company: Record<string, unknown>) => {
                   const companyId = String(company?.company_id ?? "");
                   if (!companyId) return;
                   try {
@@ -159,6 +178,8 @@ const GlobalSidebar: React.FC = () => {
     superAdminPerimetersByCompany,
   }), [
     location.pathname,
+    activeAccess?.currentCompanyId,
+    activeAccess?.currentPerimeterId,
     hasActivePerimeter,
     isOwner,
     isSuperAdmin,
@@ -183,8 +204,9 @@ const GlobalSidebar: React.FC = () => {
     go(item.path);
   };
 
-  const initials = userData?.full_name
-    ? userData.full_name.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase()
+  const fullName = typeof userData?.full_name === "string" ? userData.full_name : null;
+  const initials = fullName
+    ? fullName.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase()
     : "U";
 
   const available = availabilityStatus === "available";
@@ -445,7 +467,7 @@ const GlobalSidebar: React.FC = () => {
             <div className="db-user-box">
               <div className="db-user-avatar">{initials}</div>
               <div className="db-user-info">
-                <div className="db-user-name">{userData.full_name ?? "Utente"}</div>
+                <div className="db-user-name">{fullName ?? "Utente"}</div>
                 <div className="db-user-role">
                   {highestRoleLabel} · {accessRoleLabel}
                 </div>

@@ -8,6 +8,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { appApi } from "../../lib/appApi";
+import type { RawApplication } from "../../lib/appApi";
 
 /* ---------- types ---------- */
 
@@ -64,10 +65,10 @@ const formatDate = (iso?: string) => {
 /* ---------- props ---------- */
 
 interface MyApplicationsPanelProps {
-  userData: any | null;
-  myApplications: any[];
+  userData: { id: string; [key: string]: unknown } | null;
+  myApplications: RawApplication[];
   maxApplications: number;
-  onApplicationsChange: (apps: any[]) => void;
+  onApplicationsChange: (apps: RawApplication[]) => void;
   onHighlightPosition: (positionId: string) => void;
 }
 
@@ -161,8 +162,8 @@ const MyApplicationsPanel: React.FC<MyApplicationsPanelProps> = ({
           group.appIds.includes(a.id) ? { ...a, priority: newPriority } : a
         )
       );
-    } catch (e: any) {
-      console.error("[MyApplicationsPanel] updatePriority error:", e?.message ?? e);
+    } catch (e: unknown) {
+      console.error("[MyApplicationsPanel] updatePriority error:", e instanceof Error ? e.message : e);
     }
   };
 
@@ -178,8 +179,8 @@ const MyApplicationsPanel: React.FC<MyApplicationsPanelProps> = ({
         positionIds: group.positionIds,
       });
       onApplicationsChange(myApplications.filter((a) => !group.appIds.includes(a.id)));
-    } catch (e: any) {
-      console.error("[MyApplicationsPanel] withdrawFromPositionsBulk error:", e?.message ?? e);
+    } catch (e: unknown) {
+      console.error("[MyApplicationsPanel] withdrawFromPositionsBulk error:", e instanceof Error ? e.message : e);
     }
   };
 
@@ -219,8 +220,8 @@ const MyApplicationsPanel: React.FC<MyApplicationsPanelProps> = ({
 
     try {
       await appApi.reorderUserApplications({ userId: userData.id, updates: payload });
-    } catch (e: any) {
-      console.error("[MyApplicationsPanel] reorderUserApplications error:", e?.message ?? e);
+    } catch (e: unknown) {
+      console.error("[MyApplicationsPanel] reorderUserApplications error:", e instanceof Error ? e.message : e);
     }
   };
 

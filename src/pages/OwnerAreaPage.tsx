@@ -53,8 +53,8 @@ const OwnerAreaPage: React.FC = () => {
     try {
       const rows = await appApi.platformGetCompanies();
       setCompanies(rows ?? []);
-    } catch (e: any) {
-      setError(e?.message ?? "Errore caricamento company");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message :"Errore caricamento company");
     } finally {
       setLoading(false);
     }
@@ -96,8 +96,8 @@ const OwnerAreaPage: React.FC = () => {
       setFirstName("");
       setLastName("");
       setEmail("");
-    } catch (e: any) {
-      setError(e?.message ?? "Errore creazione company");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message :"Errore creazione company");
     } finally {
       setCreating(false);
     }
@@ -114,8 +114,8 @@ const OwnerAreaPage: React.FC = () => {
       await appApi.platformRenameCompany(company.id, { name: nextName });
       await loadCompanies();
       emitTenantStructureChanged();
-    } catch (e: any) {
-      setError(e?.message ?? "Errore rinomina company");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message :"Errore rinomina company");
     }
   };
 

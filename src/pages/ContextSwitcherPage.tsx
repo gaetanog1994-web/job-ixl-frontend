@@ -38,9 +38,9 @@ const ContextSwitcherPage: React.FC = () => {
         if (cancelled) return;
         setContexts(availableContexts);
         setLastContextKey(matchedLastContext?.key ?? null);
-      } catch (e: any) {
+      } catch (e: unknown) {
         if (!cancelled) {
-          setError(e?.message ?? "Errore caricamento contesti");
+          setError(e instanceof Error ? e.message : "Errore caricamento contesti");
         }
       } finally {
         if (!cancelled) setLoading(false);

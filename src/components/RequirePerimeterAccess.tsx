@@ -46,6 +46,7 @@ export default function RequirePerimeterAccess({ children }: { children: React.R
     return () => {
       cancelled = true;
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
   if (authLoading || checking) return <p style={{ padding: 20 }}>Verifica accesso perimetro…</p>;

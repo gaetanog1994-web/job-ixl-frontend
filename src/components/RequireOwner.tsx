@@ -36,6 +36,7 @@ export default function RequireOwner({ children }: { children: React.ReactNode }
     return () => {
       cancelled = true;
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
   if (authLoading || checking) return <p style={{ padding: 20 }}>Verifica permessi owner…</p>;

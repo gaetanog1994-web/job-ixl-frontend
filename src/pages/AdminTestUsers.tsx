@@ -105,7 +105,7 @@ const AdminTestUsers = () => {
   const loadPositions = async () => {
     try {
       const data = await appApi.adminGetPositions();
-      const mapped = (data ?? []).map((p: any) => ({
+      const mapped = (data ?? []).map((p: Record<string, unknown>) => ({
         id: p.id,
         title: p.title ?? null,
         occupied_by: p.occupied_by,
@@ -175,8 +175,8 @@ const AdminTestUsers = () => {
     try {
       const data = await appApi.adminSetCampaignStatus(next);
       setCampaignStatus(data.campaign_status);
-    } catch (e: any) {
-      alert("Errore aggiornamento campagna: " + (e?.message ?? "unknown"));
+    } catch (e: unknown) {
+      alert("Errore aggiornamento campagna: " + (e instanceof Error ? e.message : "unknown"));
     }
   };
 
@@ -195,9 +195,8 @@ const AdminTestUsers = () => {
     if (!canManage) setCampaignStatus(null);
   };
 
-  useEffect(() => {
-    loadAll();
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { loadAll(); }, []);
 
   /* =======================
      NAVIGATION
@@ -225,8 +224,8 @@ const AdminTestUsers = () => {
       await loadAll();
       const scenario = scenarios.find((s) => s.id === selectedScenarioId);
       if (scenario) setActiveScenarioLabel(scenario.name);
-    } catch (e: any) {
-      setErrorTop(e.message);
+    } catch (e: unknown) {
+      setErrorTop(e instanceof Error ? e.message : String(e));
     } finally {
       setLoadingTop(false);
     }
@@ -242,8 +241,8 @@ const AdminTestUsers = () => {
       await appApi.resetActiveUsers();
       await loadAll();
       setActiveScenarioLabel(null);
-    } catch (e: any) {
-      setErrorTop(e.message);
+    } catch (e: unknown) {
+      setErrorTop(e instanceof Error ? e.message : String(e));
     } finally {
       setLoadingTop(false);
     }
@@ -271,8 +270,8 @@ const AdminTestUsers = () => {
     try {
       await appApi.adminUpdateMaxApplications(value);
       setMaxApplications(value);
-    } catch (e: any) {
-      alert("Errore aggiornamento configurazione: " + (e?.message ?? "unknown"));
+    } catch (e: unknown) {
+      alert("Errore aggiornamento configurazione: " + (e instanceof Error ? e.message : "unknown"));
       console.error(e);
     }
   };
@@ -573,8 +572,8 @@ const AdminTestUsers = () => {
                     setInviteEmail("");
                     setInviteAccessRole("user");
                     await loadUsers();
-                  } catch (e: any) {
-                    alert(e?.message ?? "Errore aggiunta utente");
+                  } catch (e: unknown) {
+                    alert(e instanceof Error ? e.message : "Errore aggiunta utente");
                   }
                 }}
               >
@@ -671,10 +670,10 @@ const AdminTestUsers = () => {
                         value={u.access_role ?? "user"}
                         onChange={async (e) => {
                           try {
-                            await adminUpdateUser(u.id, { access_role: e.target.value as any });
+                            await adminUpdateUser(u.id, { access_role: e.target.value as "user" | "admin" | "admin_user" });
                             await loadUsers();
-                          } catch (err: any) {
-                            alert(err?.message ?? "Errore ruolo accesso");
+                          } catch (err: unknown) {
+                            alert(err instanceof Error ? err.message : "Errore ruolo accesso");
                           }
                         }}
                       >
@@ -700,8 +699,8 @@ const AdminTestUsers = () => {
                             } else {
                               await adminUpdateUser(u.id, { availability_status: "available" });
                             }
-                          } catch (err: any) {
-                            alert(err?.message ?? "Errore aggiornamento");
+                          } catch (err: unknown) {
+                            alert(err instanceof Error ? err.message : "Errore aggiornamento");
                           }
                         }}
                       >
@@ -718,7 +717,7 @@ const AdminTestUsers = () => {
                         value={u.location_id ?? ""}
                         onChange={async (e) => {
                           try { await adminUpdateUser(u.id, { location_id: e.target.value || null }); }
-                          catch (err: any) { alert(err?.message ?? "Errore sede"); }
+                          catch (err: unknown) { alert(err instanceof Error ? err.message : "Errore sede"); }
                         }}
                       >
                         <option value="">— Nessuna —</option>
@@ -733,7 +732,7 @@ const AdminTestUsers = () => {
                         checked={!!u.fixed_location}
                         onChange={async (e) => {
                           try { await adminUpdateUser(u.id, { fixed_location: e.target.checked }); }
-                          catch (err: any) { alert(err?.message ?? "Errore vincolo"); }
+                          catch (err: unknown) { alert(err instanceof Error ? err.message : "Errore vincolo"); }
                         }}
                         style={{ accentColor: "var(--brand)", width: "16px", height: "16px", cursor: "pointer" }}
                       />
@@ -747,7 +746,7 @@ const AdminTestUsers = () => {
                         value={u.role_id ?? ""}
                         onChange={async (e) => {
                           try { await adminUpdateUser(u.id, { role_id: e.target.value || null }); }
-                          catch (err: any) { alert(err?.message ?? "Errore ruolo"); }
+                          catch (err: unknown) { alert(err instanceof Error ? err.message : "Errore ruolo"); }
                         }}
                       >
                         <option value="">— Nessuno —</option>
@@ -760,7 +759,7 @@ const AdminTestUsers = () => {
                       <button className="db-action-btn db-action-btn-delete" onClick={async () => {
                         if (!window.confirm("Eliminare definitivamente questo utente?")) return;
                         try { await adminDeleteUser(u.id); }
-                        catch (err: any) { alert(err?.message ?? "Errore eliminazione"); }
+                        catch (err: unknown) { alert(err instanceof Error ? err.message : "Errore eliminazione"); }
                       }}>
                         Elimina
                       </button>

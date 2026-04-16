@@ -38,6 +38,7 @@ export default function RequireCompanyAdmin({ children }: { children: React.Reac
     return () => {
       cancelled = true;
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
   if (authLoading || checking) return <p style={{ padding: 20 }}>Verifica permessi company…</p>;

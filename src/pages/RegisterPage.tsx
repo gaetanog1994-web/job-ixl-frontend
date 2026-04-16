@@ -26,9 +26,9 @@ const RegisterPage: React.FC = () => {
             try {
                 const locs = await appApi.publicGetLocations();
                 setLocations(locs);
-            } catch (e: any) {
+            } catch (e: unknown) {
                 console.error("Errore nel caricamento sedi:", e);
-                setError(e?.message ?? "Errore nel caricamento sedi");
+                setError(e instanceof Error ? e.message : "Errore nel caricamento sedi");
             } finally {
                 setLoadingLocations(false);
             }
@@ -99,9 +99,9 @@ const RegisterPage: React.FC = () => {
 
             alert("Registrazione riuscita!");
             navigate("/");
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error("🔥 ERRORE GENERALE:", err);
-            setError(err?.message ?? "Errore imprevisto");
+            setError(err instanceof Error ? err.message : "Errore imprevisto");
         } finally {
             setSubmitting(false);
         }

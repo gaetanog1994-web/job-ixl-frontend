@@ -3,6 +3,52 @@ import { supabase } from "./supabaseClient";
 // Preferisci una variabile dedicata per l'API applicativa.
 // appApi.ts
 
+/* ---------- shared types ---------- */
+
+export type MeAccessContext = {
+  currentCompanyId?: string | null;
+  currentCompanyName?: string | null;
+  currentPerimeterId?: string | null;
+  currentPerimeterName?: string | null;
+  canAccessPerimeter?: boolean;
+  accessRole?: string | null;
+  highestRole?: string | null;
+  perimeters?: { perimeter_id?: string | null; perimeter_name?: string | null; access_role?: string | null; company_id?: string | null }[];
+  companies?: { company_id?: string | null; company_name?: string | null }[];
+  [key: string]: unknown;
+};
+
+type RawApplicationOccupant = {
+  locations?: { name?: string } | { name?: string }[];
+  roles?: { name?: string };
+  fixed_location?: boolean;
+};
+
+type RawApplicationPosition = {
+  users?: RawApplicationOccupant;
+};
+
+export type RawApplication = {
+  id: string;
+  position_id: string;
+  priority: number;
+  created_at: string;
+  positions?: RawApplicationPosition | RawApplicationPosition[];
+};
+
+export type FrontendErrorReportPayload = {
+    kind: "window_error" | "unhandled_rejection";
+    message: string;
+    stack?: string | null;
+    source?: string | null;
+    line?: number | null;
+    column?: number | null;
+    reason?: string | null;
+    url?: string | null;
+    userAgent?: string | null;
+    timestamp?: string;
+};
+
 const BASE = (import.meta.env.VITE_APP_API_URL || "").replace(/\/+$/, "");
 const TENANT_CONTEXT_STORAGE_KEY = "jip_tenant_context_v1";
 const TENANT_CONTEXT_CHANGED_EVENT = "tenant-context-changed";
@@ -131,7 +177,7 @@ async function apiFetch(path: string, init?: RequestInit) {
     let token: string;
     try {
         token = await getAccessToken();
-    } catch (err: any) {
+    } catch (err: unknown) {
         // Keep frontend auth state consistent when the local session is gone/corrupted.
         if (err instanceof AppApiError && err.status === 401) {
             writeTenantContext({ companyId: null, perimeterId: null });
@@ -245,6 +291,32 @@ export const appApi = {
         }
     },
 
+    // Best-effort frontend error reporting: never throw back to caller.
+    async reportFrontendError(payload: FrontendErrorReportPayload): Promise<void> {
+        let token: string;
+        try {
+            token = await getAccessToken();
+        } catch {
+            return;
+        }
+
+        const tenant = readTenantContext();
+        try {
+            await fetch(`${BASE}/api/errors`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                    ...mergeHeaders(undefined, tenant),
+                },
+                body: JSON.stringify(payload),
+                keepalive: true,
+            });
+        } catch {
+            // Intentionally ignored: this telemetry path must remain non-blocking.
+        }
+    },
+
     async createTestScenario(name: string): Promise<{ id: string; name: string }> {
         const json = await apiFetch(`/api/admin/test-scenarios`, {
             method: "POST",
@@ -316,12 +388,12 @@ export const appApi = {
         isAdmin: boolean;
         isOwner?: boolean;
         isSuperAdmin?: boolean;
-        access?: any;
+        access?: MeAccessContext | null;
     }> {
         try {
             return await apiFetch(`/api/me`, { method: "GET" });
-        } catch (e: any) {
-            const msg = String(e?.message ?? "").toLowerCase();
+        } catch (e: unknown) {
+            const msg = String(e instanceof Error ? e.message : "").toLowerCase();
             const isTenantScopeError =
                 msg.includes("tenant_scope_mismatch") ||
                 msg.includes("requested company does not match requested perimeter") ||
@@ -338,12 +410,12 @@ export const appApi = {
         }
     },
 
-    async getMyUser(): Promise<any> {
+    async getMyUser(): Promise<Record<string, unknown>> {
         const json = await apiFetch(`/api/users/me`, { method: "GET" });
         return json.user;
     },
 
-    async getMyApplications(): Promise<any[]> {
+    async getMyApplications(): Promise<RawApplication[]> {
         const json = await apiFetch(`/api/users/me/applications`, { method: "GET" });
         return json.applications ?? [];
     },
@@ -405,7 +477,7 @@ export const appApi = {
         });
     },
 
-    async adminFindChains(body: any) {
+    async adminFindChains(body: Record<string, unknown>) {
         return apiFetch(`/api/admin/graph/chains`, {
             method: "POST",
             body: JSON.stringify(body ?? {}),
@@ -444,7 +516,7 @@ export const appApi = {
         return json.locations ?? [];
     },
 
-    async adminPatchUser(userId: string, patch: any) {
+    async adminPatchUser(userId: string, patch: Record<string, unknown>) {
         const json = await apiFetch(`/api/admin/users/${userId}`, {
             method: "PATCH",
             body: JSON.stringify(patch ?? {}),
@@ -595,8 +667,8 @@ export const appApi = {
         avg_priority: number | null;
         build_nodes: number | null;
         build_relationships: number | null;
-        chains_json: any[];
-        optimal_chains_json: any[] | null;
+        chains_json: Record<string, unknown>[];
+        optimal_chains_json: Record<string, unknown>[] | null;
     }) {
         return apiFetch(`/api/admin/interlocking-scenarios`, {
             method: "POST",

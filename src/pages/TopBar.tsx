@@ -43,6 +43,19 @@ type ContextData = {
   accessRole: string;
 };
 
+type TopBarMeData = {
+  isOwner?: boolean;
+  isSuperAdmin?: boolean;
+  isAdmin?: boolean;
+  access?: (AccessPayload & {
+    currentCompanyName?: string | null;
+    currentPerimeterName?: string | null;
+    highestRole?: string | null;
+    [key: string]: unknown;
+  }) | null;
+  [key: string]: unknown;
+};
+
 const TopBar: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -50,7 +63,7 @@ const TopBar: React.FC = () => {
   const rootRef = useRef<HTMLDivElement | null>(null);
 
   const [contextData, setContextData] = useState<ContextData | null>(null);
-  const [meData, setMeData] = useState<any>(null);
+  const [meData, setMeData] = useState<TopBarMeData | null>(null);
   const [ownerCompanies, setOwnerCompanies] = useState<PlatformCompany[]>([]);
   const [superAdminPerimetersByCompany, setSuperAdminPerimetersByCompany] = useState<Record<string, PlatformPerimeter[]>>({});
   const [openSection, setOpenSection] = useState<string | null>(null);
@@ -67,12 +80,12 @@ const TopBar: React.FC = () => {
         const mePayload = await appApi.getMe();
         if (cancelled) return;
 
-        setMeData(mePayload);
-        const access = mePayload?.access ?? null;
+        setMeData(mePayload as TopBarMeData);
+        const access = (mePayload?.access ?? null) as TopBarMeData["access"];
         setContextData({
-          company: access?.currentCompanyName || "Company non selezionata",
-          perimeter: access?.currentPerimeterName || "Perimeter non selezionato",
-          accessRole: labelAccessRole(access?.accessRole),
+          company: (typeof access?.currentCompanyName === "string" ? access.currentCompanyName : null) || "Company non selezionata",
+          perimeter: (typeof access?.currentPerimeterName === "string" ? access.currentPerimeterName : null) || "Perimeter non selezionato",
+          accessRole: labelAccessRole(typeof access?.accessRole === "string" ? access.accessRole : null),
         });
 
         if (mePayload?.isOwner === true) {
@@ -95,7 +108,7 @@ const TopBar: React.FC = () => {
           const map: Record<string, PlatformPerimeter[]> = {};
           try {
             await Promise.all(
-              companyMemberships.map(async (company: { company_id?: string }) => {
+              companyMemberships.map(async (company) => {
                 const companyId = String(company?.company_id ?? "");
                 if (!companyId) return;
                 try {
@@ -162,7 +175,7 @@ const TopBar: React.FC = () => {
   const isSuperAdmin = meData?.isSuperAdmin === true;
   const isAdmin = meData?.isAdmin === true;
   const accessCompanies = useMemo(
-    () => (Array.isArray(meData?.access?.companies) ? meData.access.companies : []),
+    () => (Array.isArray(meData?.access?.companies) ? meData?.access?.companies ?? [] : []) as { company_id?: string; company_name?: string }[],
     [meData?.access?.companies]
   );
 
@@ -179,6 +192,8 @@ const TopBar: React.FC = () => {
     superAdminPerimetersByCompany,
   }), [
     location.pathname,
+    meData?.access?.currentCompanyId,
+    meData?.access?.currentPerimeterId,
     hasActivePerimeter,
     isOwner,
     isSuperAdmin,
@@ -188,7 +203,7 @@ const TopBar: React.FC = () => {
     superAdminPerimetersByCompany,
   ]);
   const accessPerimeters = useMemo(
-    () => ((Array.isArray(meData?.access?.perimeters) ? meData.access.perimeters : []) as AccessiblePerimeterMembership[]),
+    () => ((Array.isArray(meData?.access?.perimeters) ? meData?.access?.perimeters ?? [] : []) as AccessiblePerimeterMembership[]),
     [meData?.access?.perimeters]
   );
   const topBarTreesBySection = useMemo(() => {

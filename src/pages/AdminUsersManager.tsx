@@ -59,8 +59,8 @@ const AdminUsersManager = ({ users, locations, onBack, onUpdateDone }: Props) =>
             setInviteEmail("");
             setInviteLocationId("");
             onUpdateDone();
-        } catch (e: any) {
-            alert("Errore invito: " + (e?.message ?? "unknown"));
+        } catch (e: unknown) {
+            alert("Errore invito: " + (e instanceof Error ? e.message : "unknown"));
         } finally {
             setSaving(false);
         }
@@ -88,8 +88,8 @@ const AdminUsersManager = ({ users, locations, onBack, onUpdateDone }: Props) =>
             await appApi.adminUpdateMaxApplications(value);
             setMaxApplications(value);
             onUpdateDone();
-        } catch (e: any) {
-            alert("Errore aggiornamento configurazione: " + (e?.message ?? "unknown"));
+        } catch (e: unknown) {
+            alert("Errore aggiornamento configurazione: " + (e instanceof Error ? e.message : "unknown"));
         } finally {
             setSaving(false);
         }
@@ -108,8 +108,8 @@ const AdminUsersManager = ({ users, locations, onBack, onUpdateDone }: Props) =>
 
             onUpdateDone();
             await reload();
-        } catch (e: any) {
-            alert("Errore aggiornamento utente: " + (e?.message ?? "unknown"));
+        } catch (e: unknown) {
+            alert("Errore aggiornamento utente: " + (e instanceof Error ? e.message : "unknown"));
             console.error(e);
         } finally {
             setSaving(false);

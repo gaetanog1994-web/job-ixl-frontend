@@ -41,8 +41,8 @@ const LoginPage: React.FC = () => {
                 if (hasPerimeter) {
                     await appApi.getMyUser(); // se esiste già, ok
                 }
-            } catch (e: any) {
-                const msg = String(e?.message ?? "");
+            } catch (e: unknown) {
+                const msg = String(e instanceof Error ? e.message : "");
 
                 // quando /api/users/me risponde 404 "User row not found"
                 if (msg.includes("User row not found") || msg.includes("404")) {

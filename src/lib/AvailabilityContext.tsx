@@ -33,11 +33,15 @@ export const AvailabilityProvider: React.FC<{ children: React.ReactNode }> = ({ 
       }
 
       const userInfo = await appApi.getMyUser();
-      setAvailabilityStatus(userInfo?.availability_status ?? null);
-    } catch {}
+      const status = userInfo?.availability_status;
+      setAvailabilityStatus((status === "available" || status === "inactive") ? status : null);
+    } catch { /* silently ignore fetch errors */ }
   }, []);
 
-  useEffect(() => { reload(); }, [reload]);
+  useEffect(() => {
+    const run = async () => { await reload(); };
+    void run();
+  }, [reload]);
 
   useEffect(() => {
     const interval = setInterval(() => { reload(); }, 10_000);
@@ -67,8 +71,8 @@ export const AvailabilityProvider: React.FC<{ children: React.ReactNode }> = ({ 
         await appApi.activateMe();
         setAvailabilityStatus("available");
       }
-    } catch (e: any) {
-      console.error("[AvailabilityContext] toggle error:", e?.message ?? e);
+    } catch (e: unknown) {
+      console.error("[AvailabilityContext] toggle error:", e instanceof Error ? e.message : e);
     }
   }, [availabilityStatus, isAdmin]);
 
@@ -79,4 +83,5 @@ export const AvailabilityProvider: React.FC<{ children: React.ReactNode }> = ({ 
   );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAvailability = () => useContext(AvailabilityContext);

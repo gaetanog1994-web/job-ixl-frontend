@@ -64,7 +64,7 @@ const AdminCandidatures = () => {
       rows = rows.filter((a) => a.occupant_role_name === filterOccupantRole);
 
     rows.sort((a, b) => {
-      let va: any, vb: any;
+      let va: string | number, vb: string | number;
       if (sortField === "created_at") {
         va = new Date(a.created_at ?? 0).getTime();
         vb = new Date(b.created_at ?? 0).getTime();
@@ -109,8 +109,8 @@ const AdminCandidatures = () => {
       try {
         const rows = await appApi.adminGetCandidatures();
         if (!cancelled) setApplications(rows ?? []);
-      } catch (e: any) {
-        console.error("[AdminCandidatures] load error:", e?.message ?? e);
+      } catch (e: unknown) {
+        console.error("[AdminCandidatures] load error:", e instanceof Error ? e.message : e);
         if (!cancelled) setApplications([]);
       }
     })();

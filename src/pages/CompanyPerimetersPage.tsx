@@ -54,7 +54,7 @@ const CompanyPerimetersPage: React.FC = () => {
   const [companyName, setCompanyName] = useState<string>("Company");
   const [companyDetails, setCompanyDetails] = useState<CompanyDetailsRow | null>(null);
   const [newPerimeterName, setNewPerimeterName] = useState("");
-  const [meData, setMeData] = useState<any>(null);
+  const [meData, setMeData] = useState<Record<string, unknown> | null>(null);
   const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -91,26 +91,25 @@ const CompanyPerimetersPage: React.FC = () => {
       setPerimeters(perimetersRows ?? []);
       setMeData(me ?? null);
       const currentCompany = (companiesRows ?? []).find(
-        (row: any) => row.id === companyId || row.company_id === companyId
-      );
+        (row: Record<string, unknown>) => row.id === companyId || row.company_id === companyId
+      ) as CompanyDetailsRow | undefined;
       setCompanyDetails(currentCompany ?? null);
-      setCompanyName(currentCompany?.name ?? currentCompany?.company_name ?? "Company");
+      setCompanyName((currentCompany?.name ?? currentCompany?.company_name ?? "Company") as string);
       if (me?.isOwner === true) {
         const superAdminRows = await appApi.platformGetCompanySuperAdmins(companyId);
         setSuperAdmins(superAdminRows ?? []);
       } else {
         setSuperAdmins([]);
       }
-    } catch (e: any) {
-      setError(e?.message ?? "Errore caricamento perimeters");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Errore caricamento perimeters");
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    loadPage();
-  }, [companyId]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { loadPage(); }, [companyId]);
 
   const handleCreatePerimeter = async () => {
     if (!companyId) return;
@@ -127,8 +126,8 @@ const CompanyPerimetersPage: React.FC = () => {
       setNewPerimeterName("");
       await loadPage();
       emitTenantStructureChanged();
-    } catch (e: any) {
-      setError(e?.message ?? "Errore creazione perimeter");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message :"Errore creazione perimeter");
     } finally {
       setCreating(false);
     }
@@ -163,8 +162,8 @@ const CompanyPerimetersPage: React.FC = () => {
       const rows = await appApi.platformGetCompanySuperAdmins(companyId);
       setSuperAdmins(rows ?? []);
       emitTenantStructureChanged();
-    } catch (e: any) {
-      setError(e?.message ?? "Errore aggiunta Super Admin");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message :"Errore aggiunta Super Admin");
     } finally {
       setSavingSuperAdmin(false);
     }
@@ -179,8 +178,8 @@ const CompanyPerimetersPage: React.FC = () => {
       const rows = await appApi.platformGetCompanySuperAdmins(companyId);
       setSuperAdmins(rows ?? []);
       emitTenantStructureChanged();
-    } catch (e: any) {
-      setError(e?.message ?? "Errore rimozione Super Admin");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message :"Errore rimozione Super Admin");
     } finally {
       setSavingSuperAdmin(false);
     }
@@ -198,8 +197,8 @@ const CompanyPerimetersPage: React.FC = () => {
       await appApi.platformRenamePerimeter(companyId, perimeter.id, { name: nextName });
       await loadPage();
       emitTenantStructureChanged();
-    } catch (e: any) {
-      setError(e?.message ?? "Errore rinomina perimeter");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message :"Errore rinomina perimeter");
     }
   };
 
@@ -211,8 +210,8 @@ const CompanyPerimetersPage: React.FC = () => {
     try {
       const rows = await appApi.platformGetPerimeterAdmins(companyId, perimeter.id);
       setPerimeterAdmins(rows ?? []);
-    } catch (e: any) {
-      setError(e?.message ?? "Errore caricamento admin perimeter");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message :"Errore caricamento admin perimeter");
       setPerimeterAdmins([]);
     } finally {
       setLoadingPerimeterAdmins(false);
@@ -240,8 +239,8 @@ const CompanyPerimetersPage: React.FC = () => {
       setAdminEmail("");
       await loadPage();
       emitTenantStructureChanged();
-    } catch (e: any) {
-      setError(e?.message ?? "Errore aggiunta Admin");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message :"Errore aggiunta Admin");
     } finally {
       setSavingPerimeterAdmin(false);
     }
@@ -257,8 +256,8 @@ const CompanyPerimetersPage: React.FC = () => {
       setPerimeterAdmins(rows ?? []);
       await loadPage();
       emitTenantStructureChanged();
-    } catch (e: any) {
-      setError(e?.message ?? "Errore rimozione Admin");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message :"Errore rimozione Admin");
     } finally {
       setSavingPerimeterAdmin(false);
     }

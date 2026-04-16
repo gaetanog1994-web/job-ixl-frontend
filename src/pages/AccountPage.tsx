@@ -7,11 +7,39 @@ import TenantContextStrip from "../components/TenantContextStrip";
 import { labelAccessRole, labelAdminContext, labelHighestRole } from "../lib/accessLabels";
 import "../styles/dashboard.css";
 
+type MeShape = {
+    user?: { id?: string; email?: string };
+    isOwner?: boolean;
+    isSuperAdmin?: boolean;
+    isAdmin?: boolean;
+    access?: {
+        currentCompanyName?: string | null;
+        currentPerimeterName?: string | null;
+        accessRole?: string | null;
+        highestRole?: string | null;
+        [key: string]: unknown;
+    } | null;
+    [key: string]: unknown;
+};
+
+type UserShape = {
+    id?: string;
+    email?: string;
+    location_name?: string | null;
+    role_name?: string | null;
+    company_name?: string | null;
+    perimeter_name?: string | null;
+    access_role?: string | null;
+    is_owner?: boolean;
+    is_super_admin?: boolean;
+    [key: string]: unknown;
+};
+
 const AccountPage: React.FC = () => {
     const { user, loading } = useAuth();
     const navigate = useNavigate();
-    const [userData, setUserData] = useState<any>(null);
-    const [meData, setMeData] = useState<any>(null);
+    const [userData, setUserData] = useState<UserShape | null>(null);
+    const [meData, setMeData] = useState<MeShape | null>(null);
     const [newPassword, setNewPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
     const [passwordMsg, setPasswordMsg] = useState<{ text: string; ok: boolean } | null>(null);
@@ -21,8 +49,8 @@ const AccountPage: React.FC = () => {
         if (!user) return;
         Promise.allSettled([appApi.getMyUser(), appApi.getMe()])
             .then(([userInfo, me]) => {
-                if (userInfo.status === "fulfilled") setUserData(userInfo.value);
-                if (me.status === "fulfilled") setMeData(me.value);
+                if (userInfo.status === "fulfilled") setUserData(userInfo.value as UserShape);
+                if (me.status === "fulfilled") setMeData(me.value as MeShape);
             })
             .catch(console.error);
     }, [user]);
@@ -47,7 +75,7 @@ const AccountPage: React.FC = () => {
                 setNewPassword("");
                 setConfirmPassword("");
             }
-        } catch (e: any) {
+        } catch {
             setPasswordMsg({ text: "Errore imprevisto.", ok: false });
         } finally {
             setPasswordSaving(false);

@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 interface SidebarProps {
-  userData: any | null;
+  userData: { full_name?: string; email?: string; [key: string]: unknown } | null;
   isAdmin: boolean;
   availabilityStatus: "available" | "inactive" | null;
   onToggleAvailability: () => void;

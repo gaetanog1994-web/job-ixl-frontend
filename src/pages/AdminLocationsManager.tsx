@@ -90,8 +90,8 @@ const AdminLocationsManager = () => {
             });
 
             await loadLocations();
-        } catch (e: any) {
-            setError(e.message);
+        } catch (e: unknown) {
+            setError(e instanceof Error ? e.message : String(e));
         } finally {
             setLoading(false);
         }
@@ -112,8 +112,8 @@ const AdminLocationsManager = () => {
             if (error) throw new Error(error.message);
 
             await loadLocations();
-        } catch (e: any) {
-            setError(e.message);
+        } catch (e: unknown) {
+            setError(e instanceof Error ? e.message : String(e));
         } finally {
             setLoading(false);
         }

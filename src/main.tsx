@@ -8,10 +8,13 @@ import RegisterPage from "./pages/RegisterPage";
 import { AuthProvider } from "./lib/AuthContext";
 import { SidebarProvider } from "./lib/SidebarContext";
 import { AvailabilityProvider } from "./lib/AvailabilityContext";
+import { setupGlobalErrorTracking } from "./lib/observability";
 import GlobalSidebar from "./components/GlobalSidebar";
 
 import "leaflet/dist/leaflet.css";
 import "./index.css";
+
+setupGlobalErrorTracking();
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

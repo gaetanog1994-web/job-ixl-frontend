@@ -58,13 +58,13 @@ const AdminRolesManager = () => {
 
         const map: Record<string, Compatibility[]> = {};
 
-        (data ?? []).forEach((c: any) => {
+        (data ?? []).forEach((c) => {
             if (!map[c.role_id]) map[c.role_id] = [];
 
             map[c.role_id].push({
                 id: c.id,
                 compatible_role_id: c.compatible_role_id,
-                compatible_role_name: c.roles?.name ?? "",
+                compatible_role_name: (Array.isArray(c.roles) ? c.roles[0]?.name : null) ?? "",
             });
         });
 
@@ -72,8 +72,11 @@ const AdminRolesManager = () => {
     };
 
     useEffect(() => {
-        loadRoles();
-        loadAllCompatibilities();
+        const init = async () => {
+            await loadRoles();
+            await loadAllCompatibilities();
+        };
+        void init();
     }, []);
 
     /* =======================

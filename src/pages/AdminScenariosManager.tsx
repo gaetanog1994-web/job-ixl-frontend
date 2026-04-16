@@ -64,8 +64,8 @@ const AdminScenariosManager = ({
         try {
             const data = await appApi.adminGetScenarioApplications(scenarioId);
             setApplications(data ?? []);
-        } catch (e: any) {
-            setError(e?.message ?? String(e));
+        } catch (e: unknown) {
+            setError(e instanceof Error ? e.message : String(e));
         } finally {
             setLoading(false);
         }
@@ -76,7 +76,6 @@ const AdminScenariosManager = ({
         if (view === "detail" && activeScenario?.id) {
             loadApplications(activeScenario.id);
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [view, activeScenario?.id]);
 
     /* =======================
@@ -99,8 +98,8 @@ const AdminScenariosManager = ({
             setApplications([]);
 
             await reloadScenarios();
-        } catch (e: any) {
-            setError(e.message);
+        } catch (e: unknown) {
+            setError(e instanceof Error ? e.message : String(e));
         } finally {
             setLoading(false);
         }
@@ -130,8 +129,8 @@ const AdminScenariosManager = ({
 
             await reloadScenarios();
             onScenarioRenamed(activeScenario.id);
-        } catch (e: any) {
-            setError(e.message);
+        } catch (e: unknown) {
+            setError(e instanceof Error ? e.message : String(e));
         } finally {
             setLoading(false);
         }
@@ -154,8 +153,8 @@ const AdminScenariosManager = ({
                 setApplications([]);
                 setView("list");
             }
-        } catch (e: any) {
-            setError(e.message);
+        } catch (e: unknown) {
+            setError(e instanceof Error ? e.message : String(e));
         } finally {
             setLoading(false);
         }
@@ -185,8 +184,8 @@ const AdminScenariosManager = ({
 
             setForm({ user_id: "", position_id: "", priority: 1 });
             await loadApplications(activeScenario.id);
-        } catch (e: any) {
-            setError(e.message);
+        } catch (e: unknown) {
+            setError(e instanceof Error ? e.message : String(e));
         } finally {
             setLoading(false);
         }
@@ -202,8 +201,8 @@ const AdminScenariosManager = ({
             await appApi.adminDeleteScenarioApplication(activeScenario.id, applicationId);
 
             await loadApplications(activeScenario.id);
-        } catch (e: any) {
-            setError(e.message);
+        } catch (e: unknown) {
+            setError(e instanceof Error ? e.message : String(e));
         } finally {
             setLoading(false);
         }
@@ -220,8 +219,8 @@ const AdminScenariosManager = ({
             await appApi.adminDeleteAllScenarioApplications(activeScenario.id);
             setApplications([]);
 
-        } catch (e: any) {
-            setError(e.message);
+        } catch (e: unknown) {
+            setError(e instanceof Error ? e.message : String(e));
         } finally {
             setLoading(false);
         }

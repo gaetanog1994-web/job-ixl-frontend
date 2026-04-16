@@ -469,7 +469,7 @@ const AdminInterlocking = () => {
 
             const roles: RoleRow[] =
                 rolesRes.status === "fulfilled" && Array.isArray(rolesRes.value)
-                    ? rolesRes.value.map((r: any) => ({
+                    ? rolesRes.value.map((r: Record<string, unknown>) => ({
                         id: String(r.id),
                         name: String(r.name ?? ""),
                     }))
@@ -479,7 +479,7 @@ const AdminInterlocking = () => {
 
             const locations: LocationRow[] =
                 locationsRes.status === "fulfilled" && Array.isArray(locationsRes.value)
-                    ? locationsRes.value.map((l: any) => ({
+                    ? locationsRes.value.map((l: Record<string, unknown>) => ({
                         id: String(l.id),
                         name: String(l.name ?? ""),
                         latitude:
@@ -497,7 +497,7 @@ const AdminInterlocking = () => {
 
             const users: AdminUserRow[] =
                 usersRes.status === "fulfilled" && Array.isArray(usersRes.value)
-                    ? usersRes.value.map((u: any) => {
+                    ? usersRes.value.map((u: Record<string, unknown>) => {
                         const roleId =
                             u.role_id === null || u.role_id === undefined
                                 ? null
@@ -517,25 +517,22 @@ const AdminInterlocking = () => {
                                 "Utente"
                             ),
                             role_id: roleId,
-                            role_name:
-                                u.role_name ??
-                                (roleId ? roleNameById.get(roleId) ?? null : null),
+                            role_name: (typeof u.role_name === "string" ? u.role_name : null)
+                                ?? (roleId ? roleNameById.get(roleId) ?? null : null),
                             location_id: locationId,
-                            location_name:
-                                u.location_name ??
-                                (locationId ? locationNameById.get(locationId) ?? null : null),
+                            location_name: (typeof u.location_name === "string" ? u.location_name : null)
+                                ?? (locationId ? locationNameById.get(locationId) ?? null : null),
                             fixed_location:
                                 typeof u.fixed_location === "boolean"
                                     ? u.fixed_location
                                     : typeof u.fixedLocation === "boolean"
                                         ? u.fixedLocation
                                         : null,
-                            responsible_name:
-                                u.responsible_name ??
-                                u.manager_name ??
-                                u.responsabile ??
-                                null,
-                            pbp: u.pbp ?? null,
+                            responsible_name: (typeof u.responsible_name === "string" ? u.responsible_name : null)
+                                ?? (typeof u.manager_name === "string" ? u.manager_name : null)
+                                ?? (typeof u.responsabile === "string" ? u.responsabile : null)
+                                ?? null,
+                            pbp: typeof u.pbp === "string" ? u.pbp : null,
                         };
                     })
                     : [];
@@ -555,7 +552,7 @@ const AdminInterlocking = () => {
             const json = await appApi.adminListInterlockingScenarios();
             const raw = Array.isArray(json?.scenarios) ? json.scenarios : [];
 
-            const normalizedScenarios: SavedScenario[] = raw.map((s: any) => ({
+            const normalizedScenarios: SavedScenario[] = raw.map((s: Record<string, unknown>) => ({
                 id: String(s.id),
                 scenario_code: String(s.scenario_code ?? ""),
                 generated_at: String(s.generated_at ?? ""),
@@ -598,8 +595,8 @@ const AdminInterlocking = () => {
                 const stillExists = normalizedScenarios.some((s) => s.id === prev);
                 return stillExists ? prev : null;
             });
-        } catch (err: any) {
-            setError(err?.message ?? String(err));
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : String(err));
         } finally {
             setLoadingScenarios(false);
         }
@@ -631,8 +628,8 @@ const AdminInterlocking = () => {
         try {
             const data = await appApi.adminSetCampaignStatus(next);
             setCampaignStatus(data.campaign_status);
-        } catch (e: any) {
-            setError("Errore aggiornamento campagna: " + (e?.message ?? "unknown"));
+        } catch (e: unknown) {
+            setError("Errore aggiornamento campagna: " + (e instanceof Error ? e.message : "unknown"));
         }
     };
 
@@ -775,7 +772,8 @@ const AdminInterlocking = () => {
                 longitude: location?.longitude ?? null,
             };
         });
-    }, [activeScenario, usersById, locationsById]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activeScenario, usersById, locationsById, locationsDirectory]);
 
     /**
      * Set degli userId appartenenti alla catena selezionata.
@@ -787,6 +785,7 @@ const AdminInterlocking = () => {
         const chain = chains[selectedChainIndex];
         if (!chain) return new Set();
         return new Set(chain.userIds);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedChainIndex, activeScenario, usersById]);
 
     const peopleListToShow = useMemo<ScenarioPersonRow[]>(() => {
@@ -850,7 +849,7 @@ const AdminInterlocking = () => {
                     __chainHighlight: isInSelectedChain,
                     __inChain: isInSelectedChain,
                     __chainMemberCount: isInSelectedChain ? 1 : 0,
-                } as any);
+                } as ScenarioLocationMarker & { __chainHighlight: boolean; __inChain: boolean; __chainMemberCount: number });
             }
         }
 
@@ -941,8 +940,8 @@ const AdminInterlocking = () => {
                 nodes: Number(json?.engine?.nodes ?? 0),
                 relationships: Number(json?.engine?.relationships ?? 0),
             });
-        } catch (err: any) {
-            const message = err?.message ?? String(err);
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : String(err);
 
             if (message.includes("503")) {
                 setError(
@@ -972,7 +971,7 @@ const AdminInterlocking = () => {
             const json = await appApi.adminFindChains({ maxLen });
             const raw = Array.isArray(json?.chains) ? json.chains : [];
 
-            const normalized: InterlockingChain[] = raw.map((c: any) => ({
+            const normalized: InterlockingChain[] = raw.map((c: Record<string, unknown>) => ({
                 users: Array.isArray(c?.users) ? c.users : [],
                 peopleNames: Array.isArray(c?.peopleNames) ? c.peopleNames : [],
                 length: Number(
@@ -1024,8 +1023,8 @@ const AdminInterlocking = () => {
 
             await appApi.adminSaveInterlockingScenario(payload);
             await loadScenarios();
-        } catch (err: any) {
-            setError(err?.message ?? String(err));
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : String(err));
         } finally {
             setLoadingAnalyze(false);
         }
@@ -1064,8 +1063,8 @@ const AdminInterlocking = () => {
             setSelectedScenarioIds([]);
             await loadScenarios();
             setFocusedPersonId(null);
-        } catch (err: any) {
-            setError(err?.message ?? String(err));
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : String(err));
         } finally {
             setDeleting(false);
         }
@@ -1519,7 +1518,7 @@ const AdminInterlocking = () => {
                                                             {visibleChains.length === 0 ? (
                                                                 <div style={{ color: "#9CA3AF", fontSize: "13px" }}>Nessuna catena disponibile.</div>
                                                             ) : (
-                                                                visibleChains.map((chain: any, index: number) => {
+                                                                visibleChains.map((chain: { peopleNames?: string[]; avgPriority?: number | null; length?: number }, index: number) => {
                                                                     const cc = getChainColor(index);
                                                                     const isChainActive = selectedChainIndex === index && activeScenarioId === scenario.id;
                                                                     return (
@@ -1646,7 +1645,7 @@ const AdminInterlocking = () => {
                                                 <TileLayer attribution='&copy; OpenStreetMap contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                                                 <FitBounds markers={displayedMapMarkers} />
                                                 {displayedMapMarkers.map((marker) => {
-                                                    const m = marker as any;
+                                                    const m = marker as ScenarioLocationMarker & { __inChain?: boolean; __chainMemberCount?: number };
                                                     const inChain: boolean = !!m.__inChain;
                                                     const count: number = Number(m.__chainMemberCount ?? 0);
                                                     const chainHighlightActive = selectedChainIndex !== null;
