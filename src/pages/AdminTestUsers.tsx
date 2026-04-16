@@ -4,7 +4,6 @@ import AdminLocationsManager from "./AdminLocationsManager";
 import AdminRolesManager from "./AdminRolesManager";
 import { appApi } from "../lib/appApi";
 import { canManageCampaignInCurrentPerimeter } from "../lib/operationalAccess";
-import TenantContextStrip from "../components/TenantContextStrip";
 import "../styles/dashboard.css";
 
 
@@ -347,9 +346,6 @@ const AdminTestUsers = () => {
           {view === "roles" && "Gestione Ruoli"}
         </h1>
       </div>
-
-      <TenantContextStrip sectionLabel="Admin / Configurazione e utenti" />
-
 
       {/* ---- TOP ACTIONS BAR ---- */}
       {(view === "home" || view === "users" || view === "scenarios") && (

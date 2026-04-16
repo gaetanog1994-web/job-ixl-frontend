@@ -127,7 +127,7 @@ const TopBar: React.FC = () => {
         >
           ☰
         </button>
-        <span className="app-context-bar-title">Contesto attivo</span>
+        <span className="app-context-bar-title">Contesto</span>
       </div>
 
       <div className="app-topbar-slim-right">

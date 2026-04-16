@@ -6,7 +6,6 @@ import AccountPage from "./pages/AccountPage";
 import HomeEntry from "./pages/HomeEntry";
 import OwnerAreaPage from "./pages/OwnerAreaPage";
 import CompanyPerimetersPage from "./pages/CompanyPerimetersPage";
-import ContextSwitcherPage from "./pages/ContextSwitcherPage";
 
 import AdminCandidatures from "./pages/AdminCandidatures";
 import AdminMaps from "./pages/AdminMaps";
@@ -23,14 +22,21 @@ import RequirePerimeterAccess from "./components/RequirePerimeterAccess";
 import { ActiveContextProvider, useActiveContext } from "./lib/ActiveContextProvider";
 
 function AppShell({ showTopBar }: { showTopBar: boolean }) {
-  const { activeSelection } = useActiveContext();
+  const { activeSelection, isBootstrappingContext, isContextResolved, contextError } = useActiveContext();
   const contextRouteKey = `${activeSelection?.profile ?? "none"}:${activeSelection?.companyId ?? "none"}:${activeSelection?.perimeterId ?? "none"}`;
+  const waitingContext = showTopBar && (!isContextResolved || isBootstrappingContext);
 
   return (
     <>
       {showTopBar && <TopBar />}
 
       <div style={{ paddingTop: showTopBar ? "48px" : "0" }}>
+        {waitingContext && (
+          <div style={{ padding: "24px", fontFamily: "'Inter', sans-serif", color: contextError ? "#991b1b" : "#64748b" }}>
+            {contextError ?? "Caricamento contesto..."}
+          </div>
+        )}
+        {!waitingContext && (
         <Routes key={contextRouteKey}>
           {/* ---------- PUBLIC ---------- */}
           {!showTopBar && (
@@ -48,7 +54,6 @@ function AppShell({ showTopBar }: { showTopBar: boolean }) {
             <>
               {/* Unified dashboard (replaces DashboardPage + AccountPage) */}
               <Route path="/" element={<HomeEntry />} />
-              <Route path="/select-context" element={<ContextSwitcherPage />} />
               <Route path="/dashboard" element={<MobilityDashboard />} />
 
               <Route path="/owner" element={<RequireOwner><OwnerAreaPage /></RequireOwner>} />
@@ -82,6 +87,7 @@ function AppShell({ showTopBar }: { showTopBar: boolean }) {
             </>
           )}
         </Routes>
+        )}
       </div>
     </>
   );

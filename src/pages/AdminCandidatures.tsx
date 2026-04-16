@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { appApi } from "../lib/appApi";
-import TenantContextStrip from "../components/TenantContextStrip";
 import "../styles/dashboard.css";
 
 type AdminCandidatureRow = {
@@ -147,10 +146,6 @@ const AdminCandidatures = () => {
           {applications.length} candidature totali · {filtered.length} visibili con i filtri correnti
         </p>
       </div>
-
-      <TenantContextStrip sectionLabel="Admin / Candidature" />
-
-
 
       {/* ---- Main table card ---- */}
       <div className="db-card">

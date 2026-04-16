@@ -3,7 +3,6 @@ import { useAuth } from "../lib/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { appApi } from "../lib/appApi";
 import { supabase } from "../lib/supabaseClient";
-import TenantContextStrip from "../components/TenantContextStrip";
 import { labelAccessRole, labelAdminContext, labelHighestRole } from "../lib/accessLabels";
 import "../styles/dashboard.css";
 
@@ -134,8 +133,6 @@ const AccountPage: React.FC = () => {
                     ← Torna all'app
                 </button>
             </div>
-
-            <TenantContextStrip sectionLabel="Profilo utente" />
 
             {/* Profile card */}
             <div className="db-card db-fade-in" style={{ padding: "20px 24px" }}>

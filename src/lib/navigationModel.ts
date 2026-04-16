@@ -1,5 +1,3 @@
-import type { TenantContextSelection } from "./appApi";
-
 type PlatformCompany = {
   id: string;
   name: string;
@@ -33,7 +31,6 @@ export type NavLeafItem = {
   label: string;
   path: string;
   isActive: boolean;
-  tenantContext?: TenantContextSelection;
 };
 
 export type NavSection = {
@@ -112,7 +109,6 @@ export function buildPrimaryNavigationModel(input: BuildModelInput): NavSection[
           label: company.name || "Company",
           path,
           isActive: isPathActive(input.pathname, path),
-          tenantContext: { companyId: company.id, perimeterId: null },
         };
       })
     : [];
@@ -141,7 +137,6 @@ export function buildPrimaryNavigationModel(input: BuildModelInput): NavSection[
         path: companyPath,
         isActive: input.currentCompanyId === companyId
           && (input.currentPerimeterId === null || isPathActive(input.pathname, companyPath)),
-        tenantContext: { companyId, perimeterId: null },
       };
 
       const perimeterEntries: NavLeafItem[] = perimeters.reduce<NavLeafItem[]>((acc, perimeter) => {
@@ -162,7 +157,6 @@ export function buildPrimaryNavigationModel(input: BuildModelInput): NavSection[
             label: `${companyName} / ${perimeterName}`,
             path,
             isActive: isCurrentPerimeter,
-            tenantContext: { companyId, perimeterId },
           });
           return acc;
         }, []);
@@ -229,7 +223,6 @@ export function buildTopBarHierarchy(
         path: companyPath,
         isActive: input.currentCompanyId === companyId
           && (input.currentPerimeterId === null || isPathActive(input.pathname, companyPath)),
-        tenantContext: { companyId, perimeterId: null },
       };
 
       const perimeterChildren: NavLeafItem[] = (input.superAdminPerimetersByCompany[companyId] ?? [])
@@ -245,7 +238,6 @@ export function buildTopBarHierarchy(
               input.currentCompanyId === companyId
               && input.currentPerimeterId === perimeterId
               && input.pathname.startsWith("/admin"),
-            tenantContext: { companyId, perimeterId },
           });
           return acc;
         }, []);
@@ -281,7 +273,6 @@ export function buildTopBarHierarchy(
               input.currentCompanyId === companyId
               && input.currentPerimeterId === perimeterId
               && isPathActive(input.pathname, "/admin/candidatures"),
-            tenantContext: { companyId, perimeterId },
           },
           {
             id: `area-admin-maps-${companyId}-${perimeterId}`,
@@ -291,7 +282,6 @@ export function buildTopBarHierarchy(
               input.currentCompanyId === companyId
               && input.currentPerimeterId === perimeterId
               && isPathActive(input.pathname, "/admin/maps"),
-            tenantContext: { companyId, perimeterId },
           },
           {
             id: `area-admin-config-${companyId}-${perimeterId}`,
@@ -301,7 +291,6 @@ export function buildTopBarHierarchy(
               input.currentCompanyId === companyId
               && input.currentPerimeterId === perimeterId
               && isPathActive(input.pathname, "/admin/test-users"),
-            tenantContext: { companyId, perimeterId },
           }
         );
       }
@@ -313,7 +302,6 @@ export function buildTopBarHierarchy(
           input.currentCompanyId === companyId
           && input.currentPerimeterId === perimeterId
           && input.pathname.startsWith("/admin/interlocking"),
-        tenantContext: { companyId, perimeterId },
       });
 
       const nodeId = `area-admin-node-${companyId}-${perimeterId}`;

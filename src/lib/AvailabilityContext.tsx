@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { appApi } from "./appApi";
+import { useAuth } from "./AuthContext";
 
 type AvailabilityContextType = {
   availabilityStatus: "available" | "inactive" | null;
@@ -18,10 +19,16 @@ const AvailabilityContext = createContext<AvailabilityContextType>({
 });
 
 export const AvailabilityProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user } = useAuth();
   const [availabilityStatus, setAvailabilityStatus] = useState<"available" | "inactive" | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
 
   const reload = useCallback(async () => {
+    if (!user?.id) {
+      setIsAdmin(false);
+      setAvailabilityStatus(null);
+      return;
+    }
     try {
       const me = await appApi.getMe();
       setIsAdmin(!!me?.isAdmin);
@@ -36,17 +43,17 @@ export const AvailabilityProvider: React.FC<{ children: React.ReactNode }> = ({ 
       const status = userInfo?.availability_status;
       setAvailabilityStatus((status === "available" || status === "inactive") ? status : null);
     } catch { /* silently ignore fetch errors */ }
-  }, []);
+  }, [user?.id]);
 
   useEffect(() => {
-    const run = async () => { await reload(); };
-    void run();
+    void reload();
   }, [reload]);
 
   useEffect(() => {
-    const interval = setInterval(() => { reload(); }, 10_000);
+    if (!user?.id) return;
+    const interval = setInterval(() => { reload(); }, 30_000);
     return () => clearInterval(interval);
-  }, [reload]);
+  }, [reload, user?.id]);
 
   useEffect(() => {
     const handleTenantContextChanged = () => {

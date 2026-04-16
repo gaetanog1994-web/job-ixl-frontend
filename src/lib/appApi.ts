@@ -49,9 +49,39 @@ export type FrontendErrorReportPayload = {
     timestamp?: string;
 };
 
+export type MePayload = {
+    user: { id: string; email?: string };
+    isAdmin: boolean;
+    isOwner?: boolean;
+    isSuperAdmin?: boolean;
+    access?: MeAccessContext | null;
+};
+
 const BASE = (import.meta.env.VITE_APP_API_URL || "").replace(/\/+$/, "");
 const TENANT_CONTEXT_STORAGE_KEY = "jip_tenant_context_v1";
 const TENANT_CONTEXT_CHANGED_EVENT = "tenant-context-changed";
+const PROFILE_CACHE_TTL_MS = 2_000;
+
+type CacheBucket<T> = {
+    key: string | null;
+    expiresAt: number;
+    value: T | null;
+    inFlight: Promise<T> | null;
+};
+
+const meCache: CacheBucket<MePayload> = {
+    key: null,
+    expiresAt: 0,
+    value: null,
+    inFlight: null,
+};
+
+const myUserCache: CacheBucket<Record<string, unknown>> = {
+    key: null,
+    expiresAt: 0,
+    value: null,
+    inFlight: null,
+};
 
 export class AppApiError extends Error {
     status: number;
@@ -142,6 +172,56 @@ function isSameTenantContext(
         && normalizedA.perimeterId === normalizedB.perimeterId;
 }
 
+function nowMs() {
+    return Date.now();
+}
+
+function tenantCacheKey() {
+    const tenant = readTenantContext();
+    return `${tenant.companyId ?? "-"}::${tenant.perimeterId ?? "-"}`;
+}
+
+function invalidateProfileCaches() {
+    meCache.key = null;
+    meCache.expiresAt = 0;
+    meCache.value = null;
+    meCache.inFlight = null;
+    myUserCache.key = null;
+    myUserCache.expiresAt = 0;
+    myUserCache.value = null;
+    myUserCache.inFlight = null;
+}
+
+function getProfilerEnabled() {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem("jip_debug_bootstrap") === "1";
+}
+
+function traceApiCall(input: {
+    method: string;
+    path: string;
+    durationMs: number;
+    ok: boolean;
+    status: number;
+}) {
+    if (typeof window === "undefined" || !getProfilerEnabled()) return;
+    const scope = window as any;
+    const state = scope.__JIP_API_PROFILER__ ?? {
+        totalCalls: 0,
+        byPath: {} as Record<string, { calls: number; errors: number; totalMs: number; avgMs: number }>,
+    };
+    state.totalCalls += 1;
+    const key = `${input.method} ${input.path}`;
+    const item = state.byPath[key] ?? { calls: 0, errors: 0, totalMs: 0, avgMs: 0 };
+    item.calls += 1;
+    item.totalMs += input.durationMs;
+    item.avgMs = Math.round((item.totalMs / item.calls) * 10) / 10;
+    if (!input.ok) item.errors += 1;
+    state.byPath[key] = item;
+    scope.__JIP_API_PROFILER__ = state;
+    console.info(`[JIP API] ${key} -> ${input.status} (${input.durationMs}ms)`);
+}
+
 function emitTenantContextChanged(previous: TenantContextSelection, next: TenantContextSelection) {
     if (typeof window === "undefined") return;
     window.dispatchEvent(
@@ -174,6 +254,8 @@ function mergeHeaders(base: HeadersInit | undefined, tenant: TenantContextSelect
 }
 
 async function apiFetch(path: string, init?: RequestInit) {
+    const startedAt = nowMs();
+    const method = (init?.method ?? "GET").toUpperCase();
     let token: string;
     try {
         token = await getAccessToken();
@@ -197,6 +279,13 @@ async function apiFetch(path: string, init?: RequestInit) {
     });
 
     const json = await res.json().catch(() => null);
+    traceApiCall({
+        method,
+        path,
+        durationMs: nowMs() - startedAt,
+        ok: res.ok,
+        status: res.status,
+    });
 
     if (!res.ok) {
         const codeFromBody =
@@ -277,6 +366,7 @@ export const appApi = {
         const previous = readTenantContext();
         const normalized = normalizeTenantContext(next);
         writeTenantContext(normalized);
+        invalidateProfileCaches();
         if (!isSameTenantContext(previous, normalized)) {
             emitTenantContextChanged(previous, normalized);
         }
@@ -286,6 +376,7 @@ export const appApi = {
         const previous = readTenantContext();
         const cleared = { companyId: null, perimeterId: null };
         writeTenantContext(cleared);
+        invalidateProfileCaches();
         if (!isSameTenantContext(previous, cleared)) {
             emitTenantContextChanged(previous, cleared);
         }
@@ -370,49 +461,95 @@ export const appApi = {
     },
 
     async activateMe() {
-        return apiFetch(`/api/users/me/activate`, {
+        const out = await apiFetch(`/api/users/me/activate`, {
             method: "POST",
             body: JSON.stringify({}),
         });
+        invalidateProfileCaches();
+        return out;
     },
 
     async deactivateMe() {
-        return apiFetch(`/api/users/me/deactivate`, {
+        const out = await apiFetch(`/api/users/me/deactivate`, {
             method: "POST",
             body: JSON.stringify({}),
         });
+        invalidateProfileCaches();
+        return out;
     },
 
-    async getMe(): Promise<{
-        user: { id: string; email?: string };
-        isAdmin: boolean;
-        isOwner?: boolean;
-        isSuperAdmin?: boolean;
-        access?: MeAccessContext | null;
-    }> {
-        try {
-            return await apiFetch(`/api/me`, { method: "GET" });
-        } catch (e: unknown) {
-            const msg = String(e instanceof Error ? e.message : "").toLowerCase();
-            const isTenantScopeError =
-                msg.includes("tenant_scope_mismatch") ||
-                msg.includes("requested company does not match requested perimeter") ||
-                msg.includes("company context required") ||
-                msg.includes("perimeter context required");
-
-            if (isTenantScopeError) {
-                // stale/mismatched tenant context in localStorage: reset and retry once
-                writeTenantContext({ companyId: null, perimeterId: null });
-                return apiFetch(`/api/me`, { method: "GET" });
-            }
-
-            throw e;
+    async getMe(): Promise<MePayload> {
+        const cacheKey = tenantCacheKey();
+        if (meCache.key === cacheKey && meCache.value && meCache.expiresAt > nowMs()) {
+            return meCache.value;
         }
+        if (meCache.key === cacheKey && meCache.inFlight) {
+            return meCache.inFlight;
+        }
+
+        const request = (async () => {
+            try {
+                let payload: MePayload;
+                try {
+                    payload = await apiFetch(`/api/me`, { method: "GET" });
+                } catch (e: unknown) {
+                    const msg = String(e instanceof Error ? e.message : "").toLowerCase();
+                    const isTenantScopeError =
+                        msg.includes("tenant_scope_mismatch") ||
+                        msg.includes("requested company does not match requested perimeter") ||
+                        msg.includes("company context required") ||
+                        msg.includes("perimeter context required");
+
+                    if (isTenantScopeError) {
+                        throw new AppApiError("Contesto tenant non coerente.", {
+                            status: 400,
+                            code: "TENANT_SCOPE_MISMATCH",
+                            action: "none",
+                        });
+                    } else {
+                        throw e;
+                    }
+                }
+
+                meCache.key = cacheKey;
+                meCache.value = payload;
+                meCache.expiresAt = nowMs() + PROFILE_CACHE_TTL_MS;
+                return payload;
+            } finally {
+                meCache.inFlight = null;
+            }
+        })();
+
+        meCache.key = cacheKey;
+        meCache.inFlight = request;
+        return request;
     },
 
     async getMyUser(): Promise<Record<string, unknown>> {
-        const json = await apiFetch(`/api/users/me`, { method: "GET" });
-        return json.user;
+        const cacheKey = tenantCacheKey();
+        if (myUserCache.key === cacheKey && myUserCache.value && myUserCache.expiresAt > nowMs()) {
+            return myUserCache.value;
+        }
+        if (myUserCache.key === cacheKey && myUserCache.inFlight) {
+            return myUserCache.inFlight;
+        }
+
+        const request = (async () => {
+            try {
+                const json = await apiFetch(`/api/users/me`, { method: "GET" });
+                const user = json.user as Record<string, unknown>;
+                myUserCache.key = cacheKey;
+                myUserCache.value = user;
+                myUserCache.expiresAt = nowMs() + PROFILE_CACHE_TTL_MS;
+                return user;
+            } finally {
+                myUserCache.inFlight = null;
+            }
+        })();
+
+        myUserCache.key = cacheKey;
+        myUserCache.inFlight = request;
+        return request;
     },
 
     async getMyApplications(): Promise<RawApplication[]> {
@@ -569,10 +706,12 @@ export const appApi = {
 
     // ✅ Bootstrap profilo applicativo (crea/aggiorna riga in users) DOPO login
     async ensureMeProfile(params: { full_name: string; location_id: string | null }) {
-        return apiFetch(`/api/users/me/ensure`, {
+        const out = await apiFetch(`/api/users/me/ensure`, {
             method: "POST",
             body: JSON.stringify(params),
         });
+        invalidateProfileCaches();
+        return out;
     },
 
     async adminCreateLocation(params: {

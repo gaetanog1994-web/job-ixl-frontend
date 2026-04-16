@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { appApi } from "../lib/appApi";
-import TenantContextStrip from "../components/TenantContextStrip";
 import "../styles/dashboard.css";
 
 type PerimeterRow = {
@@ -47,7 +46,6 @@ const emitTenantStructureChanged = () => {
 };
 
 const CompanyPerimetersPage: React.FC = () => {
-  const navigate = useNavigate();
   const { companyId } = useParams<{ companyId: string }>();
 
   const [perimeters, setPerimeters] = useState<PerimeterRow[]>([]);
@@ -82,7 +80,6 @@ const CompanyPerimetersPage: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      appApi.setTenantContext({ companyId, perimeterId: null });
       const [perimetersRows, companiesRows] = await Promise.all([
         appApi.platformGetPerimeters(companyId),
         appApi.platformGetCompanies(),
@@ -131,11 +128,6 @@ const CompanyPerimetersPage: React.FC = () => {
     } finally {
       setCreating(false);
     }
-  };
-
-  const handleEnterPerimeter = (perimeter: PerimeterRow) => {
-    appApi.setTenantContext({ companyId: perimeter.company_id, perimeterId: perimeter.id });
-    navigate(meData?.isSuperAdmin ? "/admin/interlocking" : "/dashboard");
   };
 
   const superAdminsCount = meData?.isOwner
@@ -272,8 +264,6 @@ const CompanyPerimetersPage: React.FC = () => {
         padding: "24px",
       }}
     >
-      <TenantContextStrip sectionLabel="Company / Perimeters" />
-
       <div className="db-card owner-company-detail-header" style={{ marginBottom: "18px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
           <div>
@@ -436,9 +426,9 @@ const CompanyPerimetersPage: React.FC = () => {
                 <span>Admins: {perimeter.admins_count ?? 0}</span>
               </div>
               <div className="owner-company-actions">
-                <button className="db-btn owner-primary-btn" onClick={() => handleEnterPerimeter(perimeter)}>
-                  Enter
-                </button>
+                <span className="owner-chip" style={{ alignSelf: "center" }}>
+                  Seleziona il perimetro dalla top bar per entrare
+                </span>
                 <button className="db-btn db-btn-outline" onClick={() => handleRenamePerimeter(perimeter)}>
                   Rename
                 </button>

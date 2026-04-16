@@ -4,6 +4,7 @@ import { supabase } from "../lib/supabaseClient";
 import { appApi } from "../lib/appApi";
 import { useSidebar } from "../lib/SidebarContext";
 import { useAvailability } from "../lib/AvailabilityContext";
+import { useAuth } from "../lib/AuthContext";
 import { labelAccessRole, labelHighestRole } from "../lib/accessLabels";
 import { buildPrimaryNavigationModel, type NavLeafItem } from "../lib/navigationModel";
 import "../styles/dashboard.css";
@@ -41,6 +42,7 @@ const GlobalSidebar: React.FC = () => {
   const { isOpen, close } = useSidebar();
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useAuth();
 
   const [userData, setUserData] = useState<Record<string, unknown> | null>(null);
   const [meData, setMeData] = useState<MeDataShape | null>(null);
@@ -56,6 +58,15 @@ const GlobalSidebar: React.FC = () => {
     let cancelled = false;
 
     const load = async () => {
+      if (!user?.id) {
+        if (!cancelled) {
+          setUserData(null);
+          setMeData(null);
+          setOwnerCompanies([]);
+          setSuperAdminPerimetersByCompany({});
+        }
+        return;
+      }
       try {
         const mePayload = await appApi.getMe() as MeDataShape;
         if (cancelled) return;
@@ -76,7 +87,6 @@ const GlobalSidebar: React.FC = () => {
         if (mePayload) {
           setMeData(mePayload as MeDataShape);
           const access = mePayload?.access ?? null;
-          const companyMemberships = Array.isArray(access?.companies) ? access.companies : [];
 
           if (mePayload?.isOwner === true) {
             const companyRows = await appApi.platformGetCompanies();
@@ -92,42 +102,38 @@ const GlobalSidebar: React.FC = () => {
             setOwnerCompanies([]);
           }
 
-          if (companyMemberships.length > 0) {
-            const map: Record<string, Record<string, unknown>[]> = {};
-            await Promise.all(
-              companyMemberships.map(async (company: Record<string, unknown>) => {
-                const companyId = String(company?.company_id ?? "");
-                if (!companyId) return;
-                try {
-                  const rows = await appApi.platformGetPerimeters(companyId);
-                  map[companyId] = rows ?? [];
-                } catch {
-                  map[companyId] = [];
-                }
-              })
-            );
-            if (!cancelled) setSuperAdminPerimetersByCompany(map);
-          } else if (!cancelled) {
-            setSuperAdminPerimetersByCompany({});
+          const map: Record<string, Record<string, unknown>[]> = {};
+          const perimeterMemberships = Array.isArray(access?.perimeters) ? access.perimeters : [];
+          for (const perimeter of perimeterMemberships) {
+            const companyId = String((perimeter as Record<string, unknown>)?.company_id ?? "");
+            if (!companyId) continue;
+            if (!map[companyId]) map[companyId] = [];
+            map[companyId].push(perimeter as Record<string, unknown>);
           }
+          if (!cancelled) setSuperAdminPerimetersByCompany(map);
         }
       } catch {
         // silently ignore — sidebar works even without data
       }
     };
 
+    const handleTenantContextChanged = () => {
+      void load();
+    };
     const handleTenantStructureChanged = () => {
-      load();
+      void load();
     };
 
-    load();
+    void load();
+    window.addEventListener("tenant-context-changed", handleTenantContextChanged);
     window.addEventListener("tenant-structure-changed", handleTenantStructureChanged);
 
     return () => {
       cancelled = true;
+      window.removeEventListener("tenant-context-changed", handleTenantContextChanged);
       window.removeEventListener("tenant-structure-changed", handleTenantStructureChanged);
     };
-  }, [location.pathname]);
+  }, [user?.id]);
 
   useEffect(() => {
     if (location.pathname.startsWith("/admin")) {
@@ -192,9 +198,6 @@ const GlobalSidebar: React.FC = () => {
   const hasMultiTenantSection = Boolean(ownerSection || superAdminSection);
 
   const goToItem = (item: NavLeafItem) => {
-    if (item.tenantContext) {
-      appApi.setTenantContext(item.tenantContext);
-    }
     go(item.path);
   };
 
@@ -305,7 +308,7 @@ const GlobalSidebar: React.FC = () => {
               gap: 3,
             }}
           >
-            <div style={{ fontSize: 11, color: "#e2e8f0", fontWeight: 700 }}>Contesto attivo</div>
+            <div style={{ fontSize: 11, color: "#e2e8f0", fontWeight: 700 }}>Ambito corrente</div>
             <div style={{ fontSize: 11, color: "var(--sidebar-text)" }}>
               Company: {activeAccess?.currentCompanyName ?? "Non selezionata"}
             </div>
@@ -315,23 +318,6 @@ const GlobalSidebar: React.FC = () => {
             <div style={{ fontSize: 11, color: "var(--sidebar-text)" }}>
               Access: {accessRoleLabel}
             </div>
-            <button
-              className="db-nav-item"
-              style={{
-                marginTop: 4,
-                marginBottom: 0,
-                border: "1px solid rgba(255,255,255,0.12)",
-                background: "rgba(255,255,255,0.02)",
-                color: "#e2e8f0",
-                padding: "7px 9px",
-                fontSize: 12,
-              }}
-              onClick={() => go("/select-context")}
-              id="global-nav-change-context"
-            >
-              <span className="db-nav-icon">🔄</span>
-              <span className="db-nav-label">Cambia contesto</span>
-            </button>
           </div>
 
           <div className="db-section-label">Principale</div>

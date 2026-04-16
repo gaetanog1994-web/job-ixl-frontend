@@ -11,7 +11,6 @@ import type { MapFilters } from "../components/dashboard/FiltersCard";
 import UserStatsCard from "../components/dashboard/UserStatsCard";
 import MyApplicationsPanel from "../components/dashboard/MyApplicationsPanel";
 import type { MapLocation } from "../components/PositionsMap";
-import TenantContextStrip from "../components/TenantContextStrip";
 
 import "../styles/dashboard.css";
 
@@ -142,8 +141,6 @@ const MobilityDashboard: React.FC = () => {
     <div className="db-shell" style={{ flexDirection: "column" }}>
       {/* ===== CONTENT ===== */}
       <div className="db-content" style={{ flex: 1 }}>
-        <TenantContextStrip sectionLabel="Dashboard utente" />
-
         {/* ---- Campaign closed banner ---- */}
         {campaignStatus === "closed" && (
           <div className="db-card" style={{

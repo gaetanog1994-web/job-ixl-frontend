@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { appApi } from "../lib/appApi";
-import TenantContextStrip from "../components/TenantContextStrip";
 import "../styles/dashboard.css";
 
 type CompanyRow = {
@@ -87,7 +86,6 @@ const OwnerAreaPage: React.FC = () => {
         },
       });
 
-      appApi.setTenantContext({ companyId: created.id, perimeterId: null });
       await loadCompanies();
       emitTenantStructureChanged();
       setCreatedCompanyFlow({ id: created.id, name: created.name ?? name });
@@ -128,8 +126,6 @@ const OwnerAreaPage: React.FC = () => {
         padding: "24px",
       }}
     >
-      <TenantContextStrip sectionLabel="Owner area" />
-
       <div className="db-card owner-console-header" style={{ marginBottom: "18px" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "14px", flexWrap: "wrap" }}>
           <div>

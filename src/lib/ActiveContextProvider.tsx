@@ -139,14 +139,9 @@ export const ActiveContextProvider: React.FC<{ children: React.ReactNode }> = ({
     const handleTenantStructureChanged = () => {
       void refreshContext();
     };
-    const handleTenantContextChanged = () => {
-      void refreshContext();
-    };
     window.addEventListener("tenant-structure-changed", handleTenantStructureChanged);
-    window.addEventListener("tenant-context-changed", handleTenantContextChanged);
     return () => {
       window.removeEventListener("tenant-structure-changed", handleTenantStructureChanged);
-      window.removeEventListener("tenant-context-changed", handleTenantContextChanged);
     };
   }, [refreshContext]);
 
