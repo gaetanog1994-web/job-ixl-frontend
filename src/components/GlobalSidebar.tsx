@@ -93,25 +93,19 @@ const GlobalSidebar: React.FC = () => {
           }
 
           if (companyMemberships.length > 0) {
-            const prevTenantContext = appApi.getTenantContext();
             const map: Record<string, Record<string, unknown>[]> = {};
-            try {
-              await Promise.all(
-                companyMemberships.map(async (company: Record<string, unknown>) => {
-                  const companyId = String(company?.company_id ?? "");
-                  if (!companyId) return;
-                  try {
-                    appApi.setTenantContext({ companyId, perimeterId: null });
-                    const rows = await appApi.platformGetPerimeters(companyId);
-                    map[companyId] = rows ?? [];
-                  } catch {
-                    map[companyId] = [];
-                  }
-                })
-              );
-            } finally {
-              appApi.setTenantContext(prevTenantContext);
-            }
+            await Promise.all(
+              companyMemberships.map(async (company: Record<string, unknown>) => {
+                const companyId = String(company?.company_id ?? "");
+                if (!companyId) return;
+                try {
+                  const rows = await appApi.platformGetPerimeters(companyId);
+                  map[companyId] = rows ?? [];
+                } catch {
+                  map[companyId] = [];
+                }
+              })
+            );
             if (!cancelled) setSuperAdminPerimetersByCompany(map);
           } else if (!cancelled) {
             setSuperAdminPerimetersByCompany({});

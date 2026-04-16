@@ -20,6 +20,7 @@ import RequireAdmin from "./components/RequireAdmin";
 import RequireOwner from "./components/RequireOwner";
 import RequireCompanyAdmin from "./components/RequireCompanyAdmin";
 import RequirePerimeterAccess from "./components/RequirePerimeterAccess";
+import { ActiveContextProvider } from "./lib/ActiveContextProvider";
 
 function App() {
   const { user, loading } = useAuth();
@@ -46,11 +47,12 @@ function App() {
   const showTopBar = Boolean(user);
 
   return (
-    <>
-      {showTopBar && <TopBar />}
+    <ActiveContextProvider>
+      <>
+        {showTopBar && <TopBar />}
 
-      <div style={{ paddingTop: showTopBar ? "48px" : "0" }}>
-        <Routes>
+        <div style={{ paddingTop: showTopBar ? "48px" : "0" }}>
+          <Routes>
           {/* ---------- PUBLIC ---------- */}
           {!user && (
             <>
@@ -100,9 +102,10 @@ function App() {
               <Route path="*" element={<Navigate to="/" replace />} />
             </>
           )}
-        </Routes>
-      </div>
-    </>
+          </Routes>
+        </div>
+      </>
+    </ActiveContextProvider>
   );
 }
 
