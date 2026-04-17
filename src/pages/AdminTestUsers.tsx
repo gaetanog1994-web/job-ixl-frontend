@@ -43,14 +43,28 @@ type Scenario = {
   name: string;
 };
 
+type BulkImportResult = {
+  total: number;
+  imported: number;
+  errors: { row: number; email: string; error: string }[];
+};
+
 /* =======================
    COMPONENT
 ======================= */
 
 const AdminTestUsers = () => {
+  const initialSection = (() => {
+    if (typeof window === "undefined") return "home";
+    const section = new URLSearchParams(window.location.search).get("section");
+    if (section === "users" || section === "scenarios" || section === "locations" || section === "roles") {
+      return section;
+    }
+    return "home";
+  })();
   const [view, setView] = useState<
     "home" | "users" | "scenarios" | "locations" | "roles"
-  >("home");
+  >(initialSection);
 
 
   const [users, setUsers] = useState<User[]>([]);
@@ -76,6 +90,11 @@ const AdminTestUsers = () => {
   const [filterAccessRole, setFilterAccessRole] = useState("");
 
   const [activeScenarioLabel, setActiveScenarioLabel] = useState<string | null>(null);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importingUsers, setImportingUsers] = useState(false);
+  const [downloadingTemplate, setDownloadingTemplate] = useState(false);
+  const [importResult, setImportResult] = useState<BulkImportResult | null>(null);
+  const [importError, setImportError] = useState<string | null>(null);
 
   /* =======================
      LOADERS
@@ -310,6 +329,41 @@ const AdminTestUsers = () => {
     return "User";
   };
 
+  const handleDownloadImportTemplate = async () => {
+    try {
+      setDownloadingTemplate(true);
+      const fileBlob = await appApi.adminDownloadUsersImportTemplate();
+      const downloadUrl = URL.createObjectURL(fileBlob);
+      const link = document.createElement("a");
+      link.href = downloadUrl;
+      link.download = "template_importazione_utenti.xlsx";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(downloadUrl);
+    } catch (e: unknown) {
+      setImportError(e instanceof Error ? e.message : "Errore download template");
+    } finally {
+      setDownloadingTemplate(false);
+    }
+  };
+
+  const handleImportUsers = async () => {
+    if (!importFile) return;
+    try {
+      setImportingUsers(true);
+      setImportError(null);
+      const result = await appApi.adminImportUsersFromExcel(importFile);
+      setImportResult(result);
+      await loadUsers();
+    } catch (e: unknown) {
+      setImportResult(null);
+      setImportError(e instanceof Error ? e.message : "Errore durante importazione utenti");
+    } finally {
+      setImportingUsers(false);
+    }
+  };
+
 
   /* =======================
      RENDER
@@ -502,271 +556,448 @@ const AdminTestUsers = () => {
 
       {/* ---- USERS VIEW ---- */}
       {view === "users" && (
-        <div className="db-card">
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 20px", borderBottom: "1px solid var(--border)" }}>
-            <h2 style={{ margin: 0, fontSize: "16px", fontWeight: 700, color: "var(--text-primary)" }}>Lista Utenti ({usersFiltered.length})</h2>
-          </div>
+        <>
+          <div className="db-card" style={{ marginBottom: "16px", padding: "16px 20px" }}>
+            <h2 style={{ margin: "0 0 12px 0", fontSize: "16px", fontWeight: 700, color: "var(--text-primary)" }}>
+              Importazione utenti
+            </h2>
 
-          <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--border)", background: "#fafafa" }}>
-            <div style={{ fontSize: "12px", fontWeight: 700, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "8px" }}>
-              Aggiungi utente
+            <div
+              style={{
+                background: "#fef9c3",
+                border: "1px solid #facc15",
+                borderRadius: "8px",
+                padding: "12px",
+                marginBottom: "14px",
+                color: "#713f12",
+                fontSize: "13px",
+                lineHeight: 1.45,
+              }}
+            >
+              <div style={{ fontWeight: 600, marginBottom: "8px" }}>
+                ⚠️ Prima di importare utenti, assicurati di aver configurato correttamente tutti i Ruoli e le Sedi del perimetro. I valori nel template devono corrispondere esattamente a quelli configurati.
+              </div>
+              <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+                <a
+                  className="db-btn db-btn-outline"
+                  style={{ padding: "6px 10px", fontSize: "12px" }}
+                  href="/admin/test-users?section=roles"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    setView("roles");
+                    window.history.replaceState({}, "", "/admin/test-users?section=roles");
+                  }}
+                >
+                  Gestisci Ruoli
+                </a>
+                <a
+                  className="db-btn db-btn-outline"
+                  style={{ padding: "6px 10px", fontSize: "12px" }}
+                  href="/admin/test-users?section=locations"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    setView("locations");
+                    window.history.replaceState({}, "", "/admin/test-users?section=locations");
+                  }}
+                >
+                  Gestisci Sedi
+                </a>
+              </div>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: "10px" }}>
-              <input
-                className="db-filter-select"
-                style={{ height: "34px" }}
-                value={inviteFirstName}
-                onChange={(e) => setInviteFirstName(e.target.value)}
-                placeholder="Nome"
-              />
-              <input
-                className="db-filter-select"
-                style={{ height: "34px" }}
-                value={inviteLastName}
-                onChange={(e) => setInviteLastName(e.target.value)}
-                placeholder="Cognome"
-              />
-              <input
-                className="db-filter-select"
-                style={{ height: "34px" }}
-                value={inviteEmail}
-                onChange={(e) => setInviteEmail(e.target.value)}
-                placeholder="Email"
-                type="email"
-              />
-              <select
-                className="db-filter-select"
-                style={{ height: "34px" }}
-                value={inviteAccessRole}
-                onChange={(e) => setInviteAccessRole(e.target.value as "user" | "admin" | "admin_user")}
-              >
-                <option value="user">User</option>
-                <option value="admin">Admin</option>
-                <option value="admin_user">Admin + User</option>
-              </select>
-              <button
-                className="db-btn db-btn-outline"
-                onClick={async () => {
-                  const firstName = inviteFirstName.trim();
-                  const lastName = inviteLastName.trim();
-                  const email = inviteEmail.trim().toLowerCase();
-                  if (!firstName || !lastName || !email) {
-                    alert("Compila Nome, Cognome ed Email.");
-                    return;
-                  }
-                  try {
-                    await appApi.adminInviteUser({
-                      first_name: firstName,
-                      last_name: lastName,
-                      full_name: `${firstName} ${lastName}`.trim(),
-                      email,
-                      location_id: null,
-                      access_role: inviteAccessRole,
-                    });
-                    setInviteFirstName("");
-                    setInviteLastName("");
-                    setInviteEmail("");
-                    setInviteAccessRole("user");
-                    await loadUsers();
-                  } catch (e: unknown) {
-                    alert(e instanceof Error ? e.message : "Errore aggiunta utente");
-                  }
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+                gap: "16px",
+                alignItems: "start",
+              }}
+            >
+              <div style={{ border: "1px solid var(--border)", borderRadius: "8px", padding: "12px" }}>
+                <div style={{ fontWeight: 700, fontSize: "13px", marginBottom: "10px", color: "var(--text-primary)" }}>
+                  Download template
+                </div>
+                <button
+                  className="db-btn db-btn-outline"
+                  onClick={handleDownloadImportTemplate}
+                  disabled={downloadingTemplate}
+                  type="button"
+                >
+                  {downloadingTemplate ? "Scaricamento..." : "📥 Scarica template Excel"}
+                </button>
+                <div style={{ marginTop: "8px", fontSize: "12px", color: "var(--text-secondary)", lineHeight: 1.4 }}>
+                  Il template contiene i ruoli e le sedi attualmente configurati. Riscaricare il template se si aggiungono nuovi ruoli o sedi.
+                </div>
+              </div>
+
+              <div style={{ border: "1px solid var(--border)", borderRadius: "8px", padding: "12px" }}>
+                <div style={{ fontWeight: 700, fontSize: "13px", marginBottom: "10px", color: "var(--text-primary)" }}>
+                  Upload e importazione
+                </div>
+
+                <input
+                  type="file"
+                  accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                  onChange={(event) => {
+                    const selectedFile = event.target.files?.[0] ?? null;
+                    if (!selectedFile) {
+                      setImportFile(null);
+                      return;
+                    }
+                    if (!selectedFile.name.toLowerCase().endsWith(".xlsx")) {
+                      setImportFile(null);
+                      setImportError("Formato non valido: seleziona un file .xlsx");
+                      return;
+                    }
+                    setImportError(null);
+                    setImportResult(null);
+                    setImportFile(selectedFile);
+                  }}
+                />
+
+                {importFile && (
+                  <div style={{ marginTop: "8px", fontSize: "12px", color: "#166534" }}>
+                    {importFile.name} — ✅ File pronto
+                  </div>
+                )}
+
+                <button
+                  className="db-btn db-btn-outline"
+                  style={{ marginTop: "10px" }}
+                  disabled={!importFile || importingUsers}
+                  onClick={handleImportUsers}
+                  type="button"
+                >
+                  {importingUsers ? "Importazione in corso..." : "🚀 Inizializza importazione"}
+                </button>
+              </div>
+            </div>
+
+            {importResult && (
+              <div style={{ marginTop: "14px", display: "grid", gap: "10px" }}>
+                <div
+                  style={{
+                    background: "#ecfdf5",
+                    border: "1px solid #86efac",
+                    borderRadius: "8px",
+                    padding: "10px 12px",
+                    color: "#166534",
+                    fontSize: "13px",
+                    fontWeight: 600,
+                  }}
+                >
+                  ✅ {importResult.imported} utenti importati con successo
+                </div>
+
+                {importResult.errors.length > 0 && (
+                  <div
+                    style={{
+                      background: "#fff7ed",
+                      border: "1px solid #fdba74",
+                      borderRadius: "8px",
+                      padding: "10px 12px",
+                      color: "#9a3412",
+                      fontSize: "13px",
+                    }}
+                  >
+                    <div style={{ fontWeight: 700, marginBottom: "6px" }}>
+                      Errori rilevati ({importResult.errors.length} su {importResult.total} righe)
+                    </div>
+                    <ul style={{ margin: 0, paddingLeft: "18px", display: "grid", gap: "4px" }}>
+                      {importResult.errors.map((item, index) => (
+                        <li key={`${item.row}-${item.email}-${index}`}>
+                          Riga {item.row} ({item.email || "email vuota"}): {item.error}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {importError && (
+              <div
+                style={{
+                  marginTop: "12px",
+                  background: "#fef2f2",
+                  border: "1px solid #fecaca",
+                  borderRadius: "8px",
+                  padding: "10px 12px",
+                  color: "#b91c1c",
+                  fontSize: "13px",
                 }}
               >
-                ➕ Aggiungi utente
-              </button>
-            </div>
+                ❌ {importError}
+              </div>
+            )}
           </div>
 
-          <div style={{ overflowX: "auto", padding: "0" }}>
-            <table className="db-apps-table" style={{ width: "100%", whiteSpace: "nowrap" }}>
-              <thead>
-                <tr>
-                  <th>
-                    <input
-                      className="db-filter-select"
-                      style={{ height: "30px", fontSize: "12px", minWidth: "120px" }}
-                      placeholder="Filtro cognome"
-                      value={filterSurname}
-                      onChange={(e) => setFilterSurname(e.target.value)}
-                    />
-                  </th>
-                  <th>
-                    <input
-                      className="db-filter-select"
-                      style={{ height: "30px", fontSize: "12px", minWidth: "120px" }}
-                      placeholder="Filtro nome"
-                      value={filterName}
-                      onChange={(e) => setFilterName(e.target.value)}
-                    />
-                  </th>
-                  <th />
-                  <th>
-                    <select
-                      className="db-filter-select"
-                      style={{ height: "30px", fontSize: "12px", minWidth: "120px" }}
-                      value={filterAccessRole}
-                      onChange={(e) => setFilterAccessRole(e.target.value)}
-                    >
-                      <option value="">Tutti</option>
-                      <option value="user">User</option>
-                      <option value="admin">Admin</option>
-                      <option value="admin_user">Admin + User</option>
-                    </select>
-                  </th>
-                  <th>
-                    <select
-                      className="db-filter-select"
-                      style={{ height: "30px", fontSize: "12px", minWidth: "120px" }}
-                      value={filterStatus}
-                      onChange={(e) => setFilterStatus(e.target.value)}
-                    >
-                      <option value="">Tutti</option>
-                      <option value="available">Disponibile</option>
-                      <option value="inactive">Inattivo</option>
-                    </select>
-                  </th>
-                  <th>
-                    <select
-                      className="db-filter-select"
-                      style={{ height: "30px", fontSize: "12px", minWidth: "120px" }}
-                      value={filterLocation}
-                      onChange={(e) => setFilterLocation(e.target.value)}
-                    >
-                      <option value="">Tutte le sedi</option>
-                      {locations.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
-                    </select>
-                  </th>
-                  <th />
-                  <th />
-                  <th />
-                </tr>
-                <tr>
-                  <th>Cognome</th>
-                  <th>Nome</th>
-                  <th>Email</th>
-                  <th>Ruolo accesso</th>
-                  <th>Stato</th>
-                  <th>Sede</th>
-                  <th align="center">Vincolante</th>
-                  <th>Ruolo attuale</th>
-                  <th>Azioni</th>
-                </tr>
-              </thead>
-              <tbody>
-                {usersFiltered.map((u) => (
-                  <tr key={u.id}>
-                    <td><span style={{ fontWeight: 600 }}>{u.last_name ?? "—"}</span></td>
-                    <td><span style={{ fontWeight: 600 }}>{u.first_name ?? "—"}</span></td>
-                    <td>{u.email ?? "—"}</td>
-                    <td>
+          <div className="db-card">
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 20px", borderBottom: "1px solid var(--border)" }}>
+              <h2 style={{ margin: 0, fontSize: "16px", fontWeight: 700, color: "var(--text-primary)" }}>Lista Utenti ({usersFiltered.length})</h2>
+            </div>
+
+            <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--border)", background: "#fafafa" }}>
+              <div style={{ fontSize: "12px", fontWeight: 700, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "8px" }}>
+                Aggiungi utente
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: "10px" }}>
+                <input
+                  className="db-filter-select"
+                  style={{ height: "34px" }}
+                  value={inviteFirstName}
+                  onChange={(e) => setInviteFirstName(e.target.value)}
+                  placeholder="Nome"
+                />
+                <input
+                  className="db-filter-select"
+                  style={{ height: "34px" }}
+                  value={inviteLastName}
+                  onChange={(e) => setInviteLastName(e.target.value)}
+                  placeholder="Cognome"
+                />
+                <input
+                  className="db-filter-select"
+                  style={{ height: "34px" }}
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                  placeholder="Email"
+                  type="email"
+                />
+                <select
+                  className="db-filter-select"
+                  style={{ height: "34px" }}
+                  value={inviteAccessRole}
+                  onChange={(e) => setInviteAccessRole(e.target.value as "user" | "admin" | "admin_user")}
+                >
+                  <option value="user">User</option>
+                  <option value="admin">Admin</option>
+                  <option value="admin_user">Admin + User</option>
+                </select>
+                <button
+                  className="db-btn db-btn-outline"
+                  onClick={async () => {
+                    const firstName = inviteFirstName.trim();
+                    const lastName = inviteLastName.trim();
+                    const email = inviteEmail.trim().toLowerCase();
+                    if (!firstName || !lastName || !email) {
+                      alert("Compila Nome, Cognome ed Email.");
+                      return;
+                    }
+                    try {
+                      await appApi.adminInviteUser({
+                        first_name: firstName,
+                        last_name: lastName,
+                        full_name: `${firstName} ${lastName}`.trim(),
+                        email,
+                        location_id: null,
+                        access_role: inviteAccessRole,
+                      });
+                      setInviteFirstName("");
+                      setInviteLastName("");
+                      setInviteEmail("");
+                      setInviteAccessRole("user");
+                      await loadUsers();
+                    } catch (e: unknown) {
+                      alert(e instanceof Error ? e.message : "Errore aggiunta utente");
+                    }
+                  }}
+                >
+                  ➕ Aggiungi utente
+                </button>
+              </div>
+            </div>
+
+            <div style={{ overflowX: "auto", padding: "0" }}>
+              <table className="db-apps-table" style={{ width: "100%", whiteSpace: "nowrap" }}>
+                <thead>
+                  <tr>
+                    <th>
+                      <input
+                        className="db-filter-select"
+                        style={{ height: "30px", fontSize: "12px", minWidth: "120px" }}
+                        placeholder="Filtro cognome"
+                        value={filterSurname}
+                        onChange={(e) => setFilterSurname(e.target.value)}
+                      />
+                    </th>
+                    <th>
+                      <input
+                        className="db-filter-select"
+                        style={{ height: "30px", fontSize: "12px", minWidth: "120px" }}
+                        placeholder="Filtro nome"
+                        value={filterName}
+                        onChange={(e) => setFilterName(e.target.value)}
+                      />
+                    </th>
+                    <th />
+                    <th>
                       <select
                         className="db-filter-select"
-                        style={{ height: "30px", fontSize: "12px", minWidth: "125px" }}
-                        value={u.access_role ?? "user"}
-                        onChange={async (e) => {
-                          try {
-                            await adminUpdateUser(u.id, { access_role: e.target.value as "user" | "admin" | "admin_user" });
-                            await loadUsers();
-                          } catch (err: unknown) {
-                            alert(err instanceof Error ? err.message : "Errore ruolo accesso");
-                          }
-                        }}
+                        style={{ height: "30px", fontSize: "12px", minWidth: "120px" }}
+                        value={filterAccessRole}
+                        onChange={(e) => setFilterAccessRole(e.target.value)}
                       >
+                        <option value="">Tutti</option>
                         <option value="user">User</option>
                         <option value="admin">Admin</option>
                         <option value="admin_user">Admin + User</option>
                       </select>
-                      <div className="db-cell-secondary">{accessRoleLabel(u.access_role)}</div>
-                    </td>
-                    
-                    {/* Stato */}
-                    <td>
-                      <select
-                        className="db-priority-select"
-                        style={{ width: "auto", minWidth: "100px" }}
-                        value={u.availability_status ?? "inactive"}
-                        onChange={async (e) => {
-                          const newStatus = e.target.value;
-                          try {
-                            if (newStatus === "inactive") {
-                              await appApi.deactivateUserAndCleanup(u.id);
-                              await loadUsers();
-                            } else {
-                              await adminUpdateUser(u.id, { availability_status: "available" });
-                            }
-                          } catch (err: unknown) {
-                            alert(err instanceof Error ? err.message : "Errore aggiornamento");
-                          }
-                        }}
-                      >
-                        <option value="inactive">Inattivo (⚪)</option>
-                        <option value="available">Disponibile (🟢)</option>
-                      </select>
-                    </td>
-
-                    {/* Sede */}
-                    <td>
+                    </th>
+                    <th>
                       <select
                         className="db-filter-select"
-                        style={{ height: "30px", fontSize: "12px", minWidth: "140px" }}
-                        value={u.location_id ?? ""}
-                        onChange={async (e) => {
-                          try { await adminUpdateUser(u.id, { location_id: e.target.value || null }); }
-                          catch (err: unknown) { alert(err instanceof Error ? err.message : "Errore sede"); }
-                        }}
+                        style={{ height: "30px", fontSize: "12px", minWidth: "120px" }}
+                        value={filterStatus}
+                        onChange={(e) => setFilterStatus(e.target.value)}
                       >
-                        <option value="">— Nessuna —</option>
+                        <option value="">Tutti</option>
+                        <option value="available">Disponibile</option>
+                        <option value="inactive">Inattivo</option>
+                      </select>
+                    </th>
+                    <th>
+                      <select
+                        className="db-filter-select"
+                        style={{ height: "30px", fontSize: "12px", minWidth: "120px" }}
+                        value={filterLocation}
+                        onChange={(e) => setFilterLocation(e.target.value)}
+                      >
+                        <option value="">Tutte le sedi</option>
                         {locations.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
                       </select>
-                    </td>
-
-                    {/* Sede vincolante */}
-                    <td align="center">
-                      <input
-                        type="checkbox"
-                        checked={!!u.fixed_location}
-                        onChange={async (e) => {
-                          try { await adminUpdateUser(u.id, { fixed_location: e.target.checked }); }
-                          catch (err: unknown) { alert(err instanceof Error ? err.message : "Errore vincolo"); }
-                        }}
-                        style={{ accentColor: "var(--brand)", width: "16px", height: "16px", cursor: "pointer" }}
-                      />
-                    </td>
-
-                    {/* Ruolo */}
-                    <td>
-                      <select
-                        className="db-filter-select"
-                        style={{ height: "30px", fontSize: "12px", minWidth: "140px" }}
-                        value={u.role_id ?? ""}
-                        onChange={async (e) => {
-                          try { await adminUpdateUser(u.id, { role_id: e.target.value || null }); }
-                          catch (err: unknown) { alert(err instanceof Error ? err.message : "Errore ruolo"); }
-                        }}
-                      >
-                        <option value="">— Nessuno —</option>
-                        {roles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
-                      </select>
-                    </td>
-
-                    {/* Delete */}
-                    <td>
-                      <button className="db-action-btn db-action-btn-delete" onClick={async () => {
-                        if (!window.confirm("Eliminare definitivamente questo utente?")) return;
-                        try { await adminDeleteUser(u.id); }
-                        catch (err: unknown) { alert(err instanceof Error ? err.message : "Errore eliminazione"); }
-                      }}>
-                        Elimina
-                      </button>
-                    </td>
-
+                    </th>
+                    <th />
+                    <th />
+                    <th />
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                  <tr>
+                    <th>Cognome</th>
+                    <th>Nome</th>
+                    <th>Email</th>
+                    <th>Ruolo accesso</th>
+                    <th>Stato</th>
+                    <th>Sede</th>
+                    <th align="center">Vincolante</th>
+                    <th>Ruolo attuale</th>
+                    <th>Azioni</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {usersFiltered.map((u) => (
+                    <tr key={u.id}>
+                      <td><span style={{ fontWeight: 600 }}>{u.last_name ?? "—"}</span></td>
+                      <td><span style={{ fontWeight: 600 }}>{u.first_name ?? "—"}</span></td>
+                      <td>{u.email ?? "—"}</td>
+                      <td>
+                        <select
+                          className="db-filter-select"
+                          style={{ height: "30px", fontSize: "12px", minWidth: "125px" }}
+                          value={u.access_role ?? "user"}
+                          onChange={async (e) => {
+                            try {
+                              await adminUpdateUser(u.id, { access_role: e.target.value as "user" | "admin" | "admin_user" });
+                              await loadUsers();
+                            } catch (err: unknown) {
+                              alert(err instanceof Error ? err.message : "Errore ruolo accesso");
+                            }
+                          }}
+                        >
+                          <option value="user">User</option>
+                          <option value="admin">Admin</option>
+                          <option value="admin_user">Admin + User</option>
+                        </select>
+                        <div className="db-cell-secondary">{accessRoleLabel(u.access_role)}</div>
+                      </td>
+                      
+                      {/* Stato */}
+                      <td>
+                        <select
+                          className="db-priority-select"
+                          style={{ width: "auto", minWidth: "100px" }}
+                          value={u.availability_status ?? "inactive"}
+                          onChange={async (e) => {
+                            const newStatus = e.target.value;
+                            try {
+                              if (newStatus === "inactive") {
+                                await appApi.deactivateUserAndCleanup(u.id);
+                                await loadUsers();
+                              } else {
+                                await adminUpdateUser(u.id, { availability_status: "available" });
+                              }
+                            } catch (err: unknown) {
+                              alert(err instanceof Error ? err.message : "Errore aggiornamento");
+                            }
+                          }}
+                        >
+                          <option value="inactive">Inattivo (⚪)</option>
+                          <option value="available">Disponibile (🟢)</option>
+                        </select>
+                      </td>
+
+                      {/* Sede */}
+                      <td>
+                        <select
+                          className="db-filter-select"
+                          style={{ height: "30px", fontSize: "12px", minWidth: "140px" }}
+                          value={u.location_id ?? ""}
+                          onChange={async (e) => {
+                            try { await adminUpdateUser(u.id, { location_id: e.target.value || null }); }
+                            catch (err: unknown) { alert(err instanceof Error ? err.message : "Errore sede"); }
+                          }}
+                        >
+                          <option value="">— Nessuna —</option>
+                          {locations.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+                        </select>
+                      </td>
+
+                      {/* Sede vincolante */}
+                      <td align="center">
+                        <input
+                          type="checkbox"
+                          checked={!!u.fixed_location}
+                          onChange={async (e) => {
+                            try { await adminUpdateUser(u.id, { fixed_location: e.target.checked }); }
+                            catch (err: unknown) { alert(err instanceof Error ? err.message : "Errore vincolo"); }
+                          }}
+                          style={{ accentColor: "var(--brand)", width: "16px", height: "16px", cursor: "pointer" }}
+                        />
+                      </td>
+
+                      {/* Ruolo */}
+                      <td>
+                        <select
+                          className="db-filter-select"
+                          style={{ height: "30px", fontSize: "12px", minWidth: "140px" }}
+                          value={u.role_id ?? ""}
+                          onChange={async (e) => {
+                            try { await adminUpdateUser(u.id, { role_id: e.target.value || null }); }
+                            catch (err: unknown) { alert(err instanceof Error ? err.message : "Errore ruolo"); }
+                          }}
+                        >
+                          <option value="">— Nessuno —</option>
+                          {roles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+                        </select>
+                      </td>
+
+                      {/* Delete */}
+                      <td>
+                        <button className="db-action-btn db-action-btn-delete" onClick={async () => {
+                          if (!window.confirm("Eliminare definitivamente questo utente?")) return;
+                          try { await adminDeleteUser(u.id); }
+                          catch (err: unknown) { alert(err instanceof Error ? err.message : "Errore eliminazione"); }
+                        }}>
+                          Elimina
+                        </button>
+                      </td>
+
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
+        </>
       )}
 
       {/* ---- OTHERS ---- */}

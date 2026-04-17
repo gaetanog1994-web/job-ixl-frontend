@@ -253,6 +253,45 @@ function mergeHeaders(base: HeadersInit | undefined, tenant: TenantContextSelect
     return result;
 }
 
+async function parseApiErrorResponse(res: Response): Promise<never> {
+    const json = await res.json().catch(() => null);
+    const codeFromBody =
+        typeof json?.error?.code === "string"
+            ? json.error.code
+            : typeof json?.code === "string"
+                ? json.code
+                : "API_ERROR";
+
+    if (res.status === 401) {
+        writeTenantContext({ companyId: null, perimeterId: null });
+        await supabase.auth.signOut();
+        throw new AppApiError("Sessione scaduta o non valida. Effettua di nuovo il login.", {
+            status: 401,
+            code: codeFromBody,
+            action: "relogin",
+        });
+    }
+    if (res.status === 403) {
+        throw new AppApiError("Non hai i permessi per questa operazione.", {
+            status: 403,
+            code: codeFromBody,
+            action: "forbidden",
+        });
+    }
+
+    const msg =
+        json?.error?.message ||
+        json?.message ||
+        (typeof json?.error === "string" ? json.error : null) ||
+        `HTTP ${res.status}`;
+
+    throw new AppApiError(msg, {
+        status: res.status,
+        code: codeFromBody,
+        action: "none",
+    });
+}
+
 async function apiFetch(path: string, init?: RequestInit) {
     const startedAt = nowMs();
     const method = (init?.method ?? "GET").toUpperCase();
@@ -624,6 +663,57 @@ export const appApi = {
     async adminGetUsers() {
         const json = await apiFetch(`/api/admin/users`, { method: "GET" });
         return json.users ?? [];
+    },
+
+    async adminDownloadUsersImportTemplate(): Promise<Blob> {
+        const token = await getAccessToken();
+        const tenant = readTenantContext();
+        const res = await fetch(`${BASE}/api/admin/users/import-template`, {
+            method: "GET",
+            headers: {
+                Authorization: `Bearer ${token}`,
+                ...mergeHeaders(undefined, tenant),
+            },
+        });
+
+        if (!res.ok) {
+            return parseApiErrorResponse(res);
+        }
+
+        return res.blob();
+    },
+
+    async adminImportUsersFromExcel(file: File): Promise<{
+        total: number;
+        imported: number;
+        errors: { row: number; email: string; error: string }[];
+        correlationId?: string | null;
+    }> {
+        const token = await getAccessToken();
+        const tenant = readTenantContext();
+        const formData = new FormData();
+        formData.append("file", file);
+
+        const res = await fetch(`${BASE}/api/admin/users/import`, {
+            method: "POST",
+            headers: {
+                Authorization: `Bearer ${token}`,
+                ...mergeHeaders(undefined, tenant),
+            },
+            body: formData,
+        });
+
+        if (!res.ok) {
+            return parseApiErrorResponse(res);
+        }
+
+        const json = await res.json();
+        return {
+            total: Number(json?.total ?? 0),
+            imported: Number(json?.imported ?? 0),
+            errors: Array.isArray(json?.errors) ? json.errors : [],
+            correlationId: json?.correlationId ?? null,
+        };
     },
 
     async adminGetPositions() {
