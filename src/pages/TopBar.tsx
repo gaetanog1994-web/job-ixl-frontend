@@ -1,16 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
 import { useSidebar } from "../lib/SidebarContext";
 import { appApi } from "../lib/appApi";
 import { useActiveContext } from "../lib/ActiveContextProvider";
 import { PROFILE_LABELS } from "../lib/activeContextModel";
+import { buildAdminPageNavigation, resolveActiveAdminPage } from "../lib/navigationModel";
 import "../styles/dashboard.css";
 
-type ContextMenuKey = "profile" | "company" | "perimeter" | null;
+type ContextMenuKey = "profile" | "company" | "perimeter" | "adminPage" | null;
 
 const TopBar: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { toggle: toggleSidebar } = useSidebar();
   const rootRef = useRef<HTMLDivElement | null>(null);
 
@@ -58,8 +60,12 @@ const TopBar: React.FC = () => {
 
   const showCompany = activeProfile === "user" || activeProfile === "admin" || activeProfile === "super_admin";
   const showPerimeter = activeProfile === "user" || activeProfile === "admin";
+  const showAdminPageSelector = activeProfile === "admin";
   const canSwitchCompany = showCompany && companyOptions.length > 1;
   const canSwitchPerimeter = showPerimeter && perimeterOptions.length > 1;
+  const adminPageOptions = useMemo(() => buildAdminPageNavigation(location.pathname), [location.pathname]);
+  const currentAdminPage = useMemo(() => resolveActiveAdminPage(location.pathname), [location.pathname]);
+  const canSwitchAdminPage = showAdminPageSelector && Boolean(activeSelection?.perimeterId) && adminPageOptions.length > 1;
 
   const profileLabel = activeProfile ? PROFILE_LABELS[activeProfile] : "—";
   const companyLabel =
@@ -67,6 +73,7 @@ const TopBar: React.FC = () => {
   const perimeterLabel =
     perimeterOptions.find((perimeter) => perimeter.perimeterId === activeSelection?.perimeterId)?.perimeterName ??
     "Perimetro";
+  const adminPageLabel = currentAdminPage?.label ?? "Area Admin";
 
   const handleProfileChange = (profile: (typeof availableProfiles)[number]) => {
     if (switchingContext || isBootstrappingContext) return;
@@ -108,6 +115,13 @@ const TopBar: React.FC = () => {
     } finally {
       setSwitchingContext(false);
     }
+  };
+
+  const handleAdminPageChange = (path: string) => {
+    if (isBootstrappingContext || !activeSelection?.perimeterId) return;
+    setOpenMenu(null);
+    if (location.pathname === path) return;
+    navigate(path);
   };
 
   const handleLogout = async () => {
@@ -235,6 +249,43 @@ const TopBar: React.FC = () => {
                         disabled={switchingContext || isBootstrappingContext}
                       >
                         {perimeter.perimeterName}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {showAdminPageSelector && (
+              <div className="app-topbar-nav-group">
+                {canSwitchAdminPage ? (
+                  <button
+                    type="button"
+                    className={`app-context-box app-context-box-btn ${openMenu === "adminPage" ? "open" : ""}`}
+                    onClick={() => setOpenMenu((prev) => (prev === "adminPage" ? null : "adminPage"))}
+                    disabled={isBootstrappingContext}
+                  >
+                    <span className="app-context-box-label">Pagina Admin</span>
+                    <span className="app-context-box-value">{adminPageLabel}</span>
+                    <span className={`app-topbar-nav-caret ${openMenu === "adminPage" ? "open" : ""}`}>▾</span>
+                  </button>
+                ) : (
+                  <span className="app-context-box">
+                    <span className="app-context-box-label">Pagina Admin</span>
+                    <span className="app-context-box-value">{adminPageLabel}</span>
+                  </span>
+                )}
+                {canSwitchAdminPage && openMenu === "adminPage" && (
+                  <div className="app-topbar-dropdown app-topbar-dropdown-right">
+                    {adminPageOptions.map((page) => (
+                      <button
+                        key={page.id}
+                        type="button"
+                        className={`app-topbar-dropdown-item ${page.isActive ? "active" : ""}`}
+                        onClick={() => handleAdminPageChange(page.path)}
+                        disabled={isBootstrappingContext}
+                      >
+                        {page.label}
                       </button>
                     ))}
                   </div>

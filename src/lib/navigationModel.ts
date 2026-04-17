@@ -68,6 +68,21 @@ export type TopBarTreeNode = {
 };
 
 const ADMIN_ACCESS_ROLES = new Set(["admin", "admin_user"]);
+export type AdminPageKey = "interlocking" | "maps" | "candidatures" | "configuration";
+
+type AdminPageDefinition = {
+  key: AdminPageKey;
+  id: string;
+  label: string;
+  path: string;
+};
+
+export const ADMIN_PAGE_DEFINITIONS: AdminPageDefinition[] = [
+  { key: "interlocking", id: "admin-interlocking", label: "Interlocking", path: "/admin/interlocking" },
+  { key: "maps", id: "admin-maps", label: "Mappe utenti attivi", path: "/admin/maps" },
+  { key: "candidatures", id: "admin-candidatures", label: "Candidature", path: "/admin/candidatures" },
+  { key: "configuration", id: "admin-test-users", label: "Configurazione", path: "/admin/test-users" },
+];
 
 function isPathActive(pathname: string, targetPath: string): boolean {
   if (targetPath === "/dashboard") {
@@ -77,12 +92,26 @@ function isPathActive(pathname: string, targetPath: string): boolean {
     return pathname === "/owner";
   }
   if (targetPath === "/admin/interlocking") {
-    return pathname.startsWith("/admin");
+    return pathname === "/admin" || pathname === "/admin/interlocking" || pathname.startsWith("/admin/interlocking/");
   }
   if (targetPath.startsWith("/companies/")) {
     return pathname === targetPath || pathname.startsWith(`${targetPath}/`);
   }
   return pathname === targetPath;
+}
+
+export function buildAdminPageNavigation(pathname: string): NavLeafItem[] {
+  return ADMIN_PAGE_DEFINITIONS.map((page) => ({
+    id: page.id,
+    label: page.label,
+    path: page.path,
+    isActive: isPathActive(pathname, page.path),
+  }));
+}
+
+export function resolveActiveAdminPage(pathname: string): NavLeafItem | null {
+  const pages = buildAdminPageNavigation(pathname);
+  return pages.find((page) => page.isActive) ?? null;
 }
 
 function isOperationalAdminAccess(role: unknown): boolean {
@@ -165,14 +194,7 @@ export function buildPrimaryNavigationModel(input: BuildModelInput): NavSection[
     })
     : [];
 
-  const adminItems: NavLeafItem[] = input.isAdmin
-    ? [
-      { id: "admin-candidatures", label: "Candidature", path: "/admin/candidatures", isActive: isPathActive(input.pathname, "/admin/candidatures") },
-      { id: "admin-maps", label: "Mappe utenti", path: "/admin/maps", isActive: isPathActive(input.pathname, "/admin/maps") },
-      { id: "admin-interlocking", label: "Interlocking", path: "/admin/interlocking", isActive: isPathActive(input.pathname, "/admin/interlocking") },
-      { id: "admin-test-users", label: "Configurazione", path: "/admin/test-users", isActive: isPathActive(input.pathname, "/admin/test-users") },
-    ]
-    : [];
+  const adminItems: NavLeafItem[] = input.isAdmin ? buildAdminPageNavigation(input.pathname) : [];
 
   const sections: NavSection[] = [
     {
