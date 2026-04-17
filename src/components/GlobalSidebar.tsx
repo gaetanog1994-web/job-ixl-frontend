@@ -1,18 +1,11 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
 import { appApi } from "../lib/appApi";
 import { useSidebar } from "../lib/SidebarContext";
-import { useAvailability } from "../lib/AvailabilityContext";
 import { useAuth } from "../lib/AuthContext";
 import { labelAccessRole, labelHighestRole } from "../lib/accessLabels";
-import { buildPrimaryNavigationModel, type NavLeafItem } from "../lib/navigationModel";
 import "../styles/dashboard.css";
-
-type PlatformCompany = {
-  id: string;
-  name: string;
-};
 
 type AccessPayloadShape = {
   currentCompanyId?: string | null;
@@ -28,30 +21,22 @@ type AccessPayloadShape = {
 type MeDataShape = {
   isOwner?: boolean;
   isSuperAdmin?: boolean;
-  isAdmin?: boolean;
   access?: AccessPayloadShape | null;
   [key: string]: unknown;
 };
 
 /**
  * GlobalSidebar — drawer a scomparsa, montato a livello di root (in main.tsx).
- * È completamente self-contained: carica i propri dati (user, isAdmin, availabilityStatus)
+ * È completamente self-contained: carica i propri dati utente e contesto corrente
  * senza dipendere da props esterne. Funziona in ogni schermata dell'app.
  */
 const GlobalSidebar: React.FC = () => {
   const { isOpen, close } = useSidebar();
   const navigate = useNavigate();
-  const location = useLocation();
   const { user } = useAuth();
 
   const [userData, setUserData] = useState<Record<string, unknown> | null>(null);
   const [meData, setMeData] = useState<MeDataShape | null>(null);
-  const [adminOpen, setAdminOpen] = useState(false);
-  const [ownerOpen, setOwnerOpen] = useState(true);
-  const [superAdminOpen, setSuperAdminOpen] = useState(true);
-  const [ownerCompanies, setOwnerCompanies] = useState<PlatformCompany[]>([]);
-  const [superAdminPerimetersByCompany, setSuperAdminPerimetersByCompany] = useState<Record<string, Record<string, unknown>[]>>({});
-  const { availabilityStatus, isAdmin, toggleAvailability } = useAvailability();
 
   /* ---- load user data ---- */
   useEffect(() => {
@@ -62,8 +47,6 @@ const GlobalSidebar: React.FC = () => {
         if (!cancelled) {
           setUserData(null);
           setMeData(null);
-          setOwnerCompanies([]);
-          setSuperAdminPerimetersByCompany({});
         }
         return;
       }
@@ -86,31 +69,6 @@ const GlobalSidebar: React.FC = () => {
 
         if (mePayload) {
           setMeData(mePayload as MeDataShape);
-          const access = mePayload?.access ?? null;
-
-          if (mePayload?.isOwner === true) {
-            const companyRows = await appApi.platformGetCompanies();
-            if (!cancelled) {
-              setOwnerCompanies(
-                (companyRows ?? []).map((company: Record<string, unknown>) => ({
-                  id: String(company?.id ?? company?.company_id ?? ""),
-                  name: String(company?.name ?? company?.company_name ?? "Company"),
-                })).filter((company: PlatformCompany) => company.id)
-              );
-            }
-          } else if (!cancelled) {
-            setOwnerCompanies([]);
-          }
-
-          const map: Record<string, Record<string, unknown>[]> = {};
-          const perimeterMemberships = Array.isArray(access?.perimeters) ? access.perimeters : [];
-          for (const perimeter of perimeterMemberships) {
-            const companyId = String((perimeter as Record<string, unknown>)?.company_id ?? "");
-            if (!companyId) continue;
-            if (!map[companyId]) map[companyId] = [];
-            map[companyId].push(perimeter as Record<string, unknown>);
-          }
-          if (!cancelled) setSuperAdminPerimetersByCompany(map);
         }
       } catch {
         // silently ignore — sidebar works even without data
@@ -135,12 +93,6 @@ const GlobalSidebar: React.FC = () => {
     };
   }, [user?.id]);
 
-  useEffect(() => {
-    if (location.pathname.startsWith("/admin")) {
-      setAdminOpen(true);
-    }
-  }, [location.pathname]);
-
   /* ---- logout ---- */
   const handleLogout = async () => {
     close();
@@ -156,57 +108,13 @@ const GlobalSidebar: React.FC = () => {
   };
 
   const activeAccess = meData?.access ?? null;
-  const hasActivePerimeter = !!activeAccess?.currentPerimeterId;
-  const isOwner = meData?.isOwner === true;
-  const isSuperAdmin = meData?.isSuperAdmin === true;
-  const accessCompanies = useMemo(
-    () => (Array.isArray(activeAccess?.companies) ? activeAccess.companies : []),
-    [activeAccess?.companies]
-  );
   const accessRoleLabel = labelAccessRole(activeAccess?.accessRole);
   const highestRoleLabel = labelHighestRole(activeAccess?.highestRole);
-  const primarySections = useMemo(() => buildPrimaryNavigationModel({
-    pathname: location.pathname,
-    currentCompanyId: activeAccess?.currentCompanyId ?? null,
-    currentPerimeterId: activeAccess?.currentPerimeterId ?? null,
-    hasActivePerimeter,
-    isOwner,
-    isSuperAdmin,
-    isAdmin,
-    ownerCompanies,
-    accessCompanies,
-    superAdminPerimetersByCompany,
-  }), [
-    location.pathname,
-    activeAccess?.currentCompanyId,
-    activeAccess?.currentPerimeterId,
-    hasActivePerimeter,
-    isOwner,
-    isSuperAdmin,
-    isAdmin,
-    ownerCompanies,
-    accessCompanies,
-    superAdminPerimetersByCompany,
-  ]);
-  const dashboardSection = primarySections.find((section) => section.id === "dashboard");
-  const ownerSection = primarySections.find((section) => section.id === "owner");
-  const superAdminSection = primarySections.find((section) => section.id === "super_admin");
-  const adminSection = primarySections.find((section) => section.id === "admin");
-  const ownerItems = ownerSection?.items ?? [];
-  const ownerHomeItem = ownerItems.find((item) => item.id === "owner-home") ?? null;
-  const ownerCompanyItems = ownerItems.filter((item) => item.id !== "owner-home");
-  const hasMultiTenantSection = Boolean(ownerSection || superAdminSection);
-
-  const goToItem = (item: NavLeafItem) => {
-    go(item.path);
-  };
 
   const fullName = typeof userData?.full_name === "string" ? userData.full_name : null;
   const initials = fullName
     ? fullName.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase()
     : "U";
-
-  const available = availabilityStatus === "available";
 
   return (
     <>
@@ -319,104 +227,6 @@ const GlobalSidebar: React.FC = () => {
               Access: {accessRoleLabel}
             </div>
           </div>
-
-          <div className="db-section-label">Principale</div>
-
-          {dashboardSection?.items[0] && (
-            <button
-              id="global-nav-dashboard"
-              className={`db-nav-item ${dashboardSection.isActive ? "active" : ""}`}
-              onClick={() => goToItem(dashboardSection.items[0])}
-            >
-              <span className="db-nav-icon">🗺️</span>
-              <span className="db-nav-label">{dashboardSection.label}</span>
-            </button>
-          )}
-
-          {hasMultiTenantSection && <div className="db-section-label" style={{ marginTop: 12 }}>Multi-tenant</div>}
-
-          {ownerSection && ownerHomeItem && (
-            <>
-              <button
-                id="global-nav-owner"
-                className={`db-nav-item ${ownerSection.isActive ? "active" : ""}`}
-                onClick={() => goToItem(ownerHomeItem)}
-              >
-                <span className="db-nav-icon">🏢</span>
-                <span className="db-nav-label">{ownerSection.label}</span>
-                <span className={`db-nav-chevron ${ownerOpen ? "open" : ""}`} onClick={(event) => { event.stopPropagation(); setOwnerOpen((prev) => !prev); }}>
-                  ▶
-                </span>
-              </button>
-              <div className="db-admin-submenu" style={{ maxHeight: ownerOpen ? "900px" : "0" }}>
-                {ownerCompanyItems.map((item) => (
-                  <button
-                    key={item.id}
-                    className="db-admin-sub-item db-super-sub-item"
-                    onClick={() => goToItem(item)}
-                  >
-                    {item.label}
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
-
-          {superAdminSection && (
-            <>
-              <button
-                id="global-nav-super-admin-toggle"
-                className="db-nav-item"
-                onClick={() => setSuperAdminOpen((prev) => !prev)}
-              >
-                <span className="db-nav-icon">🧩</span>
-                <span className="db-nav-label">{superAdminSection.label}</span>
-                <span className={`db-nav-chevron ${superAdminOpen ? "open" : ""}`}>▶</span>
-              </button>
-              <div className="db-admin-submenu" style={{ maxHeight: superAdminOpen ? "900px" : "0" }}>
-                {superAdminSection.items.map((item) => (
-                  <button
-                    key={item.id}
-                    className={`db-admin-sub-item ${item.isActive ? "active" : ""}`}
-                    onClick={() => goToItem(item)}
-                  >
-                    {item.label}
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
-
-          {adminSection && (
-            <>
-              <div className="db-section-label" style={{ marginTop: 12 }}>Amministrazione</div>
-
-              <button
-                id="global-nav-admin-toggle"
-                className="db-nav-item"
-                onClick={() => setAdminOpen(o => !o)}
-              >
-                <span className="db-nav-icon">⚙️</span>
-                <span className="db-nav-label">{adminSection.label}</span>
-                <span className={`db-nav-chevron ${adminOpen ? "open" : ""}`}>▶</span>
-              </button>
-
-              <div
-                className="db-admin-submenu"
-                style={{ maxHeight: adminOpen ? "300px" : "0" }}
-              >
-                {adminSection.items.map((item) => (
-                  <button
-                    key={item.id}
-                    className={`db-admin-sub-item ${item.isActive ? "active" : ""}`}
-                    onClick={() => goToItem(item)}
-                  >
-                    {item.label}
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
         </nav>
 
         {/* ---- Footer ---- */}
@@ -427,21 +237,6 @@ const GlobalSidebar: React.FC = () => {
           flexDirection: "column",
           gap: 8,
         }}>
-          {/* Availability */}
-          <button
-            id="global-sidebar-availability"
-            className="db-sidebar-availability"
-            disabled={!isAdmin}
-            onClick={isAdmin ? toggleAvailability : undefined}
-            title={isAdmin ? (available ? "Clicca per disattivarti" : "Clicca per attivarti") : "Solo gli admin possono modificare la disponibilità"}
-            style={!isAdmin ? { cursor: "default", opacity: 0.7 } : undefined}
-          >
-            <div className={`db-avail-dot ${available ? "available" : "inactive"}`} />
-            <span className={`db-avail-text ${available ? "available" : ""}`}>
-              {available ? "Disponibile" : "Non disponibile"}
-            </span>
-          </button>
-
           {/* User box */}
           {userData && (
             <div className="db-user-box">
