@@ -12,6 +12,7 @@ import {
 } from "react-leaflet";
 import React from "react";
 import { appApi } from "../lib/appApi";
+import type { UserLifecycleState } from "../lib/appApi";
 
 /* ---------- ICONE ---------- */
 
@@ -109,8 +110,12 @@ type Props = {
     onLocationsLoaded?: (locations: MapLocation[]) => void;
     /** Called whenever the user successfully applies or withdraws from a role */
     onApplicationUpdate?: () => void;
-    /** Called after each data load with the campaign status from the map payload */
-    onCampaignStatusLoaded?: (status: "open" | "closed") => void;
+    /** Called after each data load with lifecycle status from the map payload */
+    onLifecycleStatusLoaded?: (status: {
+        campaign_status: "open" | "closed";
+        reservations_status: "open" | "closed";
+        user_state: UserLifecycleState;
+    }) => void;
     /** When true, admin count badge is shown and user list can be expanded */
     isAdmin?: boolean;
     /** When true, hide fixed-location roles from popup and dim fully-fixed markers */
@@ -130,7 +135,7 @@ const PositionsMap = ({
     filterRoleName,
     onLocationsLoaded,
     onApplicationUpdate,
-    onCampaignStatusLoaded,
+    onLifecycleStatusLoaded,
     isAdmin = false,
     filterOnlyNonFixed = false,
 }: Props) => {
@@ -140,7 +145,7 @@ const PositionsMap = ({
 
     const [locations, setLocations] = useState<MapLocation[]>([]);
     const [myUserId, setMyUserId] = useState<string | null>(null);
-    const [myStatus, setMyStatus] = useState<"available" | "inactive" | null>(null);
+    const [myStatus, setMyStatus] = useState<UserLifecycleState | null>(null);
     const [meLocation, setMeLocation] = useState<MeLocation | null>(null);
     const [campaignStatus, setCampaignStatus] = useState<"open" | "closed">("closed");
     const [clickedRoleId, setClickedRoleId] = useState<string | null>(null);
@@ -211,7 +216,11 @@ const PositionsMap = ({
             setUsedPriorities(payload.usedPriorities);
             const status: "open" | "closed" = payload.campaign_status === "open" ? "open" : "closed";
             setCampaignStatus(status);
-            onCampaignStatusLoaded?.(status);
+            onLifecycleStatusLoaded?.({
+                campaign_status: status,
+                reservations_status: payload.reservations_status === "open" ? "open" : "closed",
+                user_state: payload.user_state,
+            });
             const filteredLocations = applyDefensiveVisibilityFilter(
                 payload.locations,
                 payload.viewerRoleId ?? null,
@@ -292,7 +301,7 @@ const PositionsMap = ({
     /* ---------- HELPERS ---------- */
 
     const getLocationMarkerState = (roles: LocationRole[]) => {
-        if (myStatus === "inactive") return "inactive" as const;
+        if (myStatus !== "available") return "inactive" as const;
 
         const hasApplied = roles.some((r) => r.applied);
         const hasAvailable = roles.some((r) => !r.applied);

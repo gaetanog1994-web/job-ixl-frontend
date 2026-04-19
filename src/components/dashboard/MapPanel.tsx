@@ -8,7 +8,11 @@ interface MapPanelProps {
   filters: MapFilters;
   onLocationsLoaded: (locations: MapLocation[]) => void;
   onApplicationUpdate?: () => void;
-  onCampaignStatusLoaded?: (status: "open" | "closed") => void;
+  onLifecycleStatusLoaded?: (status: {
+    campaign_status: "open" | "closed";
+    reservations_status: "open" | "closed";
+    user_state: "inactive" | "reserved" | "available";
+  }) => void;
   isAdmin?: boolean;
 }
 
@@ -17,7 +21,7 @@ const MapPanel: React.FC<MapPanelProps> = ({
   filters,
   onLocationsLoaded,
   onApplicationUpdate,
-  onCampaignStatusLoaded,
+  onLifecycleStatusLoaded,
   isAdmin,
 }) => {
   return (
@@ -58,7 +62,7 @@ const MapPanel: React.FC<MapPanelProps> = ({
             filterOnlyNonFixed={filters.onlyNonFixed ?? false}
             onLocationsLoaded={onLocationsLoaded}
             onApplicationUpdate={onApplicationUpdate}
-            onCampaignStatusLoaded={onCampaignStatusLoaded}
+            onLifecycleStatusLoaded={onLifecycleStatusLoaded}
             isAdmin={isAdmin}
           />
         </div>

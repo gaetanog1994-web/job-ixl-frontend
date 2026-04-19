@@ -18,6 +18,8 @@ type User = {
   full_name: string | null;
   email: string | null;
   availability_status: string | null;
+  is_reserved?: boolean | null;
+  user_state?: "inactive" | "reserved" | "available" | null;
   location_id: string | null;
   location_name?: string | null;
   fixed_location?: boolean | null;
@@ -77,6 +79,7 @@ const AdminTestUsers = () => {
   const [errorTop, setErrorTop] = useState<string | null>(null);
   const [maxApplications, setMaxApplications] = useState<number | null>(null);
   const [campaignStatus, setCampaignStatus] = useState<"open" | "closed" | null>(null);
+  const [reservationsStatus, setReservationsStatus] = useState<"open" | "closed" | null>(null);
   const [canManageCampaign, setCanManageCampaign] = useState(false);
   const [inviteFirstName, setInviteFirstName] = useState("");
   const [inviteLastName, setInviteLastName] = useState("");
@@ -170,9 +173,11 @@ const AdminTestUsers = () => {
     try {
       const data = await appApi.adminGetCampaignStatus();
       setCampaignStatus(data.campaign_status);
+      setReservationsStatus(data.reservations_status);
     } catch (e) {
       console.error("LOAD CAMPAIGN STATUS ERROR:", e);
       setCampaignStatus(null);
+      setReservationsStatus(null);
     }
   };
 
@@ -188,13 +193,21 @@ const AdminTestUsers = () => {
     }
   };
 
-  const toggleCampaignStatus = async () => {
-    const next = campaignStatus === "open" ? "closed" : "open";
+  const runLifecycleAction = async (action: "openReservations" | "closeReservations" | "openCampaign" | "closeCampaign") => {
     try {
-      const data = await appApi.adminSetCampaignStatus(next);
+      const data =
+        action === "openReservations"
+          ? await appApi.adminOpenReservations()
+          : action === "closeReservations"
+            ? await appApi.adminCloseReservations()
+            : action === "openCampaign"
+              ? await appApi.adminOpenCampaign()
+              : await appApi.adminCloseCampaign();
       setCampaignStatus(data.campaign_status);
+      setReservationsStatus(data.reservations_status);
+      await loadUsers();
     } catch (e: unknown) {
-      alert("Errore aggiornamento campagna: " + (e instanceof Error ? e.message : "unknown"));
+      alert("Errore aggiornamento lifecycle: " + (e instanceof Error ? e.message : "unknown"));
     }
   };
 
@@ -210,7 +223,10 @@ const AdminTestUsers = () => {
       loadAppConfig(),
       canManage ? loadCampaignStatus() : Promise.resolve(),
     ]);
-    if (!canManage) setCampaignStatus(null);
+    if (!canManage) {
+      setCampaignStatus(null);
+      setReservationsStatus(null);
+    }
   };
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -311,7 +327,7 @@ const AdminTestUsers = () => {
   const usersFiltered = users.filter((u) => {
     const name = (u.first_name ?? "").toLowerCase();
     const surname = (u.last_name ?? "").toLowerCase();
-    const status = (u.availability_status ?? "").toLowerCase();
+    const status = (u.user_state ?? (u.availability_status ?? "")).toLowerCase();
     const accessRole = (u.access_role ?? "").toLowerCase();
 
     const byName = !filterName.trim() || name.includes(filterName.trim().toLowerCase());
@@ -516,35 +532,58 @@ const AdminTestUsers = () => {
             </p>
           </div>
 
-          {/* Campaign status toggle card */}
+          {/* Campaign lifecycle card */}
           <div className="db-card" style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", padding: "24px", gap: "12px" }}>
             <div style={{ fontSize: "38px" }}>📣</div>
-            <h3 style={{ margin: 0, fontSize: "16px", color: "var(--text-primary)" }}>Campagna di mobilità</h3>
+            <h3 style={{ margin: 0, fontSize: "16px", color: "var(--text-primary)" }}>Lifecycle campagna</h3>
             {!canManageCampaign ? (
               <span style={{ fontSize: "12px", color: "var(--text-secondary)", textAlign: "center" }}>
-                Solo admin del perimeter possono aprire o chiudere la campagna.
+                Solo admin del perimeter possono gestire prenotazioni e campagna.
               </span>
-            ) : campaignStatus !== null ? (
+            ) : campaignStatus !== null && reservationsStatus !== null ? (
               <>
                 <div style={{
                   display: "inline-flex", alignItems: "center", gap: "6px",
                   padding: "4px 12px", borderRadius: "999px", fontSize: "13px", fontWeight: 700,
-                  background: campaignStatus === "open" ? "#ecfdf5" : "#fef2f2",
-                  color: campaignStatus === "open" ? "#059669" : "#dc2626",
-                  border: `1px solid ${campaignStatus === "open" ? "#a7f3d0" : "#fca5a5"}`,
+                  background: campaignStatus === "open" ? "#ecfdf5" : "#eff6ff",
+                  color: campaignStatus === "open" ? "#059669" : "#1d4ed8",
+                  border: `1px solid ${campaignStatus === "open" ? "#a7f3d0" : "#93c5fd"}`,
                 }}>
-                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: campaignStatus === "open" ? "#10b981" : "#ef4444" }} />
-                  {campaignStatus === "open" ? "Aperta" : "Chiusa"}
+                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: campaignStatus === "open" ? "#10b981" : "#3b82f6" }} />
+                  Campagna: {campaignStatus === "open" ? "Aperta" : "Chiusa"}
                 </div>
-                <button
-                  className="db-btn db-btn-outline"
-                  style={campaignStatus === "open"
-                    ? { color: "#dc2626", borderColor: "#fca5a5", background: "#fef2f2" }
-                    : { color: "#059669", borderColor: "#a7f3d0", background: "#ecfdf5" }}
-                  onClick={toggleCampaignStatus}
-                >
-                  {campaignStatus === "open" ? "Chiudi campagna" : "Apri campagna"}
-                </button>
+                <div style={{
+                  display: "inline-flex", alignItems: "center", gap: "6px",
+                  padding: "4px 12px", borderRadius: "999px", fontSize: "13px", fontWeight: 700,
+                  background: reservationsStatus === "open" ? "#ecfdf5" : "#f3f4f6",
+                  color: reservationsStatus === "open" ? "#059669" : "#374151",
+                  border: `1px solid ${reservationsStatus === "open" ? "#a7f3d0" : "#d1d5db"}`,
+                }}>
+                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: reservationsStatus === "open" ? "#10b981" : "#6b7280" }} />
+                  Prenotazioni: {reservationsStatus === "open" ? "Aperte" : "Chiuse"}
+                </div>
+                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", justifyContent: "center" }}>
+                  {campaignStatus === "closed" && reservationsStatus === "closed" && (
+                    <button className="db-btn db-btn-outline" onClick={() => runLifecycleAction("openReservations")}>
+                      Apri prenotazioni
+                    </button>
+                  )}
+                  {campaignStatus === "closed" && reservationsStatus === "open" && (
+                    <button className="db-btn db-btn-outline" onClick={() => runLifecycleAction("closeReservations")}>
+                      Chiudi prenotazioni
+                    </button>
+                  )}
+                  {campaignStatus === "closed" && reservationsStatus === "closed" && (
+                    <button className="db-btn db-btn-outline" onClick={() => runLifecycleAction("openCampaign")}>
+                      Apri campagna
+                    </button>
+                  )}
+                  {campaignStatus === "open" && (
+                    <button className="db-btn db-btn-outline" onClick={() => runLifecycleAction("closeCampaign")}>
+                      Chiudi campagna
+                    </button>
+                  )}
+                </div>
               </>
             ) : (
               <span style={{ fontSize: "13px", color: "var(--text-secondary)" }}>Caricamento…</span>
@@ -853,6 +892,7 @@ const AdminTestUsers = () => {
                       >
                         <option value="">Tutti</option>
                         <option value="available">Disponibile</option>
+                        <option value="reserved">Prenotato</option>
                         <option value="inactive">Inattivo</option>
                       </select>
                     </th>
@@ -912,27 +952,35 @@ const AdminTestUsers = () => {
                       
                       {/* Stato */}
                       <td>
-                        <select
-                          className="db-priority-select"
-                          style={{ width: "auto", minWidth: "100px" }}
-                          value={u.availability_status ?? "inactive"}
-                          onChange={async (e) => {
-                            const newStatus = e.target.value;
-                            try {
-                              if (newStatus === "inactive") {
-                                await appApi.deactivateUserAndCleanup(u.id);
-                                await loadUsers();
-                              } else {
-                                await adminUpdateUser(u.id, { availability_status: "available" });
-                              }
-                            } catch (err: unknown) {
-                              alert(err instanceof Error ? err.message : "Errore aggiornamento");
-                            }
+                        <span
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            padding: "4px 10px",
+                            borderRadius: "999px",
+                            fontSize: "12px",
+                            fontWeight: 700,
+                            border: "1px solid #d1d5db",
+                            background:
+                              (u.user_state ?? "inactive") === "available"
+                                ? "#ecfdf5"
+                                : (u.user_state ?? "inactive") === "reserved"
+                                  ? "#fffbeb"
+                                  : "#f3f4f6",
+                            color:
+                              (u.user_state ?? "inactive") === "available"
+                                ? "#065f46"
+                                : (u.user_state ?? "inactive") === "reserved"
+                                  ? "#92400e"
+                                  : "#374151",
                           }}
                         >
-                          <option value="inactive">Inattivo (⚪)</option>
-                          <option value="available">Disponibile (🟢)</option>
-                        </select>
+                          {(u.user_state ?? "inactive") === "available"
+                            ? "Disponibile"
+                            : (u.user_state ?? "inactive") === "reserved"
+                              ? "Prenotato"
+                              : "Inattivo"}
+                        </span>
                       </td>
 
                       {/* Sede */}

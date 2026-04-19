@@ -36,6 +36,33 @@ export type RawApplication = {
   positions?: RawApplicationPosition | RawApplicationPosition[];
 };
 
+export type UserLifecycleState = "inactive" | "reserved" | "available";
+
+export type CampaignLifecycleStatus = {
+    campaign_status: "open" | "closed";
+    reservations_status: "open" | "closed";
+    reserved_users_count?: number;
+    available_users_count?: number;
+};
+
+export type PositionsMapPayload = {
+    viewerUserId: string;
+    viewerRoleId: string | null;
+    viewerLocationId: string | null;
+    campaign_status: "open" | "closed";
+    reservations_status: "open" | "closed";
+    user_state: UserLifecycleState;
+    myStatus: UserLifecycleState;
+    companyId: string;
+    companyName?: string | null;
+    perimeterId: string;
+    perimeterName?: string | null;
+    meLocation: { latitude: number; longitude: number } | null;
+    maxApplications: number;
+    usedPriorities: number[];
+    locations: any[];
+};
+
 export type FrontendErrorReportPayload = {
     kind: "window_error" | "unhandled_rejection";
     message: string;
@@ -517,6 +544,24 @@ export const appApi = {
         return out;
     },
 
+    async reserveMe(): Promise<{ user_state: UserLifecycleState } & CampaignLifecycleStatus> {
+        const out = await apiFetch(`/api/users/me/reservation`, {
+            method: "POST",
+            body: JSON.stringify({}),
+        });
+        invalidateProfileCaches();
+        return out;
+    },
+
+    async unreserveMe(): Promise<{ user_state: UserLifecycleState } & CampaignLifecycleStatus> {
+        const out = await apiFetch(`/api/users/me/reservation`, {
+            method: "DELETE",
+            body: JSON.stringify({}),
+        });
+        invalidateProfileCaches();
+        return out;
+    },
+
     async getMe(): Promise<MePayload> {
         const cacheKey = tenantCacheKey();
         if (meCache.key === cacheKey && meCache.value && meCache.expiresAt > nowMs()) {
@@ -632,7 +677,7 @@ export const appApi = {
         });
     },
 
-    getPositionsMapPayload: async (params?: { viewerUserId?: string; mode?: "from" | "to" }) => {
+    getPositionsMapPayload: async (params?: { viewerUserId?: string; mode?: "from" | "to" }): Promise<PositionsMapPayload> => {
         const qs = new URLSearchParams();
         if (params?.viewerUserId) qs.set("viewerUserId", params.viewerUserId);
         if (params?.mode) qs.set("mode", params.mode);
@@ -926,17 +971,54 @@ export const appApi = {
         });
     },
 
-    async adminGetCampaignStatus(): Promise<{ campaign_status: "open" | "closed" }> {
+    async adminGetCampaignStatus(): Promise<CampaignLifecycleStatus> {
         const json = await apiFetch(`/api/admin/campaign-status`, { method: "GET" });
-        return { campaign_status: json.campaign_status };
+        return {
+            campaign_status: json.campaign_status,
+            reservations_status: json.reservations_status,
+            reserved_users_count: json.reserved_users_count,
+            available_users_count: json.available_users_count,
+        };
     },
 
-    async adminSetCampaignStatus(status: "open" | "closed"): Promise<{ campaign_status: "open" | "closed" }> {
-        const json = await apiFetch(`/api/admin/campaign-status`, {
-            method: "PATCH",
-            body: JSON.stringify({ campaign_status: status }),
-        });
-        return { campaign_status: json.campaign_status };
+    async adminOpenReservations(): Promise<CampaignLifecycleStatus> {
+        const json = await apiFetch(`/api/admin/reservations/open`, { method: "POST", body: JSON.stringify({}) });
+        return {
+            campaign_status: json.campaign_status,
+            reservations_status: json.reservations_status,
+            reserved_users_count: json.reserved_users_count,
+            available_users_count: json.available_users_count,
+        };
+    },
+
+    async adminCloseReservations(): Promise<CampaignLifecycleStatus> {
+        const json = await apiFetch(`/api/admin/reservations/close`, { method: "POST", body: JSON.stringify({}) });
+        return {
+            campaign_status: json.campaign_status,
+            reservations_status: json.reservations_status,
+            reserved_users_count: json.reserved_users_count,
+            available_users_count: json.available_users_count,
+        };
+    },
+
+    async adminOpenCampaign(): Promise<CampaignLifecycleStatus> {
+        const json = await apiFetch(`/api/admin/campaign/open`, { method: "POST", body: JSON.stringify({}) });
+        return {
+            campaign_status: json.campaign_status,
+            reservations_status: json.reservations_status,
+            reserved_users_count: json.reserved_users_count,
+            available_users_count: json.available_users_count,
+        };
+    },
+
+    async adminCloseCampaign(): Promise<CampaignLifecycleStatus> {
+        const json = await apiFetch(`/api/admin/campaign/close`, { method: "POST", body: JSON.stringify({}) });
+        return {
+            campaign_status: json.campaign_status,
+            reservations_status: json.reservations_status,
+            reserved_users_count: json.reserved_users_count,
+            available_users_count: json.available_users_count,
+        };
     },
 
     async platformGetCompanies() {

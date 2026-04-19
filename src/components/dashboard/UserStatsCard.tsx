@@ -3,14 +3,14 @@ import React from "react";
 interface UserStatsCardProps {
   applicationsCount: number;
   maxApplications: number;
-  availabilityStatus: "available" | "inactive" | null;
+  userState: "available" | "reserved" | "inactive" | null;
   locationsCount?: number;
 }
 
 const UserStatsCard: React.FC<UserStatsCardProps> = ({
   applicationsCount,
   maxApplications,
-  availabilityStatus,
+  userState,
   locationsCount,
 }) => {
   const pct =
@@ -48,15 +48,20 @@ const UserStatsCard: React.FC<UserStatsCardProps> = ({
         <div className="db-stat-item">
           <div className="db-stat-label">Disponibilità</div>
           <div style={{ marginTop: "4px" }}>
-            {availabilityStatus === null ? (
+            {userState === null ? (
               <span className="db-status-badge inactive">
                 <span className="db-status-dot" />
                 Caricamento…
               </span>
-            ) : availabilityStatus === "available" ? (
+            ) : userState === "available" ? (
               <span className="db-status-badge available">
                 <span className="db-status-dot" />
                 Disponibile
+              </span>
+            ) : userState === "reserved" ? (
+              <span className="db-status-badge inactive">
+                <span className="db-status-dot" />
+                Prenotato
               </span>
             ) : (
               <span className="db-status-badge inactive">
@@ -66,9 +71,11 @@ const UserStatsCard: React.FC<UserStatsCardProps> = ({
             )}
           </div>
           <div className="db-stat-sub" style={{ marginTop: "6px" }}>
-            {availabilityStatus === "available"
+            {userState === "available"
               ? "Sei visibile per la mobilità"
-              : "Non sei visibile per la mobilità"}
+              : userState === "reserved"
+                ? "Prenotazione registrata per la prossima campagna"
+                : "Non sei visibile per la mobilità"}
           </div>
         </div>
 

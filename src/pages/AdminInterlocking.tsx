@@ -257,6 +257,7 @@ const AdminInterlocking = () => {
     const [loadingReferenceData, setLoadingReferenceData] = useState(false);
     const [deleting, setDeleting] = useState(false);
     const [campaignStatus, setCampaignStatus] = useState<"open" | "closed" | null>(null);
+    const [reservationsStatus, setReservationsStatus] = useState<"open" | "closed" | null>(null);
     const [canManageCampaign, setCanManageCampaign] = useState(false);
 
     const [buildResult, setBuildResult] = useState<BuildResult | null>(null);
@@ -605,8 +606,10 @@ const AdminInterlocking = () => {
         try {
             const data = await appApi.adminGetCampaignStatus();
             setCampaignStatus(data.campaign_status);
+            setReservationsStatus(data.reservations_status);
         } catch {
             setCampaignStatus(null);
+            setReservationsStatus(null);
         }
     };
 
@@ -622,13 +625,20 @@ const AdminInterlocking = () => {
         }
     };
 
-    const toggleCampaignStatus = async () => {
-        const next = campaignStatus === "open" ? "closed" : "open";
+    const runLifecycleAction = async (action: "openReservations" | "closeReservations" | "openCampaign" | "closeCampaign") => {
         try {
-            const data = await appApi.adminSetCampaignStatus(next);
+            const data =
+                action === "openReservations"
+                    ? await appApi.adminOpenReservations()
+                    : action === "closeReservations"
+                        ? await appApi.adminCloseReservations()
+                        : action === "openCampaign"
+                            ? await appApi.adminOpenCampaign()
+                            : await appApi.adminCloseCampaign();
             setCampaignStatus(data.campaign_status);
+            setReservationsStatus(data.reservations_status);
         } catch (e: unknown) {
-            setError("Errore aggiornamento campagna: " + (e instanceof Error ? e.message : "unknown"));
+            setError("Errore aggiornamento lifecycle: " + (e instanceof Error ? e.message : "unknown"));
         }
     };
 
@@ -1260,7 +1270,7 @@ const AdminInterlocking = () => {
                 )}
 
                 {/* ── Campaign status toggle (compact) ── */}
-                {campaignStatus !== null && (
+                {campaignStatus !== null && reservationsStatus !== null && (
                     <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "10px 16px", background: "#FFFFFF", border: "1px solid #E5E7EB", borderRadius: "14px" }}
                         onClick={(e) => e.stopPropagation()}
                     >
@@ -1268,26 +1278,47 @@ const AdminInterlocking = () => {
                         <div style={{
                             display: "inline-flex", alignItems: "center", gap: "5px",
                             padding: "3px 10px", borderRadius: "999px", fontSize: "12px", fontWeight: 700,
-                            background: campaignStatus === "open" ? "#ecfdf5" : "#fef2f2",
-                            color: campaignStatus === "open" ? "#059669" : "#dc2626",
-                            border: `1px solid ${campaignStatus === "open" ? "#a7f3d0" : "#fca5a5"}`,
+                            background: campaignStatus === "open" ? "#ecfdf5" : "#eff6ff",
+                            color: campaignStatus === "open" ? "#059669" : "#1d4ed8",
+                            border: `1px solid ${campaignStatus === "open" ? "#a7f3d0" : "#93c5fd"}`,
                         }}>
-                            <div style={{ width: 7, height: 7, borderRadius: "50%", background: campaignStatus === "open" ? "#10b981" : "#ef4444" }} />
+                            <div style={{ width: 7, height: 7, borderRadius: "50%", background: campaignStatus === "open" ? "#10b981" : "#3b82f6" }} />
                             {campaignStatus === "open" ? "Aperta" : "Chiusa"}
                         </div>
+                        <span style={{ fontSize: "13px", fontWeight: 600, color: "#374151" }}>Prenotazioni:</span>
+                        <div style={{
+                            display: "inline-flex", alignItems: "center", gap: "5px",
+                            padding: "3px 10px", borderRadius: "999px", fontSize: "12px", fontWeight: 700,
+                            background: reservationsStatus === "open" ? "#ecfdf5" : "#f3f4f6",
+                            color: reservationsStatus === "open" ? "#059669" : "#374151",
+                            border: `1px solid ${reservationsStatus === "open" ? "#a7f3d0" : "#d1d5db"}`,
+                        }}>
+                            <div style={{ width: 7, height: 7, borderRadius: "50%", background: reservationsStatus === "open" ? "#10b981" : "#6b7280" }} />
+                            {reservationsStatus === "open" ? "Aperte" : "Chiuse"}
+                        </div>
                         {canManageCampaign ? (
-                            <button
-                                style={{
-                                    border: `1px solid ${campaignStatus === "open" ? "#fca5a5" : "#a7f3d0"}`,
-                                    background: campaignStatus === "open" ? "#fef2f2" : "#ecfdf5",
-                                    color: campaignStatus === "open" ? "#dc2626" : "#059669",
-                                    borderRadius: "10px", padding: "5px 12px", cursor: "pointer",
-                                    fontSize: "12px", fontWeight: 600,
-                                }}
-                                onClick={toggleCampaignStatus}
-                            >
-                                {campaignStatus === "open" ? "Chiudi campagna" : "Apri campagna"}
-                            </button>
+                            <div style={{ display: "flex", gap: "8px" }}>
+                                {campaignStatus === "closed" && reservationsStatus === "closed" && (
+                                    <button style={{ border: "1px solid #d1d5db", background: "#f9fafb", color: "#111827", borderRadius: "10px", padding: "5px 12px", cursor: "pointer", fontSize: "12px", fontWeight: 600 }} onClick={() => runLifecycleAction("openReservations")}>
+                                        Apri prenotazioni
+                                    </button>
+                                )}
+                                {campaignStatus === "closed" && reservationsStatus === "open" && (
+                                    <button style={{ border: "1px solid #d1d5db", background: "#f9fafb", color: "#111827", borderRadius: "10px", padding: "5px 12px", cursor: "pointer", fontSize: "12px", fontWeight: 600 }} onClick={() => runLifecycleAction("closeReservations")}>
+                                        Chiudi prenotazioni
+                                    </button>
+                                )}
+                                {campaignStatus === "closed" && reservationsStatus === "closed" && (
+                                    <button style={{ border: "1px solid #a7f3d0", background: "#ecfdf5", color: "#059669", borderRadius: "10px", padding: "5px 12px", cursor: "pointer", fontSize: "12px", fontWeight: 600 }} onClick={() => runLifecycleAction("openCampaign")}>
+                                        Apri campagna
+                                    </button>
+                                )}
+                                {campaignStatus === "open" && (
+                                    <button style={{ border: "1px solid #fca5a5", background: "#fef2f2", color: "#dc2626", borderRadius: "10px", padding: "5px 12px", cursor: "pointer", fontSize: "12px", fontWeight: 600 }} onClick={() => runLifecycleAction("closeCampaign")}>
+                                        Chiudi campagna
+                                    </button>
+                                )}
+                            </div>
                         ) : (
                             <span style={{ fontSize: "12px", color: "#6B7280", fontWeight: 500 }}>
                                 Solo admin del perimeter

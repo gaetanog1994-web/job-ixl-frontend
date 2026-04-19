@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useAuth } from "../lib/AuthContext";
 import { appApi } from "../lib/appApi";
+import type { UserLifecycleState } from "../lib/appApi";
 import { useAvailability } from "../lib/AvailabilityContext";
 import type { RawApplication } from "../lib/appApi";
 
@@ -18,7 +19,7 @@ const MobilityDashboard: React.FC = () => {
   const { user, loading: authLoading } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const { availabilityStatus, isAdmin } = useAvailability();
+  const { isAdmin } = useAvailability();
 
   /* ---------- data state ---------- */
   const [userData, setUserData] = useState<{ id: string; [key: string]: unknown } | null>(null);
@@ -34,9 +35,17 @@ const MobilityDashboard: React.FC = () => {
   });
   /* ---------- campaign status ---------- */
   const [campaignStatus, setCampaignStatus] = useState<"open" | "closed" | null>(null);
+  const [reservationsStatus, setReservationsStatus] = useState<"open" | "closed" | null>(null);
+  const [userState, setUserState] = useState<UserLifecycleState | null>(null);
 
-  const handleCampaignStatusLoaded = useCallback((status: "open" | "closed") => {
-    setCampaignStatus(status);
+  const handleLifecycleStatusLoaded = useCallback((status: {
+    campaign_status: "open" | "closed";
+    reservations_status: "open" | "closed";
+    user_state: UserLifecycleState;
+  }) => {
+    setCampaignStatus(status.campaign_status);
+    setReservationsStatus(status.reservations_status);
+    setUserState(status.user_state);
   }, []);
 
   /* ---------- map highlight from URL ---------- */
@@ -81,16 +90,6 @@ const MobilityDashboard: React.FC = () => {
     return () => { cancelled = true; };
   }, [user]);
 
-  /* ---------- sync availabilityStatus → userData (admin may change it externally) ---------- */
-  useEffect(() => {
-    const syncStatus = () => {
-      if (availabilityStatus !== null && userData) {
-        setUserData((prev) => prev ? { ...prev, availability_status: availabilityStatus } : prev);
-      }
-    };
-    syncStatus();
-  }, [availabilityStatus]); // eslint-disable-line react-hooks/exhaustive-deps
-
   /* ---------- unique locations count for UserStats ---------- */
   const locationsCount = useMemo(
     () => (mapLocations.length > 0 ? mapLocations.length : undefined),
@@ -121,6 +120,21 @@ const MobilityDashboard: React.FC = () => {
     }
   }, []);
 
+  const toggleReservation = useCallback(async () => {
+    if (campaignStatus !== "closed" || reservationsStatus !== "open" || userState === null) {
+      return;
+    }
+    try {
+      const out = userState === "reserved" ? await appApi.unreserveMe() : await appApi.reserveMe();
+      setCampaignStatus(out.campaign_status);
+      setReservationsStatus(out.reservations_status);
+      setUserState(out.user_state);
+      await handleApplicationUpdate();
+    } catch (e: unknown) {
+      console.error("[MobilityDashboard] toggleReservation:", e instanceof Error ? e.message : e);
+    }
+  }, [campaignStatus, reservationsStatus, userState, handleApplicationUpdate]);
+
   /* ---------- loading guard ---------- */
   if (authLoading) {
     return (
@@ -141,8 +155,49 @@ const MobilityDashboard: React.FC = () => {
     <div className="db-shell" style={{ flexDirection: "column" }}>
       {/* ===== CONTENT ===== */}
       <div className="db-content" style={{ flex: 1 }}>
-        {/* ---- Campaign closed banner ---- */}
-        {campaignStatus === "closed" && (
+        {/* ---- Lifecycle banner ---- */}
+        {campaignStatus === "closed" && reservationsStatus === "closed" && userState !== "reserved" && (
+          <div className="db-card" style={{
+            marginBottom: "16px",
+            padding: "12px 16px",
+            background: "#eff6ff",
+            border: "1px solid #93c5fd",
+            borderRadius: "10px",
+            color: "#1e3a8a",
+            fontSize: "13px",
+            fontWeight: 600,
+          }}>
+            Campagna chiusa. Le prenotazioni non sono ancora aperte.
+          </div>
+        )}
+
+        {campaignStatus === "closed" && reservationsStatus === "open" && (
+          <div className="db-card" style={{
+            marginBottom: "16px",
+            padding: "12px 16px",
+            background: "#ecfdf5",
+            border: "1px solid #6ee7b7",
+            borderRadius: "10px",
+            color: "#065f46",
+            fontSize: "13px",
+            fontWeight: 600,
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            gap: "12px",
+          }}>
+            <span>
+              {userState === "reserved"
+                ? "Sei prenotato per la prossima campagna."
+                : "Prenotazioni aperte: puoi prenotarti per la prossima campagna."}
+            </span>
+            <button className="db-btn db-btn-outline" onClick={toggleReservation}>
+              {userState === "reserved" ? "Annulla prenotazione" : "Prenotati per la prossima campagna"}
+            </button>
+          </div>
+        )}
+
+        {campaignStatus === "closed" && reservationsStatus === "closed" && userState === "reserved" && (
           <div className="db-card" style={{
             marginBottom: "16px",
             padding: "12px 16px",
@@ -153,7 +208,22 @@ const MobilityDashboard: React.FC = () => {
             fontSize: "13px",
             fontWeight: 600,
           }}>
-            ⚠️ Campagna di mobilità non attiva. Le candidature sono sospese.
+            Prenotazioni chiuse: la tua scelta è congelata fino all'apertura campagna.
+          </div>
+        )}
+
+        {campaignStatus === "open" && (
+          <div className="db-card" style={{
+            marginBottom: "16px",
+            padding: "12px 16px",
+            background: "#f8fafc",
+            border: "1px solid #cbd5e1",
+            borderRadius: "10px",
+            color: "#0f172a",
+            fontSize: "13px",
+            fontWeight: 600,
+          }}>
+            Campagna aperta. Stato utente: {userState === "available" ? "AVAILABLE" : "INACTIVE"}.
           </div>
         )}
 
@@ -165,7 +235,7 @@ const MobilityDashboard: React.FC = () => {
             filters={mapFilters}
             onLocationsLoaded={handleLocationsLoaded}
             onApplicationUpdate={handleApplicationUpdate}
-            onCampaignStatusLoaded={handleCampaignStatusLoaded}
+            onLifecycleStatusLoaded={handleLifecycleStatusLoaded}
             isAdmin={isAdmin}
           />
 
@@ -180,7 +250,7 @@ const MobilityDashboard: React.FC = () => {
             <UserStatsCard
               applicationsCount={aggregatedApplicationsCount}
               maxApplications={maxApplications}
-              availabilityStatus={availabilityStatus}
+              userState={userState}
               locationsCount={locationsCount}
             />
           </div>

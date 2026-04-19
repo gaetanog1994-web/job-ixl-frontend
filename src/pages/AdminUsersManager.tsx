@@ -10,6 +10,7 @@ type User = {
     id: string;
     full_name: string | null;
     availability_status: "available" | "inactive" | null;
+    user_state?: "available" | "reserved" | "inactive" | null;
     location_id: string | null;
     fixed_location?: boolean | null;
     role_id?: string | null;
@@ -98,13 +99,7 @@ const AdminUsersManager = ({ users, locations, onBack, onUpdateDone }: Props) =>
     const patchUser = async (userId: string, patch: Partial<User>) => {
         try {
             setSaving(true);
-
-            // regola: se metti inactive, vuoi anche cleanup applications (già hai endpoint dedicato)
-            if (patch.availability_status === "inactive") {
-                await appApi.deactivateUserAndCleanup(userId);
-            } else {
-                await appApi.adminPatchUser(userId, patch);
-            }
+            await appApi.adminPatchUser(userId, patch);
 
             onUpdateDone();
             await reload();
@@ -193,7 +188,7 @@ const AdminUsersManager = ({ users, locations, onBack, onUpdateDone }: Props) =>
                 )}
             </div>
 
-            <p>Associa utenti alle sedi e gestisci lo stato (admin-only, via backend)</p>
+            <p>Associa utenti alle sedi. Lo stato è gestito dal lifecycle prenotazioni/campagna.</p>
 
             <table width="100%" style={{ marginTop: "10px" }}>
                 <thead>
@@ -209,18 +204,11 @@ const AdminUsersManager = ({ users, locations, onBack, onUpdateDone }: Props) =>
                             <td>{u.full_name ?? "—"}</td>
 
                             <td>
-                                <select
-                                    value={u.availability_status ?? "inactive"}
-                                    onChange={(e) =>
-                                        patchUser(u.id, {
-                                            availability_status: e.target.value as "available" | "inactive",
-                                        })
-                                    }
-                                    disabled={saving}
-                                >
-                                    <option value="inactive">inactive</option>
-                                    <option value="available">available</option>
-                                </select>
+                                {u.user_state === "available"
+                                    ? "Disponibile"
+                                    : u.user_state === "reserved"
+                                        ? "Prenotato"
+                                        : "Inattivo"}
                             </td>
 
                             <td>

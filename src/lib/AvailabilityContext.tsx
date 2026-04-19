@@ -67,21 +67,9 @@ export const AvailabilityProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   const toggleAvailability = useCallback(async () => {
     if (!isAdmin) return;
-    try {
-      // activateMe/deactivateMe go through apiFetch which auto-injects
-      // x-company-id + x-perimeter-id from localStorage tenant context.
-      // requireTenantScope on these routes is satisfied without extra wiring here.
-      if (availabilityStatus === "available") {
-        await appApi.deactivateMe();
-        setAvailabilityStatus("inactive");
-      } else {
-        await appApi.activateMe();
-        setAvailabilityStatus("available");
-      }
-    } catch (e: unknown) {
-      console.error("[AvailabilityContext] toggle error:", e instanceof Error ? e.message : e);
-    }
-  }, [availabilityStatus, isAdmin]);
+    // RC2 lifecycle: manual availability toggle is intentionally disabled.
+    console.warn("[AvailabilityContext] toggleAvailability is disabled by reservation lifecycle.");
+  }, [isAdmin]);
 
   return (
     <AvailabilityContext.Provider value={{ availabilityStatus, isAdmin, setAvailabilityStatus, toggleAvailability, reload }}>
