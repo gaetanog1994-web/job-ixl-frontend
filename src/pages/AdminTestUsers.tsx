@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import AdminScenariosManager from "./AdminScenariosManager";
 import AdminLocationsManager from "./AdminLocationsManager";
 import AdminRolesManager from "./AdminRolesManager";
-import { appApi } from "../lib/appApi";
+import { AppApiError, appApi } from "../lib/appApi";
 import { canManageCampaignInCurrentPerimeter } from "../lib/operationalAccess";
 import "../styles/dashboard.css";
 
@@ -80,6 +80,7 @@ const AdminTestUsers = () => {
   const [maxApplications, setMaxApplications] = useState<number | null>(null);
   const [campaignStatus, setCampaignStatus] = useState<"open" | "closed" | null>(null);
   const [reservationsStatus, setReservationsStatus] = useState<"open" | "closed" | null>(null);
+  const [reservedUsersCount, setReservedUsersCount] = useState(0);
   const [canManageCampaign, setCanManageCampaign] = useState(false);
   const [inviteFirstName, setInviteFirstName] = useState("");
   const [inviteLastName, setInviteLastName] = useState("");
@@ -174,10 +175,12 @@ const AdminTestUsers = () => {
       const data = await appApi.adminGetCampaignStatus();
       setCampaignStatus(data.campaign_status);
       setReservationsStatus(data.reservations_status);
+      setReservedUsersCount(data.reserved_users_count ?? 0);
     } catch (e) {
       console.error("LOAD CAMPAIGN STATUS ERROR:", e);
       setCampaignStatus(null);
       setReservationsStatus(null);
+      setReservedUsersCount(0);
     }
   };
 
@@ -205,6 +208,7 @@ const AdminTestUsers = () => {
               : await appApi.adminCloseCampaign();
       setCampaignStatus(data.campaign_status);
       setReservationsStatus(data.reservations_status);
+      setReservedUsersCount(data.reserved_users_count ?? 0);
       await loadUsers();
     } catch (e: unknown) {
       alert("Errore aggiornamento lifecycle: " + (e instanceof Error ? e.message : "unknown"));
@@ -226,6 +230,7 @@ const AdminTestUsers = () => {
     if (!canManage) {
       setCampaignStatus(null);
       setReservationsStatus(null);
+      setReservedUsersCount(0);
     }
   };
 
@@ -248,6 +253,10 @@ const AdminTestUsers = () => {
 
   const initializeScenario = async () => {
     if (!selectedScenarioId) return;
+    if (campaignStatus !== "open") {
+      setErrorTop("Disponibile solo quando la campagna è aperta.");
+      return;
+    }
     if (!window.confirm("Vuoi inizializzare questo scenario?")) return;
 
     setLoadingTop(true);
@@ -259,7 +268,11 @@ const AdminTestUsers = () => {
       const scenario = scenarios.find((s) => s.id === selectedScenarioId);
       if (scenario) setActiveScenarioLabel(scenario.name);
     } catch (e: unknown) {
-      setErrorTop(e instanceof Error ? e.message : String(e));
+      if (e instanceof AppApiError && e.status === 409 && e.code === "CAMPAIGN_NOT_OPEN") {
+        setErrorTop("Impossibile inizializzare lo scenario: disponibile solo quando la campagna è aperta.");
+      } else {
+        setErrorTop(e instanceof Error ? e.message : String(e));
+      }
     } finally {
       setLoadingTop(false);
     }
@@ -436,9 +449,19 @@ const AdminTestUsers = () => {
                 <option key={s.id} value={s.id}>{s.name}</option>
               ))}
             </select>
-            <button className="db-btn db-btn-outline" onClick={initializeScenario} disabled={loadingTop || !selectedScenarioId}>
+            <button
+              className="db-btn db-btn-outline"
+              onClick={initializeScenario}
+              disabled={loadingTop || !selectedScenarioId || campaignStatus !== "open"}
+              title={campaignStatus !== "open" ? "Disponibile solo quando la campagna è aperta" : undefined}
+            >
               ▶ Inizializza
             </button>
+            {campaignStatus !== "open" && (
+              <span style={{ fontSize: "12px", color: "var(--text-secondary)" }}>
+                Disponibile solo quando la campagna è aperta
+              </span>
+            )}
           </div>
 
           <div style={{ width: "1px", height: "30px", background: "var(--border)", margin: "0 4px" }} />
@@ -562,6 +585,9 @@ const AdminTestUsers = () => {
                   <div style={{ width: 8, height: 8, borderRadius: "50%", background: reservationsStatus === "open" ? "#10b981" : "#6b7280" }} />
                   Prenotazioni: {reservationsStatus === "open" ? "Aperte" : "Chiuse"}
                 </div>
+                <span style={{ fontSize: "12px", color: "#6B7280", fontWeight: 500 }}>
+                  {reservedUsersCount} prenotat{reservedUsersCount === 1 ? "o" : "i"}
+                </span>
                 <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", justifyContent: "center" }}>
                   {campaignStatus === "closed" && reservationsStatus === "closed" && (
                     <button className="db-btn db-btn-outline" onClick={() => runLifecycleAction("openReservations")}>

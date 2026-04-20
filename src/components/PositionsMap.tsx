@@ -280,7 +280,7 @@ const PositionsMap = ({
     };
 
     const handleWithdrawFromRole = async (role: LocationRole) => {
-        if (!myUserId) return;
+        if (!myUserId || myStatus !== "available") return;
 
         const positionIds = role.users.map((u) => u.position_id);
 
@@ -301,6 +301,8 @@ const PositionsMap = ({
     /* ---------- HELPERS ---------- */
 
     const getLocationMarkerState = (roles: LocationRole[]) => {
+        const isCampaignOpenAndUserNotBookable = campaignStatus === "open" && myStatus === "inactive";
+        if (isCampaignOpenAndUserNotBookable) return "inactive" as const;
         if (myStatus !== "available") return "inactive" as const;
 
         const hasApplied = roles.some((r) => r.applied);
@@ -686,7 +688,7 @@ const PositionsMap = ({
                                                             </>
                                                         )}
 
-                                                        {interaction === "write" && r.applied && (
+                                                        {interaction === "write" && myStatus === "available" && r.applied && (
                                                             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                                                                 <span style={{ fontSize: "0.9em", opacity: 0.85 }}>
                                                                     Priorità: <b>{r.priority ?? "—"}</b>

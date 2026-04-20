@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { appApi } from "../lib/appApi";
+import type { AdminCandidaturesStats } from "../lib/appApi";
 import "../styles/dashboard.css";
 
 type AdminCandidatureRow = {
@@ -16,6 +17,12 @@ type AdminCandidatureRow = {
 
 const AdminCandidatures = () => {
   const [applications, setApplications] = useState<AdminCandidatureRow[]>([]);
+  const [stats, setStats] = useState<AdminCandidaturesStats>({
+    reserved_count: 0,
+    active_users_count: 0,
+    active_users_pct: 0,
+    avg_applications_per_reserved: 0,
+  });
 
   /* ---------- search / filter state ---------- */
   const [search, setSearch] = useState("");
@@ -106,11 +113,34 @@ const AdminCandidatures = () => {
     let cancelled = false;
     (async () => {
       try {
-        const rows = await appApi.adminGetCandidatures();
-        if (!cancelled) setApplications(rows ?? []);
+        const [rowsRes, statsRes] = await Promise.allSettled([
+          appApi.adminGetCandidatures(),
+          appApi.adminGetCandidaturesStats(),
+        ]);
+        if (cancelled) return;
+
+        setApplications(rowsRes.status === "fulfilled" ? (rowsRes.value ?? []) : []);
+        setStats(
+          statsRes.status === "fulfilled"
+            ? statsRes.value
+            : {
+              reserved_count: 0,
+              active_users_count: 0,
+              active_users_pct: 0,
+              avg_applications_per_reserved: 0,
+            }
+        );
       } catch (e: unknown) {
         console.error("[AdminCandidatures] load error:", e instanceof Error ? e.message : e);
-        if (!cancelled) setApplications([]);
+        if (!cancelled) {
+          setApplications([]);
+          setStats({
+            reserved_count: 0,
+            active_users_count: 0,
+            active_users_pct: 0,
+            avg_applications_per_reserved: 0,
+          });
+        }
       }
     })();
     return () => { cancelled = true; };
@@ -122,6 +152,11 @@ const AdminCandidatures = () => {
       day: "2-digit", month: "2-digit", year: "numeric",
       hour: "2-digit", minute: "2-digit",
     });
+  };
+
+  const formatPct = (value: number) => {
+    const rounded = Math.round(value * 10) / 10;
+    return Number.isInteger(rounded) ? `${rounded.toFixed(0)}` : `${rounded.toFixed(1)}`;
   };
 
   /* ---------- render ---------- */
@@ -145,6 +180,38 @@ const AdminCandidatures = () => {
         <p style={{ fontSize: "13px", color: "var(--text-secondary, #64748b)", marginTop: "4px" }}>
           {applications.length} candidature totali · {filtered.length} visibili con i filtri correnti
         </p>
+      </div>
+
+      <div
+        className="db-card"
+        style={{
+          marginBottom: "20px",
+          padding: "16px 18px",
+          display: "grid",
+          gap: "12px",
+          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+        }}
+      >
+        <div style={{ border: "1px solid var(--border)", borderRadius: "10px", padding: "12px 14px", background: "#fff" }}>
+          <div style={{ fontSize: "12px", color: "var(--text-secondary)", fontWeight: 600 }}>Prenotati</div>
+          <div style={{ marginTop: "4px", fontSize: "24px", lineHeight: 1.1, fontWeight: 700, color: "var(--text-primary)" }}>
+            {stats.reserved_count}
+          </div>
+        </div>
+
+        <div style={{ border: "1px solid var(--border)", borderRadius: "10px", padding: "12px 14px", background: "#fff" }}>
+          <div style={{ fontSize: "12px", color: "var(--text-secondary)", fontWeight: 600 }}>Attività utenti</div>
+          <div style={{ marginTop: "4px", fontSize: "24px", lineHeight: 1.1, fontWeight: 700, color: "var(--text-primary)" }}>
+            {stats.active_users_count} ({formatPct(stats.active_users_pct)}%)
+          </div>
+        </div>
+
+        <div style={{ border: "1px solid var(--border)", borderRadius: "10px", padding: "12px 14px", background: "#fff" }}>
+          <div style={{ fontSize: "12px", color: "var(--text-secondary)", fontWeight: 600 }}>Media candidature</div>
+          <div style={{ marginTop: "4px", fontSize: "24px", lineHeight: 1.1, fontWeight: 700, color: "var(--text-primary)" }}>
+            {(Math.round(stats.avg_applications_per_reserved * 10) / 10).toFixed(1)}
+          </div>
+        </div>
       </div>
 
       {/* ---- Main table card ---- */}

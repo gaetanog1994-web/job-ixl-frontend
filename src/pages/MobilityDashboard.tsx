@@ -212,7 +212,22 @@ const MobilityDashboard: React.FC = () => {
           </div>
         )}
 
-        {campaignStatus === "open" && (
+        {campaignStatus === "open" && userState === "inactive" && (
+          <div className="db-card" style={{
+            marginBottom: "16px",
+            padding: "12px 16px",
+            background: "#fff7ed",
+            border: "1px solid #fdba74",
+            borderRadius: "10px",
+            color: "#9a3412",
+            fontSize: "13px",
+            fontWeight: 600,
+          }}>
+            ⚠️ La campagna di mobilità è attualmente aperta, ma non hai effettuato la prenotazione. Non puoi candidarti per questa campagna.
+          </div>
+        )}
+
+        {campaignStatus === "open" && userState !== "inactive" && (
           <div className="db-card" style={{
             marginBottom: "16px",
             padding: "12px 16px",

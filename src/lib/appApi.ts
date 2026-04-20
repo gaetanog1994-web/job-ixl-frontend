@@ -45,6 +45,13 @@ export type CampaignLifecycleStatus = {
     available_users_count?: number;
 };
 
+export type AdminCandidaturesStats = {
+    reserved_count: number;
+    active_users_count: number;
+    active_users_pct: number;
+    avg_applications_per_reserved: number;
+};
+
 export type PositionsMapPayload = {
     viewerUserId: string;
     viewerRoleId: string | null;
@@ -774,6 +781,16 @@ export const appApi = {
     async adminGetCandidatures() {
         const json = await apiFetch(`/api/admin/candidatures`, { method: "GET" });
         return json.applications ?? [];
+    },
+
+    async adminGetCandidaturesStats(): Promise<AdminCandidaturesStats> {
+        const json = await apiFetch(`/api/admin/candidatures/stats`, { method: "GET" });
+        return {
+            reserved_count: Number(json?.reserved_count ?? 0),
+            active_users_count: Number(json?.active_users_count ?? 0),
+            active_users_pct: Number(json?.active_users_pct ?? 0),
+            avg_applications_per_reserved: Number(json?.avg_applications_per_reserved ?? 0),
+        };
     },
 
     async adminGraphSummary() {

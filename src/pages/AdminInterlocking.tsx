@@ -258,7 +258,7 @@ const AdminInterlocking = () => {
     const [deleting, setDeleting] = useState(false);
     const [campaignStatus, setCampaignStatus] = useState<"open" | "closed" | null>(null);
     const [reservationsStatus, setReservationsStatus] = useState<"open" | "closed" | null>(null);
-    const [reservedUsersCount, setReservedUsersCount] = useState<number | null>(null);
+    const [reservedUsersCount, setReservedUsersCount] = useState<number>(0);
     const [canManageCampaign, setCanManageCampaign] = useState(false);
 
     const [buildResult, setBuildResult] = useState<BuildResult | null>(null);
@@ -608,11 +608,11 @@ const AdminInterlocking = () => {
             const data = await appApi.adminGetCampaignStatus();
             setCampaignStatus(data.campaign_status);
             setReservationsStatus(data.reservations_status);
-            setReservedUsersCount(data.reserved_users_count ?? null);
+            setReservedUsersCount(data.reserved_users_count ?? 0);
         } catch {
             setCampaignStatus(null);
             setReservationsStatus(null);
-            setReservedUsersCount(null);
+            setReservedUsersCount(0);
         }
     };
 
@@ -646,7 +646,7 @@ const AdminInterlocking = () => {
                             : await appApi.adminCloseCampaign();
             setCampaignStatus(data.campaign_status);
             setReservationsStatus(data.reservations_status);
-            setReservedUsersCount(data.reserved_users_count ?? null);
+            setReservedUsersCount(data.reserved_users_count ?? 0);
         } catch (e: unknown) {
             setError("Errore aggiornamento lifecycle: " + (e instanceof Error ? e.message : "unknown"));
         }
@@ -1306,11 +1306,9 @@ const AdminInterlocking = () => {
                             <div style={{ width: 7, height: 7, borderRadius: "50%", background: reservationsStatus === "open" ? "#10b981" : "#6b7280" }} />
                             {reservationsStatus === "open" ? "Aperte" : "Chiuse"}
                         </div>
-                        {reservedUsersCount !== null && (
-                            <span style={{ fontSize: "12px", color: "#6B7280", fontWeight: 500 }}>
-                                {reservedUsersCount} prenotat{reservedUsersCount === 1 ? "o" : "i"}
-                            </span>
-                        )}
+                        <span style={{ fontSize: "12px", color: "#6B7280", fontWeight: 500 }}>
+                            {reservedUsersCount} prenotat{reservedUsersCount === 1 ? "o" : "i"}
+                        </span>
                         {canManageCampaign ? (
                             <div style={{ display: "flex", gap: "8px" }}>
                                 {campaignStatus === "closed" && reservationsStatus === "closed" && (
