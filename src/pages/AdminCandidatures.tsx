@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { appApi } from "../lib/appApi";
 import type { AdminCandidaturesStats } from "../lib/appApi";
 import "../styles/dashboard.css";
@@ -13,6 +13,10 @@ type AdminCandidatureRow = {
   occupant_full_name: string | null;
   occupant_role_name: string | null;
   occupant_location_name: string | null;
+  target_department_id: string | null;
+  target_department_name: string | null;
+  target_responsabili: Array<{ id: string; name: string }>;
+  target_hr_managers: Array<{ id: string; name: string }>;
 };
 
 const AdminCandidatures = () => {
@@ -31,6 +35,7 @@ const AdminCandidatures = () => {
   const [filterOccupantRole, setFilterOccupantRole] = useState("");
   const [sortField, setSortField] = useState<string>("created_at");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
 
   /* ---------- derived filter options ---------- */
   const candidateRoles = useMemo(
@@ -59,7 +64,10 @@ const AdminCandidatures = () => {
           (a.candidate_location_name ?? "").toLowerCase().includes(q) ||
           (a.occupant_full_name ?? "").toLowerCase().includes(q) ||
           (a.occupant_role_name ?? "").toLowerCase().includes(q) ||
-          (a.occupant_location_name ?? "").toLowerCase().includes(q)
+          (a.occupant_location_name ?? "").toLowerCase().includes(q) ||
+          (a.target_department_name ?? "").toLowerCase().includes(q) ||
+          (a.target_responsabili ?? []).map((item) => item.name).join(", ").toLowerCase().includes(q) ||
+          (a.target_hr_managers ?? []).map((item) => item.name).join(", ").toLowerCase().includes(q)
       );
     }
     if (filterCandidateRole)
@@ -320,7 +328,7 @@ const AdminCandidatures = () => {
                 }}>
                   Candidato
                 </th>
-                <th colSpan={3} style={{
+                <th colSpan={6} style={{
                   textAlign: "left", padding: "10px 14px 6px",
                   fontSize: "10px", fontWeight: 700,
                   color: "#2563eb", textTransform: "uppercase", letterSpacing: "0.08em",
@@ -330,7 +338,7 @@ const AdminCandidatures = () => {
                 }}>
                   Posizione target
                 </th>
-                <th colSpan={2} style={{
+                <th colSpan={3} style={{
                   textAlign: "left", padding: "10px 14px 6px",
                   fontSize: "10px", fontWeight: 700,
                   color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.08em",
@@ -349,7 +357,10 @@ const AdminCandidatures = () => {
 
                 <th style={thStyle}>Occupato da</th>
                 <th style={thStyle}>Ruolo</th>
-                <th style={{ ...thStyle, borderRight: "2px solid var(--border)" }}>Sede</th>
+                <th style={thStyle}>Reparto</th>
+                <th style={thStyle}>Sede</th>
+                <th style={thStyle} className="db-col-desktop-only">Responsabile</th>
+                <th style={{ ...thStyle, borderRight: "2px solid var(--border)" }} className="db-col-desktop-only">HR</th>
 
                 <th style={thStyle} onClick={() => handleSort("created_at")}>
                   Data{sortIcon("created_at")}
@@ -357,12 +368,13 @@ const AdminCandidatures = () => {
                 <th style={thStyle} onClick={() => handleSort("priority")}>
                   Priorità{sortIcon("priority")}
                 </th>
+                <th style={thStyle}>Azioni</th>
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={8}>
+                  <td colSpan={12}>
                     <div className="db-empty-state">
                       <div className="db-empty-state-icon">🔍</div>
                       <div className="db-empty-state-title">Nessun risultato</div>
@@ -376,12 +388,12 @@ const AdminCandidatures = () => {
                 </tr>
               ) : (
                 filtered.map((a, i) => (
-                  <tr
-                    key={a.id}
-                    style={{ background: i % 2 === 0 ? "#fff" : "#fafafa", transition: "background 0.1s" }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = "#f0f9ff")}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = i % 2 === 0 ? "#fff" : "#fafafa")}
-                  >
+                  <Fragment key={a.id}>
+                    <tr
+                      style={{ background: i % 2 === 0 ? "#fff" : "#fafafa", transition: "background 0.1s" }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = "#f0f9ff")}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = i % 2 === 0 ? "#fff" : "#fafafa")}
+                    >
                     <td style={tdStyle}>
                       <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>
                         {a.candidate_full_name ?? "—"}
@@ -410,8 +422,17 @@ const AdminCandidatures = () => {
                         {a.occupant_role_name ?? "—"}
                       </span>
                     </td>
-                    <td style={{ ...tdStyle, borderRight: "2px solid var(--border)" }}>
-                      {a.occupant_location_name ?? "—"}
+                    <td style={tdStyle}>{a.target_department_name ?? "—"}</td>
+                    <td style={tdStyle}>{a.occupant_location_name ?? "—"}</td>
+                    <td style={tdStyle} className="db-col-desktop-only">
+                      {(a.target_responsabili ?? []).length > 0
+                        ? (a.target_responsabili ?? []).map((item) => item.name).join(", ")
+                        : "—"}
+                    </td>
+                    <td style={{ ...tdStyle, borderRight: "2px solid var(--border)" }} className="db-col-desktop-only">
+                      {(a.target_hr_managers ?? []).length > 0
+                        ? (a.target_hr_managers ?? []).map((item) => item.name).join(", ")
+                        : "—"}
                     </td>
 
                     <td style={{ ...tdStyle, color: "var(--text-secondary)", fontSize: "12px" }}>
@@ -429,7 +450,26 @@ const AdminCandidatures = () => {
                         </span>
                       ) : "—"}
                     </td>
-                  </tr>
+                    <td style={tdStyle}>
+                      <button
+                        className="db-action-btn db-action-btn-map db-mobile-only-inline"
+                        onClick={() => setExpandedRowId((prev) => prev === a.id ? null : a.id)}
+                      >
+                        Esplora
+                      </button>
+                    </td>
+                    </tr>
+                    {expandedRowId === a.id && (
+                      <tr className="db-mobile-only-row">
+                      <td colSpan={12} style={{ padding: "10px 14px", background: "#f8fafc", borderBottom: "1px solid var(--border)" }}>
+                        <div style={{ fontSize: "12px", color: "var(--text-secondary)", display: "grid", gap: "6px" }}>
+                          <div><strong>Responsabile:</strong> {(a.target_responsabili ?? []).length > 0 ? (a.target_responsabili ?? []).map((item) => item.name).join(", ") : "—"}</div>
+                          <div><strong>HR:</strong> {(a.target_hr_managers ?? []).length > 0 ? (a.target_hr_managers ?? []).map((item) => item.name).join(", ") : "—"}</div>
+                        </div>
+                      </td>
+                    </tr>
+                    )}
+                  </Fragment>
                 ))
               )}
             </tbody>

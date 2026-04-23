@@ -1,14 +1,15 @@
-import { useEffect, useRef, useState } from "react";
-import AdminScenariosManager from "./AdminScenariosManager";
+import { useEffect, useMemo, useState } from "react";
 import AdminLocationsManager from "./AdminLocationsManager";
 import AdminRolesManager from "./AdminRolesManager";
 import { AppApiError, appApi } from "../lib/appApi";
-import { canManageCampaignInCurrentPerimeter } from "../lib/operationalAccess";
 import "../styles/dashboard.css";
 
-/* =======================
-   TYPES
-======================= */
+type ConfigTab = "users" | "roles" | "departments" | "locations" | "responsabili" | "hr";
+
+type RoleOption = { id: string; name: string };
+type LocationOption = { id: string; name: string };
+type DepartmentOption = { id: string; name: string; assigned_users_count: number };
+type ManagerRef = { id: string; name: string };
 
 type User = {
   id: string;
@@ -17,63 +18,107 @@ type User = {
   full_name: string | null;
   email: string | null;
   availability_status: string | null;
-  is_reserved?: boolean | null;
   user_state?: "inactive" | "reserved" | "available" | null;
-  location_id: string | null;
-  location_name?: string | null;
-  fixed_location?: boolean | null;
   role_id?: string | null;
   role_name?: string | null;
+  department_id?: string | null;
+  department_name?: string | null;
+  location_id?: string | null;
+  location_name?: string | null;
+  fixed_location?: boolean | null;
   access_role?: "user" | "admin" | "admin_user" | null;
   application_count?: number | null;
+  responsabili?: ManagerRef[];
+  hr_managers?: ManagerRef[];
 };
 
-type Location = {
+type ManagerListItem = {
   id: string;
   name: string;
+  email: string | null;
+  assigned_users_count: number;
 };
 
-type Position = {
+type AssignedUser = {
   id: string;
-  title: string | null;
-  occupied_by: string;
-  occupant_name: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  full_name: string | null;
+  role_name?: string | null;
+  department_name?: string | null;
+  location_name?: string | null;
 };
 
-type Scenario = {
-  id: string;
-  name: string;
-};
-
-type BulkImportResult = {
-  total: number;
-  imported: number;
-  errors: { row: number; email: string; error: string }[];
-};
-
-type AddForm = {
+type AddUserForm = {
   firstName: string;
   lastName: string;
   email: string;
   roleId: string;
+  departmentId: string;
   locationId: string;
   fixedLocation: boolean;
   accessRole: "user" | "admin" | "admin_user";
 };
 
-const EMPTY_ADD_FORM: AddForm = {
+type EditUserForm = {
+  firstName: string;
+  lastName: string;
+  email: string;
+  roleId: string;
+  departmentId: string;
+  locationId: string;
+  fixedLocation: boolean;
+  accessRole: "user" | "admin" | "admin_user";
+  responsabileIds: string[];
+  hrManagerIds: string[];
+  responsabiliSearch: string;
+  hrSearch: string;
+};
+
+type UserPickerFilters = {
+  name: string;
+  roleId: string;
+  departmentId: string;
+  locationId: string;
+};
+
+type ManagerKind = "responsabili" | "hr";
+
+type ManagerTabProps = {
+  kind: ManagerKind;
+  users: User[];
+  roles: RoleOption[];
+  locations: LocationOption[];
+  departments: DepartmentOption[];
+  items: ManagerListItem[];
+  loadItems: () => Promise<void>;
+  createItem: (payload: { name: string; email: string | null }) => Promise<void>;
+  updateItem: (id: string, payload: { name: string; email: string | null }) => Promise<void>;
+  deleteItem: (id: string) => Promise<void>;
+  loadAssignedUsers: (id: string) => Promise<AssignedUser[]>;
+  assignUsers: (id: string, userIds: string[]) => Promise<void>;
+  removeAssignment: (id: string, userId: string) => Promise<void>;
+};
+
+const TAB_ORDER: { id: ConfigTab; label: string }[] = [
+  { id: "users", label: "Utenti" },
+  { id: "roles", label: "Ruoli" },
+  { id: "departments", label: "Reparti" },
+  { id: "locations", label: "Sedi" },
+  { id: "responsabili", label: "Responsabili" },
+  { id: "hr", label: "HR" },
+];
+
+const EMPTY_ADD_FORM: AddUserForm = {
   firstName: "",
   lastName: "",
   email: "",
   roleId: "",
+  departmentId: "",
   locationId: "",
   fixedLocation: false,
   accessRole: "user",
 };
-
-/* =======================
-   MODAL STYLES
-======================= */
 
 const OVERLAY_STYLE: React.CSSProperties = {
   position: "fixed",
@@ -88,1398 +133,20 @@ const OVERLAY_STYLE: React.CSSProperties = {
 const MODAL_STYLE: React.CSSProperties = {
   background: "#fff",
   borderRadius: "14px",
-  padding: "28px",
-  maxWidth: "520px",
-  width: "92%",
-  maxHeight: "88vh",
+  padding: "24px",
+  maxWidth: "980px",
+  width: "94%",
+  maxHeight: "90vh",
   overflowY: "auto",
-  position: "relative",
   boxShadow: "0 8px 40px rgba(0,0,0,0.18)",
 };
-
-/* =======================
-   COMPONENT
-======================= */
-
-const AdminTestUsers = () => {
-  const initialSection = (() => {
-    if (typeof window === "undefined") return "home";
-    const section = new URLSearchParams(window.location.search).get("section");
-    if (section === "users" || section === "scenarios" || section === "locations" || section === "roles") {
-      return section;
-    }
-    return "home";
-  })();
-
-  const [view, setView] = useState<"home" | "users" | "scenarios" | "locations" | "roles">(initialSection);
-  const [users, setUsers] = useState<User[]>([]);
-  const [locations, setLocations] = useState<Location[]>([]);
-  const [positions, setPositions] = useState<Position[]>([]);
-  const [scenarios, setScenarios] = useState<Scenario[]>([]);
-  const [selectedScenarioId, setSelectedScenarioId] = useState<string>("");
-  const [roles, setRoles] = useState<{ id: string; name: string }[]>([]);
-  const [loadingTop, setLoadingTop] = useState(false);
-  const [errorTop, setErrorTop] = useState<string | null>(null);
-  const [maxApplications, setMaxApplications] = useState<number | null>(null);
-  const [campaignStatus, setCampaignStatus] = useState<"open" | "closed" | null>(null);
-  const [reservationsStatus, setReservationsStatus] = useState<"open" | "closed" | null>(null);
-  const [reservedUsersCount, setReservedUsersCount] = useState(0);
-  const [canManageCampaign, setCanManageCampaign] = useState(false);
-
-  /* FILTERS */
-  const [filterName, setFilterName] = useState("");
-  const [filterSurname, setFilterSurname] = useState("");
-  const [filterStatus, setFilterStatus] = useState("");
-  const [filterLocation, setFilterLocation] = useState("");
-  const [filterAccessRole, setFilterAccessRole] = useState("");
-
-  /* SCENARIO */
-  const [activeScenarioLabel, setActiveScenarioLabel] = useState<string | null>(null);
-
-  /* IMPORT */
-  const [importFile, setImportFile] = useState<File | null>(null);
-  const [importingUsers, setImportingUsers] = useState(false);
-  const [downloadingTemplate, setDownloadingTemplate] = useState(false);
-  const [importResult, setImportResult] = useState<BulkImportResult | null>(null);
-  const [importError, setImportError] = useState<string | null>(null);
-
-  /* ADD USER MODAL */
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [addForm, setAddForm] = useState<AddForm>(EMPTY_ADD_FORM);
-  const [addError, setAddError] = useState<string | null>(null);
-  const [addSaving, setAddSaving] = useState(false);
-  const addFirstInputRef = useRef<HTMLInputElement>(null);
-
-  /* EXPLORE MODAL */
-  const [exploreUser, setExploreUser] = useState<User | null>(null);
-  const [exploreEditMode, setExploreEditMode] = useState(false);
-  const [editForm, setEditForm] = useState<Omit<AddForm, "firstName" | "lastName" | "email">>({
-    roleId: "",
-    locationId: "",
-    fixedLocation: false,
-    accessRole: "user",
-  });
-  const [editError, setEditError] = useState<string | null>(null);
-  const [editSaving, setEditSaving] = useState(false);
-
-  /* BULK MODE */
-  const [bulkMode, setBulkMode] = useState(false);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [bulkDeleting, setBulkDeleting] = useState(false);
-
-  /* =======================
-     ESC KEY
-  ======================= */
-
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
-      if (showAddModal) { setShowAddModal(false); setAddError(null); return; }
-      if (exploreUser) { setExploreUser(null); setExploreEditMode(false); setEditError(null); return; }
-    };
-    document.addEventListener("keydown", handler);
-    return () => document.removeEventListener("keydown", handler);
-  }, [showAddModal, exploreUser]);
-
-  /* focus first input when modal opens */
-  useEffect(() => {
-    if (showAddModal) setTimeout(() => addFirstInputRef.current?.focus(), 50);
-  }, [showAddModal]);
-
-  /* populate edit form when explore opens */
-  useEffect(() => {
-    if (exploreUser) {
-      setEditForm({
-        roleId: exploreUser.role_id ?? "",
-        locationId: exploreUser.location_id ?? "",
-        fixedLocation: !!exploreUser.fixed_location,
-        accessRole: (exploreUser.access_role as "user" | "admin" | "admin_user") ?? "user",
-      });
-    }
-  }, [exploreUser]);
-
-  /* =======================
-     LOADERS
-  ======================= */
-
-  const loadUsers = async () => {
-    try {
-      const data = await appApi.adminGetUsers();
-      setUsers(data ?? []);
-    } catch (e) {
-      console.error("LOAD USERS ERROR:", e);
-      setUsers([]);
-    }
-  };
-
-  const loadLocations = async () => {
-    try {
-      const data = await appApi.adminGetLocations();
-      setLocations(data ?? []);
-    } catch (e) {
-      console.error("LOAD LOCATIONS ERROR:", e);
-      setLocations([]);
-    }
-  };
-
-  const loadPositions = async () => {
-    try {
-      const data = await appApi.adminGetPositions();
-      const mapped = (data ?? []).map((p: Record<string, unknown>) => ({
-        id: p.id,
-        title: p.title ?? null,
-        occupied_by: p.occupied_by,
-        occupant_name: null,
-      }));
-      setPositions(mapped);
-    } catch (e) {
-      console.error("LOAD POSITIONS ERROR:", e);
-      setPositions([]);
-    }
-  };
-
-  const loadScenarios = async () => {
-    try {
-      const data = await appApi.adminGetScenarios();
-      setScenarios(data ?? []);
-    } catch (e) {
-      console.error("LOAD SCENARIOS ERROR:", e);
-      setScenarios([]);
-    }
-  };
-
-  const loadRoles = async () => {
-    try {
-      const data = await appApi.adminGetRoles();
-      setRoles(data ?? []);
-    } catch (e) {
-      console.error("LOAD ROLES ERROR:", e);
-      setRoles([]);
-    }
-  };
-
-  const loadAppConfig = async () => {
-    try {
-      const cfg = await appApi.adminGetConfig();
-      setMaxApplications(cfg?.max_applications ?? null);
-    } catch (e) {
-      console.error("LOAD CONFIG ERROR:", e);
-      setMaxApplications(null);
-    }
-  };
-
-  const loadCampaignStatus = async () => {
-    try {
-      const data = await appApi.adminGetCampaignStatus();
-      setCampaignStatus(data.campaign_status);
-      setReservationsStatus(data.reservations_status);
-      setReservedUsersCount(data.reserved_users_count ?? 0);
-    } catch (e) {
-      console.error("LOAD CAMPAIGN STATUS ERROR:", e);
-      setCampaignStatus(null);
-      setReservationsStatus(null);
-      setReservedUsersCount(0);
-    }
-  };
-
-  const loadCampaignPermission = async () => {
-    try {
-      const me = await appApi.getMe();
-      const canManage = canManageCampaignInCurrentPerimeter(me);
-      setCanManageCampaign(canManage);
-      return canManage;
-    } catch {
-      setCanManageCampaign(false);
-      return false;
-    }
-  };
-
-  const runLifecycleAction = async (action: "openReservations" | "closeReservations" | "openCampaign" | "closeCampaign") => {
-    if (action === "closeCampaign") {
-      if (!window.confirm("Sei sicuro di voler chiudere la campagna? Questa operazione è irreversibile e resetterà tutte le prenotazioni e candidature.")) return;
-    }
-    try {
-      const data =
-        action === "openReservations"
-          ? await appApi.adminOpenReservations()
-          : action === "closeReservations"
-            ? await appApi.adminCloseReservations()
-            : action === "openCampaign"
-              ? await appApi.adminOpenCampaign()
-              : await appApi.adminCloseCampaign();
-      setCampaignStatus(data.campaign_status);
-      setReservationsStatus(data.reservations_status);
-      setReservedUsersCount(data.reserved_users_count ?? 0);
-      await loadUsers();
-    } catch (e: unknown) {
-      alert("Errore aggiornamento lifecycle: " + (e instanceof Error ? e.message : "unknown"));
-    }
-  };
-
-  const loadAll = async () => {
-    const canManage = await loadCampaignPermission();
-    await Promise.all([
-      loadUsers(),
-      loadLocations(),
-      loadPositions(),
-      loadScenarios(),
-      loadRoles(),
-      loadAppConfig(),
-      canManage ? loadCampaignStatus() : Promise.resolve(),
-    ]);
-    if (!canManage) {
-      setCampaignStatus(null);
-      setReservationsStatus(null);
-      setReservedUsersCount(0);
-    }
-  };
-
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { loadAll(); }, []);
-
-  /* =======================
-     NAVIGATION
-  ======================= */
-
-  const goHome = async () => {
-    setErrorTop(null);
-    await loadAll();
-    setView("home");
-  };
-
-  /* =======================
-     SCENARIO ACTIONS
-  ======================= */
-
-  const initializeScenario = async () => {
-    if (!selectedScenarioId) return;
-    if (campaignStatus !== "open") {
-      setErrorTop("Disponibile solo quando la campagna è aperta.");
-      return;
-    }
-    if (!window.confirm("Vuoi inizializzare questo scenario?")) return;
-
-    setLoadingTop(true);
-    setErrorTop(null);
-
-    try {
-      await appApi.initializeTestScenario(selectedScenarioId);
-      await loadAll();
-      const scenario = scenarios.find((s) => s.id === selectedScenarioId);
-      if (scenario) setActiveScenarioLabel(scenario.name);
-    } catch (e: unknown) {
-      if (e instanceof AppApiError && e.status === 409 && e.code === "CAMPAIGN_NOT_OPEN") {
-        setErrorTop("Impossibile inizializzare lo scenario: disponibile solo quando la campagna è aperta.");
-      } else {
-        setErrorTop(e instanceof Error ? e.message : String(e));
-      }
-    } finally {
-      setLoadingTop(false);
-    }
-  };
-
-  const resetActiveUsers = async () => {
-    if (!window.confirm("Vuoi resettare utenti attivi e svuotare la dashboard?")) return;
-    setLoadingTop(true);
-    setErrorTop(null);
-
-    try {
-      await appApi.resetActiveUsers();
-      await loadAll();
-      setActiveScenarioLabel(null);
-    } catch (e: unknown) {
-      setErrorTop(e instanceof Error ? e.message : String(e));
-    } finally {
-      setLoadingTop(false);
-    }
-  };
-
-  /* =======================
-     SCENARIO SYNC
-  ======================= */
-
-  const handleScenarioDeleted = async (deletedScenarioId: string) => {
-    await loadScenarios();
-    if (selectedScenarioId === deletedScenarioId) {
-      setSelectedScenarioId("");
-    }
-    setView("home");
-  };
-
-  const handleScenarioRenamed = async (scenarioId: string) => {
-    await loadScenarios();
-    setSelectedScenarioId(scenarioId);
-  };
-
-  const updateMaxApplications = async (value: number) => {
-    try {
-      await appApi.adminUpdateMaxApplications(value);
-      setMaxApplications(value);
-    } catch (e: unknown) {
-      alert("Errore aggiornamento configurazione: " + (e instanceof Error ? e.message : "unknown"));
-      console.error(e);
-    }
-  };
-
-  /* =======================
-     USERS HELPERS
-  ======================= */
-
-  const adminUpdateUser = async (userId: string, patch: Partial<User>) => {
-    await appApi.adminPatchUser(userId, patch);
-    await loadUsers();
-  };
-
-  const adminDeleteUser = async (userId: string) => {
-    await appApi.adminDeleteUser(userId);
-    await loadUsers();
-  };
-
-  /* =======================
-     ADD USER MODAL
-  ======================= */
-
-  const openAddModal = () => {
-    setAddForm(EMPTY_ADD_FORM);
-    setAddError(null);
-    setShowAddModal(true);
-  };
-
-  const closeAddModal = () => {
-    if (addSaving) return;
-    setShowAddModal(false);
-    setAddError(null);
-  };
-
-  const handleAddUser = async () => {
-    const { firstName, lastName, email, roleId, locationId, fixedLocation, accessRole } = addForm;
-    if (!firstName.trim() || !lastName.trim() || !email.trim()) {
-      setAddError("Nome, Cognome ed Email sono obbligatori.");
-      return;
-    }
-    setAddSaving(true);
-    setAddError(null);
-    try {
-      const result = await appApi.adminInviteUser({
-        first_name: firstName.trim(),
-        last_name: lastName.trim(),
-        full_name: `${firstName.trim()} ${lastName.trim()}`,
-        email: email.trim().toLowerCase(),
-        location_id: locationId || null,
-        access_role: accessRole,
-      });
-      const userId: string | undefined = (result as Record<string, unknown>)?.user
-        ? ((result as Record<string, { id?: string }>).user?.id)
-        : undefined;
-      if (userId && (roleId || fixedLocation)) {
-        await appApi.adminPatchUser(userId, {
-          ...(roleId ? { role_id: roleId } : {}),
-          ...(fixedLocation ? { fixed_location: true } : {}),
-        });
-      }
-      setShowAddModal(false);
-      setAddError(null);
-      await loadUsers();
-    } catch (e: unknown) {
-      setAddError(e instanceof Error ? e.message : "Errore durante l'aggiunta utente.");
-    } finally {
-      setAddSaving(false);
-    }
-  };
-
-  /* =======================
-     EXPLORE MODAL
-  ======================= */
-
-  const openExplore = (user: User) => {
-    setExploreUser(user);
-    setExploreEditMode(false);
-    setEditError(null);
-  };
-
-  const closeExplore = () => {
-    if (editSaving) return;
-    setExploreUser(null);
-    setExploreEditMode(false);
-    setEditError(null);
-  };
-
-  const handleEditUser = async () => {
-    if (!exploreUser) return;
-    setEditSaving(true);
-    setEditError(null);
-    try {
-      await appApi.adminPatchUser(exploreUser.id, {
-        role_id: editForm.roleId || null,
-        location_id: editForm.locationId || null,
-        fixed_location: editForm.fixedLocation,
-        access_role: editForm.accessRole,
-      });
-      setExploreUser(null);
-      setExploreEditMode(false);
-      await loadUsers();
-    } catch (e: unknown) {
-      setEditError(e instanceof Error ? e.message : "Errore durante il salvataggio.");
-    } finally {
-      setEditSaving(false);
-    }
-  };
-
-  const handleDeleteFromExplore = async () => {
-    if (!exploreUser) return;
-    if (!window.confirm("Sei sicuro di voler eliminare questo utente? L'operazione non è reversibile.")) return;
-    try {
-      await adminDeleteUser(exploreUser.id);
-      setExploreUser(null);
-      setExploreEditMode(false);
-    } catch (e: unknown) {
-      alert(e instanceof Error ? e.message : "Errore eliminazione utente");
-    }
-  };
-
-  /* =======================
-     BULK MODE
-  ======================= */
-
-  const toggleBulkMode = () => {
-    setBulkMode((v) => !v);
-    setSelectedIds(new Set());
-  };
-
-  const exitBulkMode = () => {
-    setBulkMode(false);
-    setSelectedIds(new Set());
-  };
-
-  const toggleSelectAll = () => {
-    if (selectedIds.size === usersFiltered.length) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(usersFiltered.map((u) => u.id)));
-    }
-  };
-
-  const toggleSelectUser = (id: string) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
-  const handleBulkDelete = async () => {
-    if (selectedIds.size === 0) return;
-    if (!window.confirm(`Sei sicuro di voler eliminare ${selectedIds.size} utent${selectedIds.size === 1 ? "e" : "i"} selezionat${selectedIds.size === 1 ? "o" : "i"}? L'operazione non è reversibile.`)) return;
-    setBulkDeleting(true);
-    try {
-      await Promise.allSettled([...selectedIds].map((id) => appApi.adminDeleteUser(id)));
-      setSelectedIds(new Set());
-      exitBulkMode();
-      await loadUsers();
-    } catch (e: unknown) {
-      alert(e instanceof Error ? e.message : "Errore durante eliminazione bulk");
-    } finally {
-      setBulkDeleting(false);
-    }
-  };
-
-  /* =======================
-     IMPORT
-  ======================= */
-
-  const handleDownloadImportTemplate = async () => {
-    try {
-      setDownloadingTemplate(true);
-      const fileBlob = await appApi.adminDownloadUsersImportTemplate();
-      const downloadUrl = URL.createObjectURL(fileBlob);
-      const link = document.createElement("a");
-      link.href = downloadUrl;
-      link.download = "template_importazione_utenti.xlsx";
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(downloadUrl);
-    } catch (e: unknown) {
-      setImportError(e instanceof Error ? e.message : "Errore download template");
-    } finally {
-      setDownloadingTemplate(false);
-    }
-  };
-
-  const handleImportUsers = async () => {
-    if (!importFile) return;
-    try {
-      setImportingUsers(true);
-      setImportError(null);
-      const result = await appApi.adminImportUsersFromExcel(importFile);
-      setImportResult(result);
-      await loadUsers();
-    } catch (e: unknown) {
-      setImportResult(null);
-      setImportError(e instanceof Error ? e.message : "Errore durante importazione utenti");
-    } finally {
-      setImportingUsers(false);
-    }
-  };
-
-  /* =======================
-     FILTERS
-  ======================= */
-
-  const usersFiltered = users.filter((u) => {
-    const name = (u.first_name ?? "").toLowerCase();
-    const surname = (u.last_name ?? "").toLowerCase();
-    const status = (u.user_state ?? (u.availability_status ?? "")).toLowerCase();
-    const accessRole = (u.access_role ?? "").toLowerCase();
-
-    const byName = !filterName.trim() || name.includes(filterName.trim().toLowerCase());
-    const bySurname = !filterSurname.trim() || surname.includes(filterSurname.trim().toLowerCase());
-    const byStatus = !filterStatus || status === filterStatus.toLowerCase();
-    const byLocation = !filterLocation || String(u.location_id ?? "") === filterLocation;
-    const byAccessRole = !filterAccessRole || accessRole === filterAccessRole.toLowerCase();
-
-    return byName && bySurname && byStatus && byLocation && byAccessRole;
-  });
-
-  const accessRoleLabel = (role: string | null | undefined) => {
-    if (role === "admin") return "Admin";
-    if (role === "admin_user") return "Admin + User";
-    return "User";
-  };
-
-  const stateLabel = (u: User) => {
-    const s = u.user_state ?? "inactive";
-    if (s === "available") return "Disponibile";
-    if (s === "reserved") return "Prenotato";
-    return "Inattivo";
-  };
-
-  const stateBadgeStyle = (u: User): React.CSSProperties => {
-    const s = u.user_state ?? "inactive";
-    return {
-      display: "inline-flex",
-      alignItems: "center",
-      padding: "4px 10px",
-      borderRadius: "999px",
-      fontSize: "12px",
-      fontWeight: 700,
-      border: "1px solid #d1d5db",
-      background: s === "available" ? "#ecfdf5" : s === "reserved" ? "#fffbeb" : "#f3f4f6",
-      color: s === "available" ? "#065f46" : s === "reserved" ? "#92400e" : "#374151",
-    };
-  };
-
-  const roleName = (roleId: string | null | undefined) =>
-    roles.find((r) => r.id === roleId)?.name ?? "—";
-
-  const locationName = (locId: string | null | undefined) =>
-    locations.find((l) => l.id === locId)?.name ?? "—";
-
-  /* =======================
-     ADD USER MODAL RENDER
-  ======================= */
-
-  const renderAddModal = () => (
-    <div style={OVERLAY_STYLE} onClick={closeAddModal} role="dialog" aria-modal="true">
-      <div style={MODAL_STYLE} onClick={(e) => e.stopPropagation()}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-          <h3 style={{ margin: 0, fontSize: "17px", fontWeight: 700, color: "var(--text-primary)" }}>Aggiungi Utente</h3>
-          <button
-            onClick={closeAddModal}
-            style={{ background: "none", border: "none", fontSize: "20px", cursor: "pointer", color: "var(--text-secondary)", lineHeight: 1, padding: "0 4px" }}
-            aria-label="Chiudi"
-          >×</button>
-        </div>
-
-        <div style={{ display: "grid", gap: "14px" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-            <div>
-              <label style={LABEL_STYLE}>Nome *</label>
-              <input
-                ref={addFirstInputRef}
-                className="db-filter-select"
-                style={INPUT_STYLE}
-                value={addForm.firstName}
-                onChange={(e) => setAddForm((f) => ({ ...f, firstName: e.target.value }))}
-                placeholder="Mario"
-                disabled={addSaving}
-              />
-            </div>
-            <div>
-              <label style={LABEL_STYLE}>Cognome *</label>
-              <input
-                className="db-filter-select"
-                style={INPUT_STYLE}
-                value={addForm.lastName}
-                onChange={(e) => setAddForm((f) => ({ ...f, lastName: e.target.value }))}
-                placeholder="Rossi"
-                disabled={addSaving}
-              />
-            </div>
-          </div>
-
-          <div>
-            <label style={LABEL_STYLE}>Email *</label>
-            <input
-              className="db-filter-select"
-              style={INPUT_STYLE}
-              type="email"
-              value={addForm.email}
-              onChange={(e) => setAddForm((f) => ({ ...f, email: e.target.value }))}
-              placeholder="mario.rossi@azienda.it"
-              disabled={addSaving}
-            />
-          </div>
-
-          <div>
-            <label style={LABEL_STYLE}>Ruolo</label>
-            <select
-              className="db-filter-select"
-              style={INPUT_STYLE}
-              value={addForm.roleId}
-              onChange={(e) => setAddForm((f) => ({ ...f, roleId: e.target.value }))}
-              disabled={addSaving}
-            >
-              <option value="">— Nessuno —</option>
-              {roles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
-            </select>
-          </div>
-
-          <div>
-            <label style={LABEL_STYLE}>Sede</label>
-            <select
-              className="db-filter-select"
-              style={INPUT_STYLE}
-              value={addForm.locationId}
-              onChange={(e) => setAddForm((f) => ({ ...f, locationId: e.target.value }))}
-              disabled={addSaving}
-            >
-              <option value="">— Nessuna —</option>
-              {locations.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
-            </select>
-          </div>
-
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <label style={{ ...LABEL_STYLE, margin: 0, cursor: "pointer", display: "flex", alignItems: "center", gap: "8px" }}>
-              <input
-                type="checkbox"
-                checked={addForm.fixedLocation}
-                onChange={(e) => setAddForm((f) => ({ ...f, fixedLocation: e.target.checked }))}
-                disabled={addSaving}
-                style={{ width: "16px", height: "16px", accentColor: "var(--brand)", cursor: "pointer" }}
-              />
-              Sede vincolante
-            </label>
-          </div>
-
-          <div>
-            <label style={LABEL_STYLE}>Ruolo accesso</label>
-            <select
-              className="db-filter-select"
-              style={INPUT_STYLE}
-              value={addForm.accessRole}
-              onChange={(e) => setAddForm((f) => ({ ...f, accessRole: e.target.value as AddForm["accessRole"] }))}
-              disabled={addSaving}
-            >
-              <option value="user">User</option>
-              <option value="admin">Admin</option>
-              <option value="admin_user">Admin + User</option>
-            </select>
-          </div>
-        </div>
-
-        {addError && (
-          <div style={{ marginTop: "14px", padding: "10px 12px", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: "8px", color: "#b91c1c", fontSize: "13px" }}>
-            {addError}
-          </div>
-        )}
-
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "20px" }}>
-          <button className="db-btn db-btn-outline" onClick={closeAddModal} disabled={addSaving}>
-            Annulla
-          </button>
-          <button
-            className="db-btn"
-            style={{ background: "var(--brand)", color: "white", border: "none", opacity: addSaving ? 0.7 : 1 }}
-            onClick={handleAddUser}
-            disabled={addSaving}
-          >
-            {addSaving ? "Salvataggio…" : "Salva"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-
-  /* =======================
-     EXPLORE MODAL RENDER
-  ======================= */
-
-  const renderExploreModal = () => {
-    if (!exploreUser) return null;
-    return (
-      <div style={OVERLAY_STYLE} onClick={closeExplore} role="dialog" aria-modal="true">
-        <div style={{ ...MODAL_STYLE, maxWidth: "560px" }} onClick={(e) => e.stopPropagation()}>
-          {/* Header */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-            <h3 style={{ margin: 0, fontSize: "17px", fontWeight: 700, color: "var(--text-primary)" }}>
-              {exploreEditMode ? "Modifica Utente" : "Dettagli Utente"}
-            </h3>
-            <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-              {!exploreEditMode && (
-                <button
-                  className="db-btn db-btn-outline"
-                  style={{ fontSize: "12px", padding: "5px 10px" }}
-                  onClick={() => setExploreEditMode(true)}
-                >
-                  Modifica
-                </button>
-              )}
-              <button
-                onClick={closeExplore}
-                style={{ background: "none", border: "none", fontSize: "20px", cursor: "pointer", color: "var(--text-secondary)", lineHeight: 1, padding: "0 4px" }}
-                aria-label="Chiudi"
-              >×</button>
-            </div>
-          </div>
-
-          {!exploreEditMode ? (
-            /* READ-ONLY VIEW */
-            <div style={{ display: "grid", gap: "12px" }}>
-              <FieldRow label="Nome" value={exploreUser.first_name ?? "—"} />
-              <FieldRow label="Cognome" value={exploreUser.last_name ?? "—"} />
-              <FieldRow label="Email" value={exploreUser.email ?? "—"} />
-              <FieldRow label="Ruolo" value={roleName(exploreUser.role_id)} />
-              <FieldRow label="Sede" value={locationName(exploreUser.location_id)} />
-              <FieldRow label="Sede vincolante" value={exploreUser.fixed_location ? "Sì" : "No"} />
-              <FieldRow label="Stato" value={stateLabel(exploreUser)} />
-              <FieldRow label="Candidature attive" value={String(exploreUser.application_count ?? 0)} />
-              <FieldRow label="Ruolo accesso" value={accessRoleLabel(exploreUser.access_role)} />
-            </div>
-          ) : (
-            /* EDIT VIEW */
-            <div style={{ display: "grid", gap: "14px" }}>
-              <div>
-                <label style={LABEL_STYLE}>Nome (non modificabile)</label>
-                <input className="db-filter-select" style={{ ...INPUT_STYLE, background: "#f9fafb", color: "#6b7280" }} value={exploreUser.first_name ?? ""} readOnly />
-              </div>
-              <div>
-                <label style={LABEL_STYLE}>Cognome (non modificabile)</label>
-                <input className="db-filter-select" style={{ ...INPUT_STYLE, background: "#f9fafb", color: "#6b7280" }} value={exploreUser.last_name ?? ""} readOnly />
-              </div>
-              <div>
-                <label style={LABEL_STYLE}>Email (non modificabile)</label>
-                <input className="db-filter-select" style={{ ...INPUT_STYLE, background: "#f9fafb", color: "#6b7280" }} value={exploreUser.email ?? ""} readOnly />
-              </div>
-              <div>
-                <label style={LABEL_STYLE}>Ruolo</label>
-                <select
-                  className="db-filter-select"
-                  style={INPUT_STYLE}
-                  value={editForm.roleId}
-                  onChange={(e) => setEditForm((f) => ({ ...f, roleId: e.target.value }))}
-                  disabled={editSaving}
-                >
-                  <option value="">— Nessuno —</option>
-                  {roles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
-                </select>
-              </div>
-              <div>
-                <label style={LABEL_STYLE}>Sede</label>
-                <select
-                  className="db-filter-select"
-                  style={INPUT_STYLE}
-                  value={editForm.locationId}
-                  onChange={(e) => setEditForm((f) => ({ ...f, locationId: e.target.value }))}
-                  disabled={editSaving}
-                >
-                  <option value="">— Nessuna —</option>
-                  {locations.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
-                </select>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <label style={{ ...LABEL_STYLE, margin: 0, cursor: "pointer", display: "flex", alignItems: "center", gap: "8px" }}>
-                  <input
-                    type="checkbox"
-                    checked={editForm.fixedLocation}
-                    onChange={(e) => setEditForm((f) => ({ ...f, fixedLocation: e.target.checked }))}
-                    disabled={editSaving}
-                    style={{ width: "16px", height: "16px", accentColor: "var(--brand)", cursor: "pointer" }}
-                  />
-                  Sede vincolante
-                </label>
-              </div>
-              <div>
-                <label style={LABEL_STYLE}>Ruolo accesso</label>
-                <select
-                  className="db-filter-select"
-                  style={INPUT_STYLE}
-                  value={editForm.accessRole}
-                  onChange={(e) => setEditForm((f) => ({ ...f, accessRole: e.target.value as AddForm["accessRole"] }))}
-                  disabled={editSaving}
-                >
-                  <option value="user">User</option>
-                  <option value="admin">Admin</option>
-                  <option value="admin_user">Admin + User</option>
-                </select>
-              </div>
-
-              {editError && (
-                <div style={{ padding: "10px 12px", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: "8px", color: "#b91c1c", fontSize: "13px" }}>
-                  {editError}
-                </div>
-              )}
-
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>
-                <button className="db-btn db-btn-outline" onClick={() => { setExploreEditMode(false); setEditError(null); }} disabled={editSaving}>
-                  Annulla
-                </button>
-                <button
-                  className="db-btn"
-                  style={{ background: "var(--brand)", color: "white", border: "none", opacity: editSaving ? 0.7 : 1 }}
-                  onClick={handleEditUser}
-                  disabled={editSaving}
-                >
-                  {editSaving ? "Salvataggio…" : "Salva"}
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Delete button */}
-          <div style={{ marginTop: "20px", paddingTop: "16px", borderTop: "1px solid var(--border)", display: "flex", justifyContent: "flex-start" }}>
-            <button className="db-btn db-btn-danger" onClick={handleDeleteFromExplore} disabled={editSaving}>
-              Elimina utente
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  /* =======================
-     RENDER
-  ======================= */
-
-  return (
-    <div style={{ minHeight: "100vh", background: "var(--surface, #f1f5f9)", fontFamily: "var(--font, 'Inter', sans-serif)", padding: "24px" }}>
-
-      {/* Modals */}
-      {showAddModal && renderAddModal()}
-      {exploreUser && renderExploreModal()}
-
-      {/* Page title */}
-      <div style={{ marginBottom: "20px", display: "flex", alignItems: "center", gap: "10px" }}>
-        {view !== "home" && (
-          <button onClick={goHome} className="db-btn db-btn-outline" style={{ padding: "6px 10px", fontSize: "14px" }}>←</button>
-        )}
-        <h1
-          className="db-card-title"
-          style={{ margin: 0, fontSize: "22px", cursor: view !== "home" ? "pointer" : "default" }}
-          onClick={view !== "home" ? goHome : undefined}
-        >
-          {view === "home" && "Configurazione della Piattaforma"}
-          {view === "users" && "Gestione Utenti"}
-          {view === "scenarios" && "Gestione Scenari"}
-          {view === "locations" && "Gestione Sedi"}
-          {view === "roles" && "Gestione Ruoli"}
-        </h1>
-      </div>
-
-      {/* TOP ACTIONS BAR */}
-      {(view === "home" || view === "users" || view === "scenarios") && (
-        <div className="db-card" style={{ padding: "16px 20px", marginBottom: "20px", display: "flex", gap: "16px", flexWrap: "wrap", alignItems: "center" }}>
-
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--text-secondary)", textTransform: "uppercase" }}>
-              Test Scenario
-            </span>
-            <select
-              className="db-filter-select"
-              style={{ minWidth: "180px", height: "34px", padding: "0 10px" }}
-              value={selectedScenarioId}
-              onChange={(e) => setSelectedScenarioId(e.target.value)}
-            >
-              <option value="">Seleziona scenario…</option>
-              {scenarios.map((s) => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
-            </select>
-            <button
-              className="db-btn db-btn-outline"
-              onClick={initializeScenario}
-              disabled={loadingTop || !selectedScenarioId || campaignStatus !== "open"}
-              title={campaignStatus !== "open" ? "Disponibile solo quando la campagna è aperta" : undefined}
-            >
-              ▶ Inizializza
-            </button>
-            {campaignStatus !== "open" && (
-              <span style={{ fontSize: "12px", color: "var(--text-secondary)" }}>
-                Disponibile solo quando la campagna è aperta
-              </span>
-            )}
-          </div>
-
-          <div style={{ width: "1px", height: "30px", background: "var(--border)", margin: "0 4px" }} />
-
-          <button className="db-btn db-btn-outline" onClick={resetActiveUsers} disabled={loadingTop} style={{ color: "#ef4444", borderColor: "#fca5a5", background: "#fef2f2" }}>
-            🔄 Reset utenti attivi
-          </button>
-
-          {activeScenarioLabel && (
-            <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: "6px", color: "#10b981", fontSize: "12px", fontWeight: 700, padding: "4px 10px", background: "#ecfdf5", borderRadius: "8px" }}>
-              <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#10b981" }} />
-              SCENARIO ATTIVO: {activeScenarioLabel.toUpperCase()}
-            </div>
-          )}
-
-          {view === "home" && (
-            <div style={{ marginLeft: activeScenarioLabel ? "0" : "auto", display: "flex", alignItems: "center", gap: "8px", borderLeft: "1px solid var(--border)", paddingLeft: "20px" }}>
-              <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-primary)" }}>Max candidature/utente:</span>
-              <select
-                className="db-filter-select"
-                style={{ height: "34px", minWidth: "60px", padding: "0 8px" }}
-                value={maxApplications ?? ""}
-                onChange={(e) => updateMaxApplications(Number(e.target.value))}
-              >
-                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
-                  <option key={n} value={n}>{n}</option>
-                ))}
-              </select>
-            </div>
-          )}
-        </div>
-      )}
-
-      {errorTop && (
-        <div style={{ marginBottom: "20px", padding: "12px", background: "#fef2f2", color: "#b91c1c", border: "1px solid #fecaca", borderRadius: "8px", fontSize: "13px" }}>
-          ❌ {errorTop}
-        </div>
-      )}
-
-      {/* HOME VIEW */}
-      {view === "home" && (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "20px" }}>
-
-          <div className="db-card" style={{ cursor: "pointer", transition: "transform 0.15s", border: "2px solid transparent", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", padding: "24px" }}
-            onClick={() => setView("users")}
-            onMouseEnter={e => e.currentTarget.style.borderColor = "var(--brand-light)"}
-            onMouseLeave={e => e.currentTarget.style.borderColor = "transparent"}>
-            <div style={{ fontSize: "38px", marginBottom: "16px" }}>👤</div>
-            <h3 style={{ margin: "0 0 8px 0", fontSize: "16px", color: "var(--text-primary)" }}>Gestione Utenti</h3>
-            <p style={{ margin: 0, fontSize: "13px", color: "var(--text-secondary)", lineHeight: 1.5 }}>Modifica stato attivo/inattivo, ruolo e sede degli utenti.</p>
-          </div>
-
-          <div className="db-card" style={{ cursor: "pointer", transition: "transform 0.15s", border: "2px solid transparent", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", padding: "24px" }}
-            onClick={() => setView("scenarios")}
-            onMouseEnter={e => e.currentTarget.style.borderColor = "var(--brand-light)"}
-            onMouseLeave={e => e.currentTarget.style.borderColor = "transparent"}>
-            <div style={{ fontSize: "38px", marginBottom: "16px" }}>🧩</div>
-            <h3 style={{ margin: "0 0 8px 0", fontSize: "16px", color: "var(--text-primary)" }}>Gestione Scenari</h3>
-            <p style={{ margin: 0, fontSize: "13px", color: "var(--text-secondary)", lineHeight: 1.5 }}>Crea scenari e definisci candidature isolate per simulazioni.</p>
-          </div>
-
-          <div className="db-card" style={{ cursor: "pointer", transition: "transform 0.15s", border: "2px solid transparent", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", padding: "24px" }}
-            onClick={() => setView("locations")}
-            onMouseEnter={e => e.currentTarget.style.borderColor = "var(--brand-light)"}
-            onMouseLeave={e => e.currentTarget.style.borderColor = "transparent"}>
-            <div style={{ fontSize: "38px", marginBottom: "16px" }}>🏢</div>
-            <h3 style={{ margin: "0 0 8px 0", fontSize: "16px", color: "var(--text-primary)" }}>Gestione Sedi</h3>
-            <p style={{ margin: 0, fontSize: "13px", color: "var(--text-secondary)", lineHeight: 1.5 }}>Visualizza, aggiungi o rimuovi sedi operative sulla mappa.</p>
-          </div>
-
-          <div className="db-card" style={{ cursor: "pointer", transition: "transform 0.15s", border: "2px solid transparent", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", padding: "24px" }}
-            onClick={() => setView("roles")}
-            onMouseEnter={e => e.currentTarget.style.borderColor = "var(--brand-light)"}
-            onMouseLeave={e => e.currentTarget.style.borderColor = "transparent"}>
-            <div style={{ fontSize: "38px", marginBottom: "16px" }}>🧠</div>
-            <h3 style={{ margin: "0 0 8px 0", fontSize: "16px", color: "var(--text-primary)" }}>Gestione Ruoli</h3>
-            <p style={{ margin: 0, fontSize: "13px", color: "var(--text-secondary)", lineHeight: 1.5 }}>Definisci i ruoli aziendali per gli utenti e per le posizioni.</p>
-          </div>
-
-          {/* Campaign lifecycle card */}
-          <div className="db-card" style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", padding: "24px", gap: "12px" }}>
-            <div style={{ fontSize: "38px" }}>📣</div>
-            <h3 style={{ margin: 0, fontSize: "16px", color: "var(--text-primary)" }}>Lifecycle campagna</h3>
-            {!canManageCampaign ? (
-              <span style={{ fontSize: "12px", color: "var(--text-secondary)", textAlign: "center" }}>
-                Solo admin del perimeter possono gestire prenotazioni e campagna.
-              </span>
-            ) : campaignStatus !== null && reservationsStatus !== null ? (
-              <>
-                <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "4px 12px", borderRadius: "999px", fontSize: "13px", fontWeight: 700, background: campaignStatus === "open" ? "#ecfdf5" : "#eff6ff", color: campaignStatus === "open" ? "#059669" : "#1d4ed8", border: `1px solid ${campaignStatus === "open" ? "#a7f3d0" : "#93c5fd"}` }}>
-                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: campaignStatus === "open" ? "#10b981" : "#3b82f6" }} />
-                  Campagna: {campaignStatus === "open" ? "Aperta" : "Chiusa"}
-                </div>
-                <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "4px 12px", borderRadius: "999px", fontSize: "13px", fontWeight: 700, background: reservationsStatus === "open" ? "#ecfdf5" : "#f3f4f6", color: reservationsStatus === "open" ? "#059669" : "#374151", border: `1px solid ${reservationsStatus === "open" ? "#a7f3d0" : "#d1d5db"}` }}>
-                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: reservationsStatus === "open" ? "#10b981" : "#6b7280" }} />
-                  Prenotazioni: {reservationsStatus === "open" ? "Aperte" : "Chiuse"}
-                </div>
-                <span style={{ fontSize: "12px", color: "#6B7280", fontWeight: 500 }}>
-                  {reservedUsersCount} prenotat{reservedUsersCount === 1 ? "o" : "i"}
-                </span>
-                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", justifyContent: "center" }}>
-                  {campaignStatus === "closed" && reservationsStatus === "closed" && (
-                    <button className="db-btn db-btn-outline" onClick={() => runLifecycleAction("openReservations")}>Apri prenotazioni</button>
-                  )}
-                  {campaignStatus === "closed" && reservationsStatus === "open" && (
-                    <button className="db-btn db-btn-outline" onClick={() => runLifecycleAction("closeReservations")}>Chiudi prenotazioni</button>
-                  )}
-                  {campaignStatus === "closed" && reservationsStatus === "closed" && reservedUsersCount > 0 && (
-                    <button className="db-btn db-btn-outline" onClick={() => runLifecycleAction("openCampaign")}>Apri campagna</button>
-                  )}
-                  {campaignStatus === "open" && (
-                    <button className="db-btn db-btn-outline" onClick={() => runLifecycleAction("closeCampaign")}>Chiudi campagna</button>
-                  )}
-                </div>
-              </>
-            ) : (
-              <span style={{ fontSize: "13px", color: "var(--text-secondary)" }}>Caricamento…</span>
-            )}
-          </div>
-
-        </div>
-      )}
-
-      {/* USERS VIEW */}
-      {view === "users" && (
-        <>
-          {/* Import card */}
-          <div className="db-card" style={{ marginBottom: "16px", padding: "16px 20px" }}>
-            <h2 style={{ margin: "0 0 12px 0", fontSize: "16px", fontWeight: 700, color: "var(--text-primary)" }}>Importazione utenti</h2>
-            <div style={{ background: "#fef9c3", border: "1px solid #facc15", borderRadius: "8px", padding: "12px", marginBottom: "14px", color: "#713f12", fontSize: "13px", lineHeight: 1.45 }}>
-              <div style={{ fontWeight: 600, marginBottom: "8px" }}>⚠️ Prima di importare utenti, assicurati di aver configurato correttamente tutti i Ruoli e le Sedi del perimetro.</div>
-              <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-                <a className="db-btn db-btn-outline" style={{ padding: "6px 10px", fontSize: "12px" }} href="/admin/test-users?section=roles"
-                  onClick={(event) => { event.preventDefault(); setView("roles"); window.history.replaceState({}, "", "/admin/test-users?section=roles"); }}>
-                  Gestisci Ruoli
-                </a>
-                <a className="db-btn db-btn-outline" style={{ padding: "6px 10px", fontSize: "12px" }} href="/admin/test-users?section=locations"
-                  onClick={(event) => { event.preventDefault(); setView("locations"); window.history.replaceState({}, "", "/admin/test-users?section=locations"); }}>
-                  Gestisci Sedi
-                </a>
-              </div>
-            </div>
-
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "16px", alignItems: "start" }}>
-              <div style={{ border: "1px solid var(--border)", borderRadius: "8px", padding: "12px" }}>
-                <div style={{ fontWeight: 700, fontSize: "13px", marginBottom: "10px", color: "var(--text-primary)" }}>Download template</div>
-                <button className="db-btn db-btn-outline" onClick={handleDownloadImportTemplate} disabled={downloadingTemplate} type="button">
-                  {downloadingTemplate ? "Scaricamento..." : "📥 Scarica template Excel"}
-                </button>
-                <div style={{ marginTop: "8px", fontSize: "12px", color: "var(--text-secondary)", lineHeight: 1.4 }}>
-                  Il template contiene i ruoli e le sedi attualmente configurati. Riscaricare il template se si aggiungono nuovi ruoli o sedi.
-                </div>
-              </div>
-
-              <div style={{ border: "1px solid var(--border)", borderRadius: "8px", padding: "12px" }}>
-                <div style={{ fontWeight: 700, fontSize: "13px", marginBottom: "10px", color: "var(--text-primary)" }}>Upload e importazione</div>
-                <input
-                  type="file"
-                  accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                  onChange={(event) => {
-                    const selectedFile = event.target.files?.[0] ?? null;
-                    if (!selectedFile) { setImportFile(null); return; }
-                    if (!selectedFile.name.toLowerCase().endsWith(".xlsx")) {
-                      setImportFile(null);
-                      setImportError("Formato non valido: seleziona un file .xlsx");
-                      return;
-                    }
-                    setImportError(null);
-                    setImportResult(null);
-                    setImportFile(selectedFile);
-                  }}
-                />
-                {importFile && <div style={{ marginTop: "8px", fontSize: "12px", color: "#166534" }}>{importFile.name} — ✅ File pronto</div>}
-                <button className="db-btn db-btn-outline" style={{ marginTop: "10px" }} disabled={!importFile || importingUsers} onClick={handleImportUsers} type="button">
-                  {importingUsers ? "Importazione in corso..." : "🚀 Inizializza importazione"}
-                </button>
-              </div>
-            </div>
-
-            {importResult && (
-              <div style={{ marginTop: "14px", display: "grid", gap: "10px" }}>
-                <div style={{ background: "#ecfdf5", border: "1px solid #86efac", borderRadius: "8px", padding: "10px 12px", color: "#166534", fontSize: "13px", fontWeight: 600 }}>
-                  ✅ {importResult.imported} utenti importati con successo
-                </div>
-                {importResult.errors.length > 0 && (
-                  <div style={{ background: "#fff7ed", border: "1px solid #fdba74", borderRadius: "8px", padding: "10px 12px", color: "#9a3412", fontSize: "13px" }}>
-                    <div style={{ fontWeight: 700, marginBottom: "6px" }}>Errori rilevati ({importResult.errors.length} su {importResult.total} righe)</div>
-                    <ul style={{ margin: 0, paddingLeft: "18px", display: "grid", gap: "4px" }}>
-                      {importResult.errors.map((item, index) => (
-                        <li key={`${item.row}-${item.email}-${index}`}>Riga {item.row} ({item.email || "email vuota"}): {item.error}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            )}
-            {importError && (
-              <div style={{ marginTop: "12px", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: "8px", padding: "10px 12px", color: "#b91c1c", fontSize: "13px" }}>
-                ❌ {importError}
-              </div>
-            )}
-          </div>
-
-          {/* User list card */}
-          <div className="db-card">
-            {/* Lista header */}
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 20px", borderBottom: "1px solid var(--border)" }}>
-              <h2 style={{ margin: 0, fontSize: "16px", fontWeight: 700, color: "var(--text-primary)" }}>
-                Lista Utenti ({usersFiltered.length})
-              </h2>
-              <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-                {/* Add user button */}
-                {!bulkMode && (
-                  <button
-                    className="db-btn"
-                    style={{ background: "var(--brand)", color: "white", border: "none", fontSize: "13px" }}
-                    onClick={openAddModal}
-                  >
-                    + Aggiungi Utente
-                  </button>
-                )}
-                {/* Bulk mode toggle */}
-                {!bulkMode ? (
-                  <button
-                    className="db-btn db-btn-outline"
-                    style={{ fontSize: "13px" }}
-                    onClick={toggleBulkMode}
-                  >
-                    Modifica
-                  </button>
-                ) : (
-                  <>
-                    <button
-                      className="db-btn db-btn-outline"
-                      style={{ fontSize: "13px" }}
-                      onClick={exitBulkMode}
-                      disabled={bulkDeleting}
-                    >
-                      Annulla
-                    </button>
-                    <button
-                      className="db-btn"
-                      style={{
-                        fontSize: "13px",
-                        background: selectedIds.size > 0 ? "#ef4444" : "#f3f4f6",
-                        color: selectedIds.size > 0 ? "white" : "#9ca3af",
-                        border: "none",
-                        cursor: selectedIds.size > 0 ? "pointer" : "default",
-                      }}
-                      onClick={handleBulkDelete}
-                      disabled={selectedIds.size === 0 || bulkDeleting}
-                    >
-                      {bulkDeleting ? "Eliminazione…" : `Elimina selezionati${selectedIds.size > 0 ? ` (${selectedIds.size})` : ""}`}
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-
-            {/* Table */}
-            <div style={{ overflowX: "auto" }}>
-              <table className="db-apps-table" style={{ width: "100%", whiteSpace: "nowrap" }}>
-                <thead>
-                  <tr>
-                    {bulkMode && (
-                      <th style={{ width: "40px", textAlign: "center" }}>
-                        <input
-                          type="checkbox"
-                          checked={usersFiltered.length > 0 && selectedIds.size === usersFiltered.length}
-                          onChange={toggleSelectAll}
-                          style={{ width: "16px", height: "16px", accentColor: "var(--brand)", cursor: "pointer" }}
-                          title="Seleziona tutto"
-                        />
-                      </th>
-                    )}
-                    <th>
-                      <input className="db-filter-select" style={{ height: "30px", fontSize: "12px", minWidth: "120px" }} placeholder="Filtro cognome" value={filterSurname} onChange={(e) => setFilterSurname(e.target.value)} />
-                    </th>
-                    <th>
-                      <input className="db-filter-select" style={{ height: "30px", fontSize: "12px", minWidth: "120px" }} placeholder="Filtro nome" value={filterName} onChange={(e) => setFilterName(e.target.value)} />
-                    </th>
-                    <th />
-                    <th>
-                      <select className="db-filter-select" style={{ height: "30px", fontSize: "12px", minWidth: "120px" }} value={filterAccessRole} onChange={(e) => setFilterAccessRole(e.target.value)}>
-                        <option value="">Tutti</option>
-                        <option value="user">User</option>
-                        <option value="admin">Admin</option>
-                        <option value="admin_user">Admin + User</option>
-                      </select>
-                    </th>
-                    <th>
-                      <select className="db-filter-select" style={{ height: "30px", fontSize: "12px", minWidth: "120px" }} value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
-                        <option value="">Tutti</option>
-                        <option value="available">Disponibile</option>
-                        <option value="reserved">Prenotato</option>
-                        <option value="inactive">Inattivo</option>
-                      </select>
-                    </th>
-                    <th>
-                      <select className="db-filter-select" style={{ height: "30px", fontSize: "12px", minWidth: "120px" }} value={filterLocation} onChange={(e) => setFilterLocation(e.target.value)}>
-                        <option value="">Tutte le sedi</option>
-                        {locations.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
-                      </select>
-                    </th>
-                    <th />
-                    <th />
-                    <th />
-                  </tr>
-                  <tr>
-                    {bulkMode && <th style={{ textAlign: "center" }}>✓</th>}
-                    <th>Cognome</th>
-                    <th>Nome</th>
-                    <th>Email</th>
-                    <th>Ruolo accesso</th>
-                    <th>Stato</th>
-                    <th>Sede</th>
-                    <th align="center">Vincolante</th>
-                    <th>Ruolo attuale</th>
-                    <th>Azioni</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {usersFiltered.map((u) => (
-                    <tr key={u.id} style={bulkMode && selectedIds.has(u.id) ? { background: "var(--brand-light)" } : undefined}>
-                      {bulkMode && (
-                        <td style={{ textAlign: "center" }}>
-                          <input
-                            type="checkbox"
-                            checked={selectedIds.has(u.id)}
-                            onChange={() => toggleSelectUser(u.id)}
-                            style={{ width: "16px", height: "16px", accentColor: "var(--brand)", cursor: "pointer" }}
-                          />
-                        </td>
-                      )}
-                      <td><span style={{ fontWeight: 600 }}>{u.last_name ?? "—"}</span></td>
-                      <td><span style={{ fontWeight: 600 }}>{u.first_name ?? "—"}</span></td>
-                      <td>{u.email ?? "—"}</td>
-                      <td>
-                        <select
-                          className="db-filter-select"
-                          style={{ height: "30px", fontSize: "12px", minWidth: "125px" }}
-                          value={u.access_role ?? "user"}
-                          onChange={async (e) => {
-                            try {
-                              await adminUpdateUser(u.id, { access_role: e.target.value as "user" | "admin" | "admin_user" });
-                            } catch (err: unknown) {
-                              alert(err instanceof Error ? err.message : "Errore ruolo accesso");
-                            }
-                          }}
-                        >
-                          <option value="user">User</option>
-                          <option value="admin">Admin</option>
-                          <option value="admin_user">Admin + User</option>
-                        </select>
-                        <div className="db-cell-secondary">{accessRoleLabel(u.access_role)}</div>
-                      </td>
-
-                      <td><span style={stateBadgeStyle(u)}>{stateLabel(u)}</span></td>
-
-                      <td>
-                        <select
-                          className="db-filter-select"
-                          style={{ height: "30px", fontSize: "12px", minWidth: "140px" }}
-                          value={u.location_id ?? ""}
-                          onChange={async (e) => {
-                            try { await adminUpdateUser(u.id, { location_id: e.target.value || null }); }
-                            catch (err: unknown) { alert(err instanceof Error ? err.message : "Errore sede"); }
-                          }}
-                        >
-                          <option value="">— Nessuna —</option>
-                          {locations.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
-                        </select>
-                      </td>
-
-                      <td align="center">
-                        <input
-                          type="checkbox"
-                          checked={!!u.fixed_location}
-                          onChange={async (e) => {
-                            try { await adminUpdateUser(u.id, { fixed_location: e.target.checked }); }
-                            catch (err: unknown) { alert(err instanceof Error ? err.message : "Errore vincolo"); }
-                          }}
-                          style={{ accentColor: "var(--brand)", width: "16px", height: "16px", cursor: "pointer" }}
-                        />
-                      </td>
-
-                      <td>
-                        <select
-                          className="db-filter-select"
-                          style={{ height: "30px", fontSize: "12px", minWidth: "140px" }}
-                          value={u.role_id ?? ""}
-                          onChange={async (e) => {
-                            try { await adminUpdateUser(u.id, { role_id: e.target.value || null }); }
-                            catch (err: unknown) { alert(err instanceof Error ? err.message : "Errore ruolo"); }
-                          }}
-                        >
-                          <option value="">— Nessuno —</option>
-                          {roles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
-                        </select>
-                      </td>
-
-                      <td>
-                        <div style={{ display: "flex", gap: "6px" }}>
-                          <button
-                            className="db-action-btn"
-                            onClick={() => openExplore(u)}
-                            style={{ background: "var(--brand-light)", color: "var(--brand)", border: "1px solid var(--brand-light)", borderRadius: "6px", padding: "4px 10px", fontSize: "12px", fontWeight: 600, cursor: "pointer" }}
-                          >
-                            Esplora
-                          </button>
-                          {!bulkMode && (
-                            <button className="db-action-btn db-action-btn-delete" onClick={async () => {
-                              if (!window.confirm("Eliminare definitivamente questo utente?")) return;
-                              try { await adminDeleteUser(u.id); }
-                              catch (err: unknown) { alert(err instanceof Error ? err.message : "Errore eliminazione"); }
-                            }}>
-                              Elimina
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* OTHERS */}
-      <div style={{ paddingBottom: "40px" }}>
-        {view === "scenarios" && (
-          <AdminScenariosManager
-            key="scenarios"
-            users={users.map((u) => ({ id: u.id, full_name: u.full_name }))}
-            positions={positions.map((p) => ({ id: p.id, title: p.title, occupant_name: p.occupant_name }))}
-            scenarios={scenarios}
-            reloadScenarios={loadScenarios}
-            onScenarioDeleted={handleScenarioDeleted}
-            onScenarioRenamed={handleScenarioRenamed}
-          />
-        )}
-        {view === "locations" && <AdminLocationsManager />}
-        {view === "roles" && <AdminRolesManager />}
-      </div>
-
-    </div>
-  );
-};
-
-/* =======================
-   SMALL HELPERS
-======================= */
 
 const LABEL_STYLE: React.CSSProperties = {
   display: "block",
   fontSize: "12px",
   fontWeight: 600,
   color: "var(--text-secondary)",
-  marginBottom: "5px",
+  marginBottom: "6px",
   textTransform: "uppercase",
   letterSpacing: "0.04em",
 };
@@ -1490,11 +157,1405 @@ const INPUT_STYLE: React.CSSProperties = {
   boxSizing: "border-box",
 };
 
-const FieldRow = ({ label, value }: { label: string; value: string }) => (
-  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: "1px solid #f3f4f6" }}>
-    <span style={{ fontSize: "13px", color: "var(--text-secondary)", fontWeight: 500 }}>{label}</span>
-    <span style={{ fontSize: "13px", color: "var(--text-primary)", fontWeight: 600 }}>{value}</span>
+function normalizeText(value: string | null | undefined): string {
+  return String(value ?? "").trim();
+}
+
+function normalizeEmail(value: string | null | undefined): string {
+  return normalizeText(value).toLowerCase();
+}
+
+function isValidEmail(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function accessRoleLabel(role: string | null | undefined) {
+  if (role === "admin") return "Admin";
+  if (role === "admin_user") return "Admin + User";
+  return "User";
+}
+
+function stateLabel(user: User) {
+  const state = user.user_state ?? "inactive";
+  if (state === "available") return "Disponibile";
+  if (state === "reserved") return "Prenotato";
+  return "Inattivo";
+}
+
+function buildEditForm(user: User): EditUserForm {
+  return {
+    firstName: normalizeText(user.first_name),
+    lastName: normalizeText(user.last_name),
+    email: normalizeText(user.email),
+    roleId: user.role_id ?? "",
+    departmentId: user.department_id ?? "",
+    locationId: user.location_id ?? "",
+    fixedLocation: Boolean(user.fixed_location),
+    accessRole: user.access_role ?? "user",
+    responsabileIds: (user.responsabili ?? []).map((item) => item.id),
+    hrManagerIds: (user.hr_managers ?? []).map((item) => item.id),
+    responsabiliSearch: "",
+    hrSearch: "",
+  };
+}
+
+const SectionCard = ({ title, children, actions }: { title: string; children: React.ReactNode; actions?: React.ReactNode }) => (
+  <div className="db-card" style={{ marginTop: "16px" }}>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: "1px solid var(--border)" }}>
+      <h2 style={{ margin: 0, fontSize: "16px", fontWeight: 700, color: "var(--text-primary)" }}>{title}</h2>
+      {actions ? <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>{actions}</div> : null}
+    </div>
+    <div style={{ padding: "16px 20px" }}>{children}</div>
   </div>
 );
+
+const ManagerTab = ({
+  kind,
+  users,
+  roles,
+  locations,
+  departments,
+  items,
+  loadItems,
+  createItem,
+  updateItem,
+  deleteItem,
+  loadAssignedUsers,
+  assignUsers,
+  removeAssignment,
+}: ManagerTabProps) => {
+  const entityLabel = kind === "responsabili" ? "Responsabile" : "HR";
+  const createButtonLabel = kind === "responsabili" ? "+ Nuovo Responsabile" : "+ Nuovo HR";
+
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [createName, setCreateName] = useState("");
+  const [createEmail, setCreateEmail] = useState("");
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [createSaving, setCreateSaving] = useState(false);
+
+  const [selectedManager, setSelectedManager] = useState<ManagerListItem | null>(null);
+  const [detailName, setDetailName] = useState("");
+  const [detailEmail, setDetailEmail] = useState("");
+  const [detailSaving, setDetailSaving] = useState(false);
+  const [detailError, setDetailError] = useState<string | null>(null);
+  const [assignedUsers, setAssignedUsers] = useState<AssignedUser[]>([]);
+  const [loadingAssignedUsers, setLoadingAssignedUsers] = useState(false);
+
+  const [showPicker, setShowPicker] = useState(false);
+  const [pickerFilters, setPickerFilters] = useState<UserPickerFilters>({ name: "", roleId: "", departmentId: "", locationId: "" });
+  const [pickerSelection, setPickerSelection] = useState<Set<string>>(new Set());
+  const [pickerSaving, setPickerSaving] = useState(false);
+
+  const assignedUserIds = useMemo(() => new Set(assignedUsers.map((user) => user.id)), [assignedUsers]);
+
+  const filteredPickerUsers = useMemo(() => {
+    const filterName = pickerFilters.name.trim().toLowerCase();
+    return users.filter((user) => {
+      const fullName = `${normalizeText(user.first_name)} ${normalizeText(user.last_name)}`.trim().toLowerCase();
+      const byName = !filterName || fullName.includes(filterName) || normalizeText(user.email).toLowerCase().includes(filterName);
+      const byRole = !pickerFilters.roleId || (user.role_id ?? "") === pickerFilters.roleId;
+      const byDepartment = !pickerFilters.departmentId || (user.department_id ?? "") === pickerFilters.departmentId;
+      const byLocation = !pickerFilters.locationId || (user.location_id ?? "") === pickerFilters.locationId;
+      return byName && byRole && byDepartment && byLocation;
+    });
+  }, [users, pickerFilters]);
+
+  const selectableFilteredUserIds = useMemo(
+    () => filteredPickerUsers.map((user) => user.id).filter((id) => !assignedUserIds.has(id)),
+    [filteredPickerUsers, assignedUserIds]
+  );
+
+  const openCreateModal = () => {
+    setShowCreateModal(true);
+    setCreateName("");
+    setCreateEmail("");
+    setCreateError(null);
+  };
+
+  const closeCreateModal = () => {
+    if (createSaving) return;
+    setShowCreateModal(false);
+    setCreateError(null);
+  };
+
+  const handleCreate = async () => {
+    const name = createName.trim();
+    const email = normalizeEmail(createEmail) || null;
+    if (!name) {
+      setCreateError("Il nome è obbligatorio.");
+      return;
+    }
+    if (email && !isValidEmail(email)) {
+      setCreateError("Formato email non valido.");
+      return;
+    }
+    setCreateSaving(true);
+    setCreateError(null);
+    try {
+      await createItem({ name, email });
+      await loadItems();
+      closeCreateModal();
+    } catch (error: unknown) {
+      setCreateError(error instanceof Error ? error.message : "Errore durante la creazione.");
+    } finally {
+      setCreateSaving(false);
+    }
+  };
+
+  const openDetailModal = async (manager: ManagerListItem) => {
+    setSelectedManager(manager);
+    setDetailName(manager.name);
+    setDetailEmail(manager.email ?? "");
+    setDetailError(null);
+    setLoadingAssignedUsers(true);
+    try {
+      const usersList = await loadAssignedUsers(manager.id);
+      setAssignedUsers(usersList);
+    } catch (error: unknown) {
+      setAssignedUsers([]);
+      setDetailError(error instanceof Error ? error.message : "Errore caricamento utenti associati.");
+    } finally {
+      setLoadingAssignedUsers(false);
+    }
+  };
+
+  const closeDetailModal = () => {
+    if (detailSaving) return;
+    setSelectedManager(null);
+    setDetailError(null);
+    setAssignedUsers([]);
+    setShowPicker(false);
+    setPickerSelection(new Set());
+  };
+
+  const handleUpdateDetail = async () => {
+    if (!selectedManager) return;
+    const name = detailName.trim();
+    const email = normalizeEmail(detailEmail) || null;
+    if (!name) {
+      setDetailError("Il nome è obbligatorio.");
+      return;
+    }
+    if (email && !isValidEmail(email)) {
+      setDetailError("Formato email non valido.");
+      return;
+    }
+
+    setDetailSaving(true);
+    setDetailError(null);
+    try {
+      await updateItem(selectedManager.id, { name, email });
+      await loadItems();
+      setSelectedManager((current) => (current ? { ...current, name, email } : current));
+    } catch (error: unknown) {
+      setDetailError(error instanceof Error ? error.message : "Errore durante il salvataggio.");
+    } finally {
+      setDetailSaving(false);
+    }
+  };
+
+  const handleDeleteManager = async (manager: ManagerListItem) => {
+    if (!window.confirm(`Confermi eliminazione di ${manager.name}?`)) return;
+    try {
+      await deleteItem(manager.id);
+      await loadItems();
+      if (selectedManager?.id === manager.id) {
+        closeDetailModal();
+      }
+    } catch (error: unknown) {
+      alert(error instanceof Error ? error.message : "Errore durante eliminazione.");
+    }
+  };
+
+  const handleRemoveAssignedUser = async (userId: string) => {
+    if (!selectedManager) return;
+    try {
+      await removeAssignment(selectedManager.id, userId);
+      const usersList = await loadAssignedUsers(selectedManager.id);
+      setAssignedUsers(usersList);
+      await loadItems();
+    } catch (error: unknown) {
+      alert(error instanceof Error ? error.message : "Errore durante la rimozione dell'associazione.");
+    }
+  };
+
+  const openPicker = () => {
+    setPickerFilters({ name: "", roleId: "", departmentId: "", locationId: "" });
+    setPickerSelection(new Set());
+    setShowPicker(true);
+  };
+
+  const closePicker = () => {
+    if (pickerSaving) return;
+    setShowPicker(false);
+    setPickerSelection(new Set());
+  };
+
+  const togglePickerUser = (userId: string) => {
+    if (assignedUserIds.has(userId)) return;
+    setPickerSelection((prev) => {
+      const next = new Set(prev);
+      if (next.has(userId)) next.delete(userId);
+      else next.add(userId);
+      return next;
+    });
+  };
+
+  const toggleSelectAllPicker = () => {
+    setPickerSelection((prev) => {
+      const allSelected = selectableFilteredUserIds.length > 0 && selectableFilteredUserIds.every((id) => prev.has(id));
+      if (allSelected) {
+        const next = new Set(prev);
+        selectableFilteredUserIds.forEach((id) => next.delete(id));
+        return next;
+      }
+      const next = new Set(prev);
+      selectableFilteredUserIds.forEach((id) => next.add(id));
+      return next;
+    });
+  };
+
+  const handleConfirmPicker = async () => {
+    if (!selectedManager) return;
+    const toAssign = [...pickerSelection];
+    if (toAssign.length === 0) {
+      closePicker();
+      return;
+    }
+    setPickerSaving(true);
+    try {
+      await assignUsers(selectedManager.id, toAssign);
+      const usersList = await loadAssignedUsers(selectedManager.id);
+      setAssignedUsers(usersList);
+      await loadItems();
+      closePicker();
+    } catch (error: unknown) {
+      alert(error instanceof Error ? error.message : "Errore durante l'associazione utenti.");
+    } finally {
+      setPickerSaving(false);
+    }
+  };
+
+  return (
+    <>
+      <SectionCard
+        title={`${entityLabel} (${items.length})`}
+        actions={
+          <button className="db-btn" style={{ background: "var(--brand)", color: "white", border: "none" }} onClick={openCreateModal}>
+            {createButtonLabel}
+          </button>
+        }
+      >
+        <div style={{ overflowX: "auto" }}>
+          <table className="db-apps-table" style={{ width: "100%", whiteSpace: "nowrap" }}>
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>Email</th>
+                <th>N. Utenti associati</th>
+                <th>Azioni</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((item) => (
+                <tr key={item.id}>
+                  <td>{item.name}</td>
+                  <td>{item.email || "—"}</td>
+                  <td>{item.assigned_users_count}</td>
+                  <td>
+                    <div style={{ display: "flex", gap: "8px" }}>
+                      <button className="db-action-btn" onClick={() => openDetailModal(item)}>Esplora</button>
+                      <button className="db-action-btn db-action-btn-delete" onClick={() => handleDeleteManager(item)}>Elimina</button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {items.length === 0 && (
+                <tr>
+                  <td colSpan={4} style={{ textAlign: "center", color: "var(--text-secondary)", padding: "16px" }}>
+                    Nessun {entityLabel.toLowerCase()} configurato.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </SectionCard>
+
+      {showCreateModal && (
+        <div style={OVERLAY_STYLE} onClick={closeCreateModal} role="dialog" aria-modal="true">
+          <div style={{ ...MODAL_STYLE, maxWidth: "520px" }} onClick={(event) => event.stopPropagation()}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+              <h3 style={{ margin: 0 }}>{createButtonLabel.replace("+ ", "")}</h3>
+              <button onClick={closeCreateModal} style={{ background: "none", border: "none", fontSize: "20px", cursor: "pointer" }}>×</button>
+            </div>
+            <div style={{ display: "grid", gap: "12px" }}>
+              <div>
+                <label style={LABEL_STYLE}>Nome *</label>
+                <input className="db-filter-select" style={INPUT_STYLE} value={createName} onChange={(event) => setCreateName(event.target.value)} disabled={createSaving} />
+              </div>
+              <div>
+                <label style={LABEL_STYLE}>Email</label>
+                <input className="db-filter-select" style={INPUT_STYLE} value={createEmail} onChange={(event) => setCreateEmail(event.target.value)} disabled={createSaving} />
+              </div>
+            </div>
+            {createError && (
+              <div style={{ marginTop: "12px", padding: "10px", border: "1px solid #fecaca", background: "#fef2f2", color: "#b91c1c", borderRadius: "8px" }}>
+                {createError}
+              </div>
+            )}
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "16px" }}>
+              <button className="db-btn db-btn-outline" onClick={closeCreateModal} disabled={createSaving}>Annulla</button>
+              <button className="db-btn" style={{ background: "var(--brand)", color: "white", border: "none" }} onClick={handleCreate} disabled={createSaving}>
+                {createSaving ? "Salvataggio..." : "Salva"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {selectedManager && (
+        <div style={OVERLAY_STYLE} onClick={closeDetailModal} role="dialog" aria-modal="true">
+          <div style={{ ...MODAL_STYLE, maxWidth: "940px" }} onClick={(event) => event.stopPropagation()}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+              <h3 style={{ margin: 0 }}>{entityLabel}: {selectedManager.name}</h3>
+              <button onClick={closeDetailModal} style={{ background: "none", border: "none", fontSize: "20px", cursor: "pointer" }}>×</button>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "12px", marginBottom: "12px" }}>
+              <div>
+                <label style={LABEL_STYLE}>Nome *</label>
+                <input className="db-filter-select" style={INPUT_STYLE} value={detailName} onChange={(event) => setDetailName(event.target.value)} disabled={detailSaving} />
+              </div>
+              <div>
+                <label style={LABEL_STYLE}>Email</label>
+                <input className="db-filter-select" style={INPUT_STYLE} value={detailEmail} onChange={(event) => setDetailEmail(event.target.value)} disabled={detailSaving} />
+              </div>
+            </div>
+
+            {detailError && (
+              <div style={{ marginBottom: "12px", padding: "10px", border: "1px solid #fecaca", background: "#fef2f2", color: "#b91c1c", borderRadius: "8px" }}>
+                {detailError}
+              </div>
+            )}
+
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+              <h4 style={{ margin: 0 }}>Utenti associati ({assignedUsers.length})</h4>
+              <div style={{ display: "flex", gap: "8px" }}>
+                <button className="db-btn db-btn-outline" onClick={handleUpdateDetail} disabled={detailSaving}>
+                  {detailSaving ? "Salvataggio..." : "Salva"}
+                </button>
+                <button className="db-btn" style={{ background: "var(--brand)", color: "white", border: "none" }} onClick={openPicker}>
+                  Associa utenti
+                </button>
+              </div>
+            </div>
+
+            <div style={{ overflowX: "auto", border: "1px solid var(--border)", borderRadius: "8px" }}>
+              <table className="db-apps-table" style={{ width: "100%", whiteSpace: "nowrap" }}>
+                <thead>
+                  <tr>
+                    <th>Nome</th>
+                    <th>Cognome</th>
+                    <th>Ruolo</th>
+                    <th>Reparto</th>
+                    <th>Sede</th>
+                    <th>Azioni</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loadingAssignedUsers && (
+                    <tr>
+                      <td colSpan={6} style={{ textAlign: "center", color: "var(--text-secondary)", padding: "12px" }}>Caricamento...</td>
+                    </tr>
+                  )}
+                  {!loadingAssignedUsers && assignedUsers.map((user) => (
+                    <tr key={user.id}>
+                      <td>{user.first_name ?? "—"}</td>
+                      <td>{user.last_name ?? "—"}</td>
+                      <td>{user.role_name ?? "—"}</td>
+                      <td>{user.department_name ?? "—"}</td>
+                      <td>{user.location_name ?? "—"}</td>
+                      <td>
+                        <button className="db-action-btn db-action-btn-delete" onClick={() => handleRemoveAssignedUser(user.id)}>Rimuovi</button>
+                      </td>
+                    </tr>
+                  ))}
+                  {!loadingAssignedUsers && assignedUsers.length === 0 && (
+                    <tr>
+                      <td colSpan={6} style={{ textAlign: "center", color: "var(--text-secondary)", padding: "12px" }}>
+                        Nessun utente associato.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            <div style={{ marginTop: "16px", display: "flex", justifyContent: "space-between", gap: "8px" }}>
+              <button className="db-btn db-btn-danger" onClick={() => handleDeleteManager(selectedManager)} disabled={detailSaving}>
+                Elimina {entityLabel.toLowerCase()}
+              </button>
+              <button className="db-btn db-btn-outline" onClick={closeDetailModal} disabled={detailSaving}>Chiudi</button>
+            </div>
+
+            {showPicker && (
+              <div style={OVERLAY_STYLE} onClick={closePicker} role="dialog" aria-modal="true">
+                <div style={{ ...MODAL_STYLE, maxWidth: "1080px" }} onClick={(event) => event.stopPropagation()}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+                    <h3 style={{ margin: 0 }}>Associa utenti</h3>
+                    <button onClick={closePicker} style={{ background: "none", border: "none", fontSize: "20px", cursor: "pointer" }}>×</button>
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", gap: "8px", marginBottom: "10px" }}>
+                    <input
+                      className="db-filter-select"
+                      style={INPUT_STYLE}
+                      placeholder="Nome o email"
+                      value={pickerFilters.name}
+                      onChange={(event) => setPickerFilters((prev) => ({ ...prev, name: event.target.value }))}
+                    />
+                    <select className="db-filter-select" style={INPUT_STYLE} value={pickerFilters.roleId} onChange={(event) => setPickerFilters((prev) => ({ ...prev, roleId: event.target.value }))}>
+                      <option value="">Tutti i ruoli</option>
+                      {roles.map((role) => <option key={role.id} value={role.id}>{role.name}</option>)}
+                    </select>
+                    <select className="db-filter-select" style={INPUT_STYLE} value={pickerFilters.departmentId} onChange={(event) => setPickerFilters((prev) => ({ ...prev, departmentId: event.target.value }))}>
+                      <option value="">Tutti i reparti</option>
+                      {departments.map((department) => <option key={department.id} value={department.id}>{department.name}</option>)}
+                    </select>
+                    <select className="db-filter-select" style={INPUT_STYLE} value={pickerFilters.locationId} onChange={(event) => setPickerFilters((prev) => ({ ...prev, locationId: event.target.value }))}>
+                      <option value="">Tutte le sedi</option>
+                      {locations.map((location) => <option key={location.id} value={location.id}>{location.name}</option>)}
+                    </select>
+                  </div>
+
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
+                    <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
+                      <input
+                        type="checkbox"
+                        checked={selectableFilteredUserIds.length > 0 && selectableFilteredUserIds.every((id) => pickerSelection.has(id))}
+                        onChange={toggleSelectAllPicker}
+                      />
+                      Seleziona tutti
+                    </label>
+                    <span style={{ fontSize: "12px", color: "var(--text-secondary)" }}>
+                      Già associati: {assignedUserIds.size}
+                    </span>
+                  </div>
+
+                  <div style={{ maxHeight: "360px", overflowY: "auto", border: "1px solid var(--border)", borderRadius: "8px" }}>
+                    <table className="db-apps-table" style={{ width: "100%", whiteSpace: "nowrap" }}>
+                      <thead>
+                        <tr>
+                          <th style={{ width: "52px" }}>✓</th>
+                          <th>Nome</th>
+                          <th>Cognome</th>
+                          <th>Ruolo</th>
+                          <th>Reparto</th>
+                          <th>Sede</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredPickerUsers.map((user) => {
+                          const alreadyAssigned = assignedUserIds.has(user.id);
+                          return (
+                            <tr key={user.id} style={alreadyAssigned ? { background: "#f8fafc" } : undefined}>
+                              <td style={{ textAlign: "center" }}>
+                                <input
+                                  type="checkbox"
+                                  checked={alreadyAssigned || pickerSelection.has(user.id)}
+                                  disabled={alreadyAssigned}
+                                  onChange={() => togglePickerUser(user.id)}
+                                />
+                              </td>
+                              <td>{user.first_name ?? "—"}</td>
+                              <td>{user.last_name ?? "—"}</td>
+                              <td>{user.role_name ?? "—"}</td>
+                              <td>{user.department_name ?? "—"}</td>
+                              <td>{user.location_name ?? "—"}</td>
+                            </tr>
+                          );
+                        })}
+                        {filteredPickerUsers.length === 0 && (
+                          <tr>
+                            <td colSpan={6} style={{ textAlign: "center", color: "var(--text-secondary)", padding: "12px" }}>
+                              Nessun utente trovato con i filtri correnti.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "12px" }}>
+                    <button className="db-btn db-btn-outline" onClick={closePicker} disabled={pickerSaving}>Annulla</button>
+                    <button
+                      className="db-btn"
+                      style={{ background: "var(--brand)", color: "white", border: "none" }}
+                      onClick={handleConfirmPicker}
+                      disabled={pickerSaving}
+                    >
+                      {pickerSaving ? "Salvataggio..." : "Conferma"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </>
+  );
+};
+
+const AdminTestUsers = () => {
+  const initialTab = (() => {
+    if (typeof window === "undefined") return "users" as ConfigTab;
+    const section = new URLSearchParams(window.location.search).get("section");
+    const normalized = section === "users" || section === "roles" || section === "locations" || section === "departments" || section === "responsabili" || section === "hr"
+      ? section
+      : "users";
+    return normalized;
+  })();
+
+  const [activeTab, setActiveTab] = useState<ConfigTab>(initialTab);
+
+  const [users, setUsers] = useState<User[]>([]);
+  const [roles, setRoles] = useState<RoleOption[]>([]);
+  const [locations, setLocations] = useState<LocationOption[]>([]);
+  const [departments, setDepartments] = useState<DepartmentOption[]>([]);
+  const [responsabili, setResponsabili] = useState<ManagerListItem[]>([]);
+  const [hrManagers, setHrManagers] = useState<ManagerListItem[]>([]);
+
+  const [loading, setLoading] = useState(false);
+  const [topError, setTopError] = useState<string | null>(null);
+
+  const [showAddUserModal, setShowAddUserModal] = useState(false);
+  const [addUserForm, setAddUserForm] = useState<AddUserForm>(EMPTY_ADD_FORM);
+  const [addUserError, setAddUserError] = useState<string | null>(null);
+  const [addUserSaving, setAddUserSaving] = useState(false);
+
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [editUserForm, setEditUserForm] = useState<EditUserForm | null>(null);
+  const [editUserSaving, setEditUserSaving] = useState(false);
+  const [editUserError, setEditUserError] = useState<string | null>(null);
+
+  const [filterName, setFilterName] = useState("");
+  const [filterSurname, setFilterSurname] = useState("");
+  const [filterStatus, setFilterStatus] = useState("");
+  const [filterRole, setFilterRole] = useState("");
+  const [filterDepartment, setFilterDepartment] = useState("");
+  const [filterLocation, setFilterLocation] = useState("");
+
+  const [newDepartmentName, setNewDepartmentName] = useState("");
+  const [departmentSaving, setDepartmentSaving] = useState(false);
+  const [departmentError, setDepartmentError] = useState<string | null>(null);
+  const [editingDepartmentId, setEditingDepartmentId] = useState<string | null>(null);
+  const [editingDepartmentName, setEditingDepartmentName] = useState("");
+
+  const loadUsers = async () => {
+    const data = await appApi.adminGetUsers();
+    setUsers(data as User[]);
+  };
+
+  const loadRoles = async () => {
+    const data = await appApi.adminGetRoles();
+    setRoles(data as RoleOption[]);
+  };
+
+  const loadLocations = async () => {
+    const data = await appApi.adminGetLocations();
+    setLocations(data as LocationOption[]);
+  };
+
+  const loadDepartments = async () => {
+    const data = await appApi.adminGetDepartments();
+    setDepartments(data as DepartmentOption[]);
+  };
+
+  const loadResponsabili = async () => {
+    const data = await appApi.adminGetResponsabili();
+    setResponsabili(data as ManagerListItem[]);
+  };
+
+  const loadHrManagers = async () => {
+    const data = await appApi.adminGetHrManagers();
+    setHrManagers(data as ManagerListItem[]);
+  };
+
+  const loadAll = async () => {
+    setLoading(true);
+    setTopError(null);
+    try {
+      await Promise.all([
+        loadUsers(),
+        loadRoles(),
+        loadLocations(),
+        loadDepartments(),
+        loadResponsabili(),
+        loadHrManagers(),
+      ]);
+    } catch (error: unknown) {
+      setTopError(error instanceof Error ? error.message : "Errore durante il caricamento dati.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadAll();
+  }, []);
+
+  const usersFiltered = useMemo(() => {
+    return users.filter((user) => {
+      const userName = normalizeText(user.first_name).toLowerCase();
+      const userSurname = normalizeText(user.last_name).toLowerCase();
+      const userState = String(user.user_state ?? user.availability_status ?? "").toLowerCase();
+
+      const byName = !filterName.trim() || userName.includes(filterName.trim().toLowerCase());
+      const bySurname = !filterSurname.trim() || userSurname.includes(filterSurname.trim().toLowerCase());
+      const byState = !filterStatus || userState === filterStatus.toLowerCase();
+      const byRole = !filterRole || (user.role_id ?? "") === filterRole;
+      const byDepartment = !filterDepartment || (user.department_id ?? "") === filterDepartment;
+      const byLocation = !filterLocation || (user.location_id ?? "") === filterLocation;
+      return byName && bySurname && byState && byRole && byDepartment && byLocation;
+    });
+  }, [users, filterName, filterSurname, filterStatus, filterRole, filterDepartment, filterLocation]);
+
+  const openAddUserModal = () => {
+    setAddUserForm(EMPTY_ADD_FORM);
+    setAddUserError(null);
+    setShowAddUserModal(true);
+  };
+
+  const closeAddUserModal = () => {
+    if (addUserSaving) return;
+    setShowAddUserModal(false);
+    setAddUserError(null);
+  };
+
+  const handleAddUser = async () => {
+    const firstName = addUserForm.firstName.trim();
+    const lastName = addUserForm.lastName.trim();
+    const email = normalizeEmail(addUserForm.email);
+    if (!firstName || !lastName || !email) {
+      setAddUserError("Nome, Cognome ed Email sono obbligatori.");
+      return;
+    }
+    if (!isValidEmail(email)) {
+      setAddUserError("Formato email non valido.");
+      return;
+    }
+
+    setAddUserSaving(true);
+    setAddUserError(null);
+    try {
+      const result = await appApi.adminInviteUser({
+        first_name: firstName,
+        last_name: lastName,
+        full_name: `${firstName} ${lastName}`,
+        email,
+        location_id: addUserForm.locationId || null,
+        access_role: addUserForm.accessRole,
+      });
+      const userId = (result as { user?: { id?: string } })?.user?.id;
+      if (userId) {
+        await Promise.all([
+          appApi.adminPatchUser(userId, {
+            first_name: firstName,
+            last_name: lastName,
+            email,
+            role_id: addUserForm.roleId || null,
+            department_id: addUserForm.departmentId || null,
+            location_id: addUserForm.locationId || null,
+            fixed_location: addUserForm.fixedLocation,
+          }),
+          appApi.adminPatchUserAccessRole(userId, addUserForm.accessRole),
+        ]);
+      }
+      closeAddUserModal();
+      await Promise.all([loadUsers(), loadDepartments()]);
+    } catch (error: unknown) {
+      setAddUserError(error instanceof Error ? error.message : "Errore durante la creazione utente.");
+    } finally {
+      setAddUserSaving(false);
+    }
+  };
+
+  const openUserEditor = (user: User) => {
+    setSelectedUser(user);
+    setEditUserForm(buildEditForm(user));
+    setEditUserError(null);
+  };
+
+  const closeUserEditor = () => {
+    if (editUserSaving) return;
+    setSelectedUser(null);
+    setEditUserForm(null);
+    setEditUserError(null);
+  };
+
+  const toggleManagerSelection = (field: "responsabileIds" | "hrManagerIds", managerId: string) => {
+    setEditUserForm((prev) => {
+      if (!prev) return prev;
+      const next = new Set(prev[field]);
+      if (next.has(managerId)) next.delete(managerId);
+      else next.add(managerId);
+      return { ...prev, [field]: [...next] };
+    });
+  };
+
+  const syncManagerAssignments = async (
+    kind: ManagerKind,
+    currentIds: string[],
+    selectedIds: string[],
+    userId: string
+  ) => {
+    const current = new Set(currentIds);
+    const selected = new Set(selectedIds);
+    const toAdd = [...selected].filter((id) => !current.has(id));
+    const toRemove = [...current].filter((id) => !selected.has(id));
+
+    if (kind === "responsabili") {
+      await Promise.all([
+        ...toAdd.map((managerId) => appApi.adminAssignResponsabileUsers(managerId, [userId])),
+        ...toRemove.map((managerId) => appApi.adminRemoveResponsabileUser(managerId, userId)),
+      ]);
+      return;
+    }
+
+    await Promise.all([
+      ...toAdd.map((managerId) => appApi.adminAssignHrManagerUsers(managerId, [userId])),
+      ...toRemove.map((managerId) => appApi.adminRemoveHrManagerUser(managerId, userId)),
+    ]);
+  };
+
+  const handleSaveUser = async () => {
+    if (!selectedUser || !editUserForm) return;
+
+    const firstName = normalizeText(editUserForm.firstName);
+    const lastName = normalizeText(editUserForm.lastName);
+    const email = normalizeEmail(editUserForm.email);
+
+    if (!firstName || !lastName || !email) {
+      setEditUserError("Nome, Cognome ed Email sono obbligatori.");
+      return;
+    }
+    if (!isValidEmail(email)) {
+      setEditUserError("Formato email non valido.");
+      return;
+    }
+
+    setEditUserSaving(true);
+    setEditUserError(null);
+    try {
+      const patchUserPromise = appApi.adminPatchUser(selectedUser.id, {
+        first_name: firstName,
+        last_name: lastName,
+        email,
+        role_id: editUserForm.roleId || null,
+        department_id: editUserForm.departmentId || null,
+        location_id: editUserForm.locationId || null,
+        fixed_location: editUserForm.fixedLocation,
+      });
+
+      const patchAccessRolePromise = selectedUser.access_role !== editUserForm.accessRole
+        ? appApi.adminPatchUserAccessRole(selectedUser.id, editUserForm.accessRole)
+        : Promise.resolve(null);
+
+      const syncResponsabiliPromise = syncManagerAssignments(
+        "responsabili",
+        (selectedUser.responsabili ?? []).map((item) => item.id),
+        editUserForm.responsabileIds,
+        selectedUser.id
+      );
+
+      const syncHrPromise = syncManagerAssignments(
+        "hr",
+        (selectedUser.hr_managers ?? []).map((item) => item.id),
+        editUserForm.hrManagerIds,
+        selectedUser.id
+      );
+
+      await Promise.all([
+        patchUserPromise,
+        patchAccessRolePromise,
+        syncResponsabiliPromise,
+        syncHrPromise,
+      ]);
+
+      closeUserEditor();
+      await Promise.all([loadUsers(), loadDepartments(), loadResponsabili(), loadHrManagers()]);
+    } catch (error: unknown) {
+      setEditUserError(error instanceof Error ? error.message : "Errore durante il salvataggio utente.");
+    } finally {
+      setEditUserSaving(false);
+    }
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    if (!window.confirm("Eliminare definitivamente questo utente?")) return;
+    try {
+      await appApi.adminDeleteUser(userId);
+      await Promise.all([loadUsers(), loadDepartments()]);
+      if (selectedUser?.id === userId) {
+        closeUserEditor();
+      }
+    } catch (error: unknown) {
+      alert(error instanceof Error ? error.message : "Errore durante eliminazione utente.");
+    }
+  };
+
+  const handleCreateDepartment = async () => {
+    const name = newDepartmentName.trim();
+    if (!name) {
+      setDepartmentError("Il nome del reparto è obbligatorio.");
+      return;
+    }
+
+    setDepartmentSaving(true);
+    setDepartmentError(null);
+    try {
+      await appApi.adminCreateDepartment({ name });
+      setNewDepartmentName("");
+      await Promise.all([loadDepartments(), loadUsers()]);
+    } catch (error: unknown) {
+      setDepartmentError(error instanceof Error ? error.message : "Errore durante creazione reparto.");
+    } finally {
+      setDepartmentSaving(false);
+    }
+  };
+
+  const startRenameDepartment = (department: DepartmentOption) => {
+    setEditingDepartmentId(department.id);
+    setEditingDepartmentName(department.name);
+  };
+
+  const cancelRenameDepartment = () => {
+    setEditingDepartmentId(null);
+    setEditingDepartmentName("");
+  };
+
+  const handleRenameDepartment = async (departmentId: string) => {
+    const name = editingDepartmentName.trim();
+    if (!name) {
+      alert("Il nome del reparto è obbligatorio.");
+      return;
+    }
+    try {
+      await appApi.adminRenameDepartment(departmentId, { name });
+      cancelRenameDepartment();
+      await Promise.all([loadDepartments(), loadUsers()]);
+    } catch (error: unknown) {
+      alert(error instanceof Error ? error.message : "Errore durante rinomina reparto.");
+    }
+  };
+
+  const handleDeleteDepartment = async (department: DepartmentOption) => {
+    if (!window.confirm(`Eliminare il reparto ${department.name}?`)) return;
+    try {
+      await appApi.adminDeleteDepartment(department.id);
+      await Promise.all([loadDepartments(), loadUsers()]);
+    } catch (error: unknown) {
+      if (error instanceof AppApiError && error.code === "DEPARTMENT_HAS_USERS") {
+        alert("Impossibile eliminare: ci sono utenti assegnati a questo reparto.");
+        return;
+      }
+      alert(error instanceof Error ? error.message : "Errore durante eliminazione reparto.");
+    }
+  };
+
+  const switchTab = (nextTab: ConfigTab) => {
+    setActiveTab(nextTab);
+    if (typeof window !== "undefined") {
+      window.history.replaceState({}, "", `/admin/test-users?section=${nextTab}`);
+    }
+  };
+
+  const filteredResponsabiliOptions = useMemo(() => {
+    const search = editUserForm?.responsabiliSearch?.trim().toLowerCase() ?? "";
+    if (!search) return responsabili;
+    return responsabili.filter((item) => item.name.toLowerCase().includes(search) || normalizeText(item.email).toLowerCase().includes(search));
+  }, [editUserForm?.responsabiliSearch, responsabili]);
+
+  const filteredHrOptions = useMemo(() => {
+    const search = editUserForm?.hrSearch?.trim().toLowerCase() ?? "";
+    if (!search) return hrManagers;
+    return hrManagers.filter((item) => item.name.toLowerCase().includes(search) || normalizeText(item.email).toLowerCase().includes(search));
+  }, [editUserForm?.hrSearch, hrManagers]);
+
+  return (
+    <div style={{ minHeight: "100vh", background: "var(--surface, #f1f5f9)", fontFamily: "var(--font, 'Inter', sans-serif)", padding: "24px" }}>
+      <div style={{ marginBottom: "14px" }}>
+        <h1 className="db-card-title" style={{ margin: 0, fontSize: "22px" }}>Configurazione</h1>
+      </div>
+
+      <div className="db-card" style={{ padding: "10px", display: "flex", gap: "8px", flexWrap: "wrap" }}>
+        {TAB_ORDER.map((tab) => (
+          <button
+            key={tab.id}
+            className="db-btn"
+            onClick={() => switchTab(tab.id)}
+            style={{
+              border: "1px solid var(--border)",
+              background: activeTab === tab.id ? "var(--brand)" : "white",
+              color: activeTab === tab.id ? "white" : "var(--text-primary)",
+              fontWeight: activeTab === tab.id ? 700 : 500,
+              padding: "8px 12px",
+            }}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {topError && (
+        <div style={{ marginTop: "12px", padding: "10px 12px", border: "1px solid #fecaca", background: "#fef2f2", borderRadius: "8px", color: "#b91c1c" }}>
+          {topError}
+        </div>
+      )}
+
+      {loading && (
+        <div style={{ marginTop: "12px", color: "var(--text-secondary)", fontSize: "13px" }}>Caricamento dati...</div>
+      )}
+
+      {activeTab === "users" && (
+        <>
+          <SectionCard
+            title={`Lista Utenti (${usersFiltered.length})`}
+            actions={
+              <button className="db-btn" style={{ background: "var(--brand)", color: "white", border: "none" }} onClick={openAddUserModal}>
+                + Aggiungi Utente
+              </button>
+            }
+          >
+            <div style={{ overflowX: "auto" }}>
+              <table className="db-apps-table" style={{ width: "100%", whiteSpace: "nowrap" }}>
+                <thead>
+                  <tr>
+                    <th>
+                      <input className="db-filter-select" style={{ height: "30px", fontSize: "12px", minWidth: "120px" }} placeholder="Filtro cognome" value={filterSurname} onChange={(event) => setFilterSurname(event.target.value)} />
+                    </th>
+                    <th>
+                      <input className="db-filter-select" style={{ height: "30px", fontSize: "12px", minWidth: "120px" }} placeholder="Filtro nome" value={filterName} onChange={(event) => setFilterName(event.target.value)} />
+                    </th>
+                    <th />
+                    <th>
+                      <select className="db-filter-select" style={{ height: "30px", fontSize: "12px", minWidth: "120px" }} value={filterStatus} onChange={(event) => setFilterStatus(event.target.value)}>
+                        <option value="">Tutti</option>
+                        <option value="available">Disponibile</option>
+                        <option value="reserved">Prenotato</option>
+                        <option value="inactive">Inattivo</option>
+                      </select>
+                    </th>
+                    <th>
+                      <select className="db-filter-select" style={{ height: "30px", fontSize: "12px", minWidth: "140px" }} value={filterRole} onChange={(event) => setFilterRole(event.target.value)}>
+                        <option value="">Tutti i ruoli</option>
+                        {roles.map((role) => <option key={role.id} value={role.id}>{role.name}</option>)}
+                      </select>
+                    </th>
+                    <th>
+                      <select className="db-filter-select" style={{ height: "30px", fontSize: "12px", minWidth: "140px" }} value={filterDepartment} onChange={(event) => setFilterDepartment(event.target.value)}>
+                        <option value="">Tutti i reparti</option>
+                        {departments.map((department) => <option key={department.id} value={department.id}>{department.name}</option>)}
+                      </select>
+                    </th>
+                    <th>
+                      <select className="db-filter-select" style={{ height: "30px", fontSize: "12px", minWidth: "140px" }} value={filterLocation} onChange={(event) => setFilterLocation(event.target.value)}>
+                        <option value="">Tutte le sedi</option>
+                        {locations.map((location) => <option key={location.id} value={location.id}>{location.name}</option>)}
+                      </select>
+                    </th>
+                    <th />
+                    <th />
+                  </tr>
+                  <tr>
+                    <th>Cognome</th>
+                    <th>Nome</th>
+                    <th>Email</th>
+                    <th>Stato</th>
+                    <th>Ruolo</th>
+                    <th>Reparto</th>
+                    <th>Sede</th>
+                    <th>Ruolo accesso</th>
+                    <th>Azioni</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {usersFiltered.map((user) => (
+                    <tr key={user.id}>
+                      <td>{user.last_name ?? "—"}</td>
+                      <td>{user.first_name ?? "—"}</td>
+                      <td>{user.email ?? "—"}</td>
+                      <td>{stateLabel(user)}</td>
+                      <td>{user.role_name ?? "—"}</td>
+                      <td>{user.department_name ?? "—"}</td>
+                      <td>{user.location_name ?? "—"}</td>
+                      <td>{accessRoleLabel(user.access_role)}</td>
+                      <td>
+                        <div style={{ display: "flex", gap: "8px" }}>
+                          <button className="db-action-btn" onClick={() => openUserEditor(user)}>Esplora</button>
+                          <button className="db-action-btn db-action-btn-delete" onClick={() => handleDeleteUser(user.id)}>Elimina</button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                  {usersFiltered.length === 0 && (
+                    <tr>
+                      <td colSpan={9} style={{ textAlign: "center", color: "var(--text-secondary)", padding: "16px" }}>Nessun utente trovato.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </SectionCard>
+        </>
+      )}
+
+      {activeTab === "roles" && <AdminRolesManager />}
+
+      {activeTab === "departments" && (
+        <SectionCard
+          title={`Reparti (${departments.length})`}
+          actions={
+            <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+              <input
+                className="db-filter-select"
+                style={{ ...INPUT_STYLE, width: "260px" }}
+                placeholder="Nome reparto"
+                value={newDepartmentName}
+                onChange={(event) => setNewDepartmentName(event.target.value)}
+              />
+              <button className="db-btn" style={{ background: "var(--brand)", color: "white", border: "none" }} onClick={handleCreateDepartment} disabled={departmentSaving}>
+                + Nuovo Reparto
+              </button>
+            </div>
+          }
+        >
+          {departmentError && (
+            <div style={{ marginBottom: "12px", padding: "10px", border: "1px solid #fecaca", background: "#fef2f2", color: "#b91c1c", borderRadius: "8px" }}>
+              {departmentError}
+            </div>
+          )}
+
+          <div style={{ overflowX: "auto" }}>
+            <table className="db-apps-table" style={{ width: "100%", whiteSpace: "nowrap" }}>
+              <thead>
+                <tr>
+                  <th>Nome</th>
+                  <th>N. Utenti assegnati</th>
+                  <th>Azioni</th>
+                </tr>
+              </thead>
+              <tbody>
+                {departments.map((department) => (
+                  <tr key={department.id}>
+                    <td>
+                      {editingDepartmentId === department.id ? (
+                        <input
+                          className="db-filter-select"
+                          style={{ ...INPUT_STYLE, width: "260px" }}
+                          value={editingDepartmentName}
+                          onChange={(event) => setEditingDepartmentName(event.target.value)}
+                        />
+                      ) : (
+                        department.name
+                      )}
+                    </td>
+                    <td>{department.assigned_users_count}</td>
+                    <td>
+                      {editingDepartmentId === department.id ? (
+                        <div style={{ display: "flex", gap: "8px" }}>
+                          <button className="db-action-btn" onClick={() => handleRenameDepartment(department.id)}>Salva</button>
+                          <button className="db-action-btn" onClick={cancelRenameDepartment}>Annulla</button>
+                        </div>
+                      ) : (
+                        <div style={{ display: "flex", gap: "8px" }}>
+                          <button className="db-action-btn" onClick={() => startRenameDepartment(department)}>Modifica</button>
+                          <button
+                            className="db-action-btn db-action-btn-delete"
+                            onClick={() => handleDeleteDepartment(department)}
+                            disabled={department.assigned_users_count > 0}
+                            title={department.assigned_users_count > 0 ? "Impossibile eliminare: ci sono utenti assegnati a questo reparto." : undefined}
+                            style={department.assigned_users_count > 0 ? { opacity: 0.55, cursor: "not-allowed" } : undefined}
+                          >
+                            Elimina
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+                {departments.length === 0 && (
+                  <tr>
+                    <td colSpan={3} style={{ textAlign: "center", color: "var(--text-secondary)", padding: "16px" }}>
+                      Nessun reparto configurato. Aggiungine uno per poterlo assegnare agli utenti.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </SectionCard>
+      )}
+
+      {activeTab === "locations" && <AdminLocationsManager />}
+
+      {activeTab === "responsabili" && (
+        <ManagerTab
+          kind="responsabili"
+          users={users}
+          roles={roles}
+          locations={locations}
+          departments={departments}
+          items={responsabili}
+          loadItems={loadResponsabili}
+          createItem={async (payload) => { await appApi.adminCreateResponsabile(payload); }}
+          updateItem={async (id, payload) => { await appApi.adminPatchResponsabile(id, payload); }}
+          deleteItem={async (id) => { await appApi.adminDeleteResponsabile(id); }}
+          loadAssignedUsers={async (id) => {
+            const data = await appApi.adminGetResponsabileUsers(id);
+            return data as AssignedUser[];
+          }}
+          assignUsers={async (id, userIds) => { await appApi.adminAssignResponsabileUsers(id, userIds); }}
+          removeAssignment={async (id, userId) => { await appApi.adminRemoveResponsabileUser(id, userId); }}
+        />
+      )}
+
+      {activeTab === "hr" && (
+        <ManagerTab
+          kind="hr"
+          users={users}
+          roles={roles}
+          locations={locations}
+          departments={departments}
+          items={hrManagers}
+          loadItems={loadHrManagers}
+          createItem={async (payload) => { await appApi.adminCreateHrManager(payload); }}
+          updateItem={async (id, payload) => { await appApi.adminPatchHrManager(id, payload); }}
+          deleteItem={async (id) => { await appApi.adminDeleteHrManager(id); }}
+          loadAssignedUsers={async (id) => {
+            const data = await appApi.adminGetHrManagerUsers(id);
+            return data as AssignedUser[];
+          }}
+          assignUsers={async (id, userIds) => { await appApi.adminAssignHrManagerUsers(id, userIds); }}
+          removeAssignment={async (id, userId) => { await appApi.adminRemoveHrManagerUser(id, userId); }}
+        />
+      )}
+
+      {showAddUserModal && (
+        <div style={OVERLAY_STYLE} onClick={closeAddUserModal} role="dialog" aria-modal="true">
+          <div style={{ ...MODAL_STYLE, maxWidth: "520px" }} onClick={(event) => event.stopPropagation()}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+              <h3 style={{ margin: 0 }}>Aggiungi Utente</h3>
+              <button onClick={closeAddUserModal} style={{ background: "none", border: "none", fontSize: "20px", cursor: "pointer" }}>×</button>
+            </div>
+
+            <div style={{ display: "grid", gap: "12px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                <div>
+                  <label style={LABEL_STYLE}>Nome *</label>
+                  <input className="db-filter-select" style={INPUT_STYLE} value={addUserForm.firstName} onChange={(event) => setAddUserForm((prev) => ({ ...prev, firstName: event.target.value }))} />
+                </div>
+                <div>
+                  <label style={LABEL_STYLE}>Cognome *</label>
+                  <input className="db-filter-select" style={INPUT_STYLE} value={addUserForm.lastName} onChange={(event) => setAddUserForm((prev) => ({ ...prev, lastName: event.target.value }))} />
+                </div>
+              </div>
+
+              <div>
+                <label style={LABEL_STYLE}>Email *</label>
+                <input className="db-filter-select" style={INPUT_STYLE} type="email" value={addUserForm.email} onChange={(event) => setAddUserForm((prev) => ({ ...prev, email: event.target.value }))} />
+              </div>
+
+              <div>
+                <label style={LABEL_STYLE}>Ruolo</label>
+                <select className="db-filter-select" style={INPUT_STYLE} value={addUserForm.roleId} onChange={(event) => setAddUserForm((prev) => ({ ...prev, roleId: event.target.value }))}>
+                  <option value="">— Nessuno —</option>
+                  {roles.map((role) => <option key={role.id} value={role.id}>{role.name}</option>)}
+                </select>
+              </div>
+
+              <div>
+                <label style={LABEL_STYLE}>Reparto</label>
+                <select className="db-filter-select" style={INPUT_STYLE} value={addUserForm.departmentId} onChange={(event) => setAddUserForm((prev) => ({ ...prev, departmentId: event.target.value }))}>
+                  <option value="">Nessun reparto</option>
+                  {departments.map((department) => <option key={department.id} value={department.id}>{department.name}</option>)}
+                </select>
+              </div>
+
+              <div>
+                <label style={LABEL_STYLE}>Sede</label>
+                <select className="db-filter-select" style={INPUT_STYLE} value={addUserForm.locationId} onChange={(event) => setAddUserForm((prev) => ({ ...prev, locationId: event.target.value }))}>
+                  <option value="">— Nessuna —</option>
+                  {locations.map((location) => <option key={location.id} value={location.id}>{location.name}</option>)}
+                </select>
+              </div>
+
+              <label style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <input type="checkbox" checked={addUserForm.fixedLocation} onChange={(event) => setAddUserForm((prev) => ({ ...prev, fixedLocation: event.target.checked }))} />
+                Sede vincolante
+              </label>
+
+              <div>
+                <label style={LABEL_STYLE}>Ruolo accesso</label>
+                <select className="db-filter-select" style={INPUT_STYLE} value={addUserForm.accessRole} onChange={(event) => setAddUserForm((prev) => ({ ...prev, accessRole: event.target.value as AddUserForm["accessRole"] }))}>
+                  <option value="user">User</option>
+                  <option value="admin">Admin</option>
+                  <option value="admin_user">Admin + User</option>
+                </select>
+              </div>
+            </div>
+
+            {addUserError && (
+              <div style={{ marginTop: "12px", padding: "10px", border: "1px solid #fecaca", background: "#fef2f2", color: "#b91c1c", borderRadius: "8px" }}>
+                {addUserError}
+              </div>
+            )}
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "16px" }}>
+              <button className="db-btn db-btn-outline" onClick={closeAddUserModal} disabled={addUserSaving}>Annulla</button>
+              <button className="db-btn" style={{ background: "var(--brand)", color: "white", border: "none" }} onClick={handleAddUser} disabled={addUserSaving}>
+                {addUserSaving ? "Salvataggio..." : "Salva"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {selectedUser && editUserForm && (
+        <div style={OVERLAY_STYLE} onClick={closeUserEditor} role="dialog" aria-modal="true">
+          <div style={{ ...MODAL_STYLE, maxWidth: "1080px" }} onClick={(event) => event.stopPropagation()}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+              <h3 style={{ margin: 0 }}>Esplora Utente</h3>
+              <button onClick={closeUserEditor} style={{ background: "none", border: "none", fontSize: "20px", cursor: "pointer" }}>×</button>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", gap: "10px" }}>
+              <div>
+                <label style={LABEL_STYLE}>Nome *</label>
+                <input className="db-filter-select" style={INPUT_STYLE} value={editUserForm.firstName} onChange={(event) => setEditUserForm((prev) => (prev ? { ...prev, firstName: event.target.value } : prev))} disabled={editUserSaving} />
+              </div>
+              <div>
+                <label style={LABEL_STYLE}>Cognome *</label>
+                <input className="db-filter-select" style={INPUT_STYLE} value={editUserForm.lastName} onChange={(event) => setEditUserForm((prev) => (prev ? { ...prev, lastName: event.target.value } : prev))} disabled={editUserSaving} />
+              </div>
+              <div>
+                <label style={LABEL_STYLE}>Email *</label>
+                <input className="db-filter-select" style={INPUT_STYLE} value={editUserForm.email} onChange={(event) => setEditUserForm((prev) => (prev ? { ...prev, email: event.target.value } : prev))} disabled={editUserSaving} />
+              </div>
+              <div>
+                <label style={LABEL_STYLE}>Ruolo</label>
+                <select className="db-filter-select" style={INPUT_STYLE} value={editUserForm.roleId} onChange={(event) => setEditUserForm((prev) => (prev ? { ...prev, roleId: event.target.value } : prev))} disabled={editUserSaving}>
+                  <option value="">— Nessuno —</option>
+                  {roles.map((role) => <option key={role.id} value={role.id}>{role.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={LABEL_STYLE}>Reparto</label>
+                <select className="db-filter-select" style={INPUT_STYLE} value={editUserForm.departmentId} onChange={(event) => setEditUserForm((prev) => (prev ? { ...prev, departmentId: event.target.value } : prev))} disabled={editUserSaving}>
+                  <option value="">Nessun reparto</option>
+                  {departments.map((department) => <option key={department.id} value={department.id}>{department.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={LABEL_STYLE}>Sede</label>
+                <select className="db-filter-select" style={INPUT_STYLE} value={editUserForm.locationId} onChange={(event) => setEditUserForm((prev) => (prev ? { ...prev, locationId: event.target.value } : prev))} disabled={editUserSaving}>
+                  <option value="">— Nessuna —</option>
+                  {locations.map((location) => <option key={location.id} value={location.id}>{location.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={LABEL_STYLE}>Ruolo accesso</label>
+                <select className="db-filter-select" style={INPUT_STYLE} value={editUserForm.accessRole} onChange={(event) => setEditUserForm((prev) => (prev ? { ...prev, accessRole: event.target.value as EditUserForm["accessRole"] } : prev))} disabled={editUserSaving}>
+                  <option value="user">User</option>
+                  <option value="admin">Admin</option>
+                  <option value="admin_user">Admin + User</option>
+                </select>
+              </div>
+              <div>
+                <label style={LABEL_STYLE}>Stato</label>
+                <input className="db-filter-select" style={{ ...INPUT_STYLE, background: "#f8fafc" }} value={stateLabel(selectedUser)} readOnly />
+              </div>
+              <div>
+                <label style={LABEL_STYLE}>Candidature attive</label>
+                <input className="db-filter-select" style={{ ...INPUT_STYLE, background: "#f8fafc" }} value={String(selectedUser.application_count ?? 0)} readOnly />
+              </div>
+            </div>
+
+            <label style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "10px" }}>
+              <input type="checkbox" checked={editUserForm.fixedLocation} onChange={(event) => setEditUserForm((prev) => (prev ? { ...prev, fixedLocation: event.target.checked } : prev))} disabled={editUserSaving} />
+              Sede vincolante
+            </label>
+
+            <div style={{ marginTop: "12px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+              <div style={{ border: "1px solid var(--border)", borderRadius: "8px", padding: "10px" }}>
+                <h4 style={{ margin: "0 0 8px 0" }}>Responsabile</h4>
+                <input
+                  className="db-filter-select"
+                  style={{ ...INPUT_STYLE, marginBottom: "8px" }}
+                  placeholder="Cerca responsabile"
+                  value={editUserForm.responsabiliSearch}
+                  onChange={(event) => setEditUserForm((prev) => (prev ? { ...prev, responsabiliSearch: event.target.value } : prev))}
+                  disabled={editUserSaving}
+                />
+                <div style={{ maxHeight: "180px", overflowY: "auto", border: "1px solid var(--border)", borderRadius: "6px" }}>
+                  {filteredResponsabiliOptions.map((item) => (
+                    <label key={item.id} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px", borderBottom: "1px solid #f1f5f9" }}>
+                      <input type="checkbox" checked={editUserForm.responsabileIds.includes(item.id)} onChange={() => toggleManagerSelection("responsabileIds", item.id)} disabled={editUserSaving} />
+                      <span>{item.name}</span>
+                    </label>
+                  ))}
+                  {filteredResponsabiliOptions.length === 0 && (
+                    <div style={{ padding: "8px", color: "var(--text-secondary)", fontSize: "12px" }}>Nessun responsabile trovato.</div>
+                  )}
+                </div>
+              </div>
+
+              <div style={{ border: "1px solid var(--border)", borderRadius: "8px", padding: "10px" }}>
+                <h4 style={{ margin: "0 0 8px 0" }}>HR</h4>
+                <input
+                  className="db-filter-select"
+                  style={{ ...INPUT_STYLE, marginBottom: "8px" }}
+                  placeholder="Cerca HR"
+                  value={editUserForm.hrSearch}
+                  onChange={(event) => setEditUserForm((prev) => (prev ? { ...prev, hrSearch: event.target.value } : prev))}
+                  disabled={editUserSaving}
+                />
+                <div style={{ maxHeight: "180px", overflowY: "auto", border: "1px solid var(--border)", borderRadius: "6px" }}>
+                  {filteredHrOptions.map((item) => (
+                    <label key={item.id} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px", borderBottom: "1px solid #f1f5f9" }}>
+                      <input type="checkbox" checked={editUserForm.hrManagerIds.includes(item.id)} onChange={() => toggleManagerSelection("hrManagerIds", item.id)} disabled={editUserSaving} />
+                      <span>{item.name}</span>
+                    </label>
+                  ))}
+                  {filteredHrOptions.length === 0 && (
+                    <div style={{ padding: "8px", color: "var(--text-secondary)", fontSize: "12px" }}>Nessun HR trovato.</div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {editUserError && (
+              <div style={{ marginTop: "12px", padding: "10px", border: "1px solid #fecaca", background: "#fef2f2", color: "#b91c1c", borderRadius: "8px" }}>
+                {editUserError}
+              </div>
+            )}
+
+            <div style={{ marginTop: "14px", display: "flex", justifyContent: "space-between", gap: "8px" }}>
+              <button className="db-btn db-btn-danger" onClick={() => handleDeleteUser(selectedUser.id)} disabled={editUserSaving}>Elimina utente</button>
+              <div style={{ display: "flex", gap: "8px" }}>
+                <button className="db-btn db-btn-outline" onClick={closeUserEditor} disabled={editUserSaving}>Annulla</button>
+                <button className="db-btn" style={{ background: "var(--brand)", color: "white", border: "none" }} onClick={handleSaveUser} disabled={editUserSaving}>
+                  {editUserSaving ? "Salvataggio..." : "Salva modifiche"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 export default AdminTestUsers;

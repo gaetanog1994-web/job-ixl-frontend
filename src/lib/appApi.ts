@@ -22,10 +22,19 @@ type RawApplicationOccupant = {
   locations?: { name?: string } | { name?: string }[];
   roles?: { name?: string };
   fixed_location?: boolean;
+  department_id?: string | null;
+  department_name?: string | null;
+  target_responsabili?: Array<{ id: string; name: string }>;
+  target_hr_managers?: Array<{ id: string; name: string }>;
 };
 
 type RawApplicationPosition = {
   users?: RawApplicationOccupant;
+};
+
+export type DepartmentOption = {
+  id: string;
+  name: string;
 };
 
 export type RawApplication = {
@@ -33,16 +42,35 @@ export type RawApplication = {
   position_id: string;
   priority: number;
   created_at: string;
+  target_department_id?: string | null;
+  target_department_name?: string | null;
+  target_responsabili?: Array<{ id: string; name: string }>;
+  target_hr_managers?: Array<{ id: string; name: string }>;
   positions?: RawApplicationPosition | RawApplicationPosition[];
 };
 
 export type UserLifecycleState = "inactive" | "reserved" | "available";
 
+export type CampaignDbStatus = "reservations_open" | "reservations_closed" | "campaign_open" | "campaign_closed";
+
 export type CampaignLifecycleStatus = {
     campaign_status: "open" | "closed";
     reservations_status: "open" | "closed";
+    campaign_id?: string | null;
     reserved_users_count?: number;
     available_users_count?: number;
+};
+
+export type CampaignRecord = {
+    id: string;
+    status: CampaignDbStatus;
+    reservations_opened_at: string | null;
+    reservations_closed_at: string | null;
+    campaign_opened_at: string | null;
+    campaign_closed_at: string | null;
+    reserved_users_count: number;
+    total_applications_count: number;
+    created_at: string;
 };
 
 export type AdminCandidaturesStats = {
@@ -813,9 +841,134 @@ export const appApi = {
         return json.user;
     },
 
+    async adminGetUserById(userId: string) {
+        const json = await apiFetch(`/api/admin/users/${userId}`, { method: "GET" });
+        return json.user ?? null;
+    },
+
+    async adminPatchUserAccessRole(userId: string, accessRole: "user" | "admin" | "admin_user") {
+        const json = await apiFetch(`/api/admin/users/${userId}/access-role`, {
+            method: "PATCH",
+            body: JSON.stringify({ access_role: accessRole }),
+        });
+        return json.membership ?? null;
+    },
+
     async adminGetRoles() {
         const json = await apiFetch(`/api/admin/roles`, { method: "GET" });
         return json.roles ?? [];
+    },
+
+    async adminGetDepartments() {
+        const json = await apiFetch(`/api/admin/departments`, { method: "GET" });
+        return json.departments ?? [];
+    },
+
+    async publicGetDepartments(): Promise<DepartmentOption[]> {
+        const json = await apiFetch(`/api/public/departments`, { method: "GET" });
+        return json.departments ?? [];
+    },
+
+    async adminCreateDepartment(params: { name: string }) {
+        const json = await apiFetch(`/api/admin/departments`, {
+            method: "POST",
+            body: JSON.stringify(params),
+        });
+        return json.department ?? null;
+    },
+
+    async adminRenameDepartment(id: string, params: { name: string }) {
+        const json = await apiFetch(`/api/admin/departments/${id}`, {
+            method: "PATCH",
+            body: JSON.stringify(params),
+        });
+        return json.department ?? null;
+    },
+
+    async adminDeleteDepartment(id: string) {
+        return apiFetch(`/api/admin/departments/${id}`, { method: "DELETE" });
+    },
+
+    async adminGetResponsabili() {
+        const json = await apiFetch(`/api/admin/responsabili`, { method: "GET" });
+        return json.responsabili ?? [];
+    },
+
+    async adminCreateResponsabile(params: { name: string; email?: string | null }) {
+        const json = await apiFetch(`/api/admin/responsabili`, {
+            method: "POST",
+            body: JSON.stringify(params),
+        });
+        return json.manager ?? null;
+    },
+
+    async adminPatchResponsabile(id: string, params: { name: string; email?: string | null }) {
+        const json = await apiFetch(`/api/admin/responsabili/${id}`, {
+            method: "PATCH",
+            body: JSON.stringify(params),
+        });
+        return json.manager ?? null;
+    },
+
+    async adminDeleteResponsabile(id: string) {
+        return apiFetch(`/api/admin/responsabili/${id}`, { method: "DELETE" });
+    },
+
+    async adminGetResponsabileUsers(id: string) {
+        const json = await apiFetch(`/api/admin/responsabili/${id}/users`, { method: "GET" });
+        return json.users ?? [];
+    },
+
+    async adminAssignResponsabileUsers(id: string, userIds: string[]) {
+        return apiFetch(`/api/admin/responsabili/${id}/assign`, {
+            method: "POST",
+            body: JSON.stringify({ user_ids: userIds }),
+        });
+    },
+
+    async adminRemoveResponsabileUser(id: string, userId: string) {
+        return apiFetch(`/api/admin/responsabili/${id}/assign/${userId}`, { method: "DELETE" });
+    },
+
+    async adminGetHrManagers() {
+        const json = await apiFetch(`/api/admin/hr-managers`, { method: "GET" });
+        return json.hr_managers ?? [];
+    },
+
+    async adminCreateHrManager(params: { name: string; email?: string | null }) {
+        const json = await apiFetch(`/api/admin/hr-managers`, {
+            method: "POST",
+            body: JSON.stringify(params),
+        });
+        return json.manager ?? null;
+    },
+
+    async adminPatchHrManager(id: string, params: { name: string; email?: string | null }) {
+        const json = await apiFetch(`/api/admin/hr-managers/${id}`, {
+            method: "PATCH",
+            body: JSON.stringify(params),
+        });
+        return json.manager ?? null;
+    },
+
+    async adminDeleteHrManager(id: string) {
+        return apiFetch(`/api/admin/hr-managers/${id}`, { method: "DELETE" });
+    },
+
+    async adminGetHrManagerUsers(id: string) {
+        const json = await apiFetch(`/api/admin/hr-managers/${id}/users`, { method: "GET" });
+        return json.users ?? [];
+    },
+
+    async adminAssignHrManagerUsers(id: string, userIds: string[]) {
+        return apiFetch(`/api/admin/hr-managers/${id}/assign`, {
+            method: "POST",
+            body: JSON.stringify({ user_ids: userIds }),
+        });
+    },
+
+    async adminRemoveHrManagerUser(id: string, userId: string) {
+        return apiFetch(`/api/admin/hr-managers/${id}/assign/${userId}`, { method: "DELETE" });
     },
 
     async adminGetScenarios() {
@@ -993,6 +1146,7 @@ export const appApi = {
         return {
             campaign_status: json.campaign_status,
             reservations_status: json.reservations_status,
+            campaign_id: json.campaign_id ?? null,
             reserved_users_count: json.reserved_users_count,
             available_users_count: json.available_users_count,
         };
@@ -1003,6 +1157,7 @@ export const appApi = {
         return {
             campaign_status: json.campaign_status,
             reservations_status: json.reservations_status,
+            campaign_id: json.campaign_id ?? null,
             reserved_users_count: json.reserved_users_count,
             available_users_count: json.available_users_count,
         };
@@ -1013,6 +1168,7 @@ export const appApi = {
         return {
             campaign_status: json.campaign_status,
             reservations_status: json.reservations_status,
+            campaign_id: json.campaign_id ?? null,
             reserved_users_count: json.reserved_users_count,
             available_users_count: json.available_users_count,
         };
@@ -1023,6 +1179,7 @@ export const appApi = {
         return {
             campaign_status: json.campaign_status,
             reservations_status: json.reservations_status,
+            campaign_id: json.campaign_id ?? null,
             reserved_users_count: json.reserved_users_count,
             available_users_count: json.available_users_count,
         };
@@ -1033,9 +1190,15 @@ export const appApi = {
         return {
             campaign_status: json.campaign_status,
             reservations_status: json.reservations_status,
+            campaign_id: json.campaign_id ?? null,
             reserved_users_count: json.reserved_users_count,
             available_users_count: json.available_users_count,
         };
+    },
+
+    async adminListCampaigns(): Promise<CampaignRecord[]> {
+        const json = await apiFetch(`/api/admin/campaigns`, { method: "GET" });
+        return json.campaigns ?? [];
     },
 
     async platformGetCompanies() {

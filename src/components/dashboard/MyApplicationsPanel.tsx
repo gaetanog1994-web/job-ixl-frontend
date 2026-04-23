@@ -15,7 +15,10 @@ import type { RawApplication } from "../../lib/appApi";
 export type AggregatedRow = {
   key: string;
   roleName: string;
+  departmentName: string | null;
   locationName: string;
+  responsabiliNames: string[];
+  hrManagerNames: string[];
   fixedLocation: boolean;
   priority: number;
   createdAt: string;
@@ -82,6 +85,7 @@ const MyApplicationsPanel: React.FC<MyApplicationsPanelProps> = ({
   onHighlightPosition,
 }) => {
   const [search, setSearch] = useState("");
+  const [expandedRowKey, setExpandedRowKey] = useState<string | null>(null);
 
   /* ----- aggregation (same logic as AccountPage) ----- */
   const aggregatedApplications: AggregatedRow[] = useMemo(() => {
@@ -97,14 +101,30 @@ const MyApplicationsPanel: React.FC<MyApplicationsPanelProps> = ({
         : occupant?.locations;
 
       const roleName = occupant?.roles?.name ?? "—";
+      const departmentName = occupant?.department_name ?? app.target_department_name ?? null;
       const locationName = locObj?.name ?? "—";
-      const key = `${locationName}__${roleName}`;
+      const key = `${locationName}__${roleName}__${departmentName ?? "null"}`;
+      const responsabiliRaw = Array.isArray(occupant?.target_responsabili)
+        ? occupant.target_responsabili
+        : (Array.isArray(app.target_responsabili) ? app.target_responsabili : []);
+      const hrRaw = Array.isArray(occupant?.target_hr_managers)
+        ? occupant.target_hr_managers
+        : (Array.isArray(app.target_hr_managers) ? app.target_hr_managers : []);
+      const responsabiliNames = Array.isArray(responsabiliRaw)
+        ? responsabiliRaw.map((item) => item.name).filter(Boolean)
+        : [];
+      const hrManagerNames = Array.isArray(hrRaw)
+        ? hrRaw.map((item) => item.name).filter(Boolean)
+        : [];
 
       if (!map.has(key)) {
         map.set(key, {
           key,
           roleName,
+          departmentName,
           locationName,
+          responsabiliNames,
+          hrManagerNames,
           fixedLocation: !!occupant?.fixed_location,
           priority: app.priority,
           createdAt: app.created_at,
@@ -117,6 +137,8 @@ const MyApplicationsPanel: React.FC<MyApplicationsPanelProps> = ({
         row.appIds.push(app.id);
         row.positionIds.push(app.position_id);
         row.fixedLocation = row.fixedLocation || !!occupant?.fixed_location;
+        row.responsabiliNames = Array.from(new Set([...row.responsabiliNames, ...responsabiliNames]));
+        row.hrManagerNames = Array.from(new Set([...row.hrManagerNames, ...hrManagerNames]));
         if (new Date(app.created_at) < new Date(row.createdAt)) {
           row.createdAt = app.created_at;
           row.representativePositionId = app.position_id;
@@ -134,9 +156,12 @@ const MyApplicationsPanel: React.FC<MyApplicationsPanelProps> = ({
     if (!search.trim()) return aggregatedApplications;
     const q = search.toLowerCase();
     return aggregatedApplications.filter(
-      (r) =>
-        r.roleName.toLowerCase().includes(q) ||
-        r.locationName.toLowerCase().includes(q)
+        (r) =>
+          r.roleName.toLowerCase().includes(q) ||
+          r.locationName.toLowerCase().includes(q) ||
+          (r.departmentName ?? "").toLowerCase().includes(q) ||
+          r.responsabiliNames.join(", ").toLowerCase().includes(q) ||
+          r.hrManagerNames.join(", ").toLowerCase().includes(q)
     );
   }, [aggregatedApplications, search]);
 
@@ -206,8 +231,9 @@ const MyApplicationsPanel: React.FC<MyApplicationsPanelProps> = ({
       const occupant = position?.users;
       const locObj = Array.isArray(occupant?.locations) ? occupant.locations?.[0] : occupant?.locations;
       const roleName = occupant?.roles?.name ?? "—";
+      const departmentName = occupant?.department_name ?? app.target_department_name ?? null;
       const locationName = locObj?.name ?? "—";
-      const key = `${locationName}__${roleName}`;
+      const key = `${locationName}__${roleName}__${departmentName ?? "null"}`;
       const newP = groupPriority.get(key);
       return newP != null ? { ...app, priority: newP } : app;
     });
@@ -325,7 +351,10 @@ const MyApplicationsPanel: React.FC<MyApplicationsPanelProps> = ({
                     <th style={{ width: 36 }} />
                     <th style={{ width: 50 }}>#</th>
                     <th>Ruolo</th>
+                    <th>Reparto</th>
                     <th>Sede</th>
+                    <th className="db-col-desktop-only">Responsabile</th>
+                    <th className="db-col-desktop-only">HR</th>
                     <th>Vincolante</th>
                     <th>Priorità</th>
                     <th>Data</th>
@@ -334,7 +363,8 @@ const MyApplicationsPanel: React.FC<MyApplicationsPanelProps> = ({
                 </thead>
                 <tbody>
                   {filteredRows.map((row, index) => (
-                    <SortableRow key={row.key} id={row.key}>
+                    <React.Fragment key={row.key}>
+                    <SortableRow id={row.key}>
                       <td>
                         <div className="db-priority-badge">{index + 1}</div>
                       </td>
@@ -342,7 +372,20 @@ const MyApplicationsPanel: React.FC<MyApplicationsPanelProps> = ({
                         <div className="db-cell-primary">{row.roleName}</div>
                       </td>
                       <td>
+                        <div className="db-cell-primary">{row.departmentName ?? "—"}</div>
+                      </td>
+                      <td>
                         <div className="db-cell-primary">{row.locationName}</div>
+                      </td>
+                      <td className="db-col-desktop-only">
+                        <div className="db-cell-secondary">
+                          {row.responsabiliNames.length > 0 ? row.responsabiliNames.join(", ") : "—"}
+                        </div>
+                      </td>
+                      <td className="db-col-desktop-only">
+                        <div className="db-cell-secondary">
+                          {row.hrManagerNames.length > 0 ? row.hrManagerNames.join(", ") : "—"}
+                        </div>
                       </td>
                       <td>
                         <span className={`db-fixed-badge ${row.fixedLocation ? "yes" : "no"}`}>
@@ -377,6 +420,13 @@ const MyApplicationsPanel: React.FC<MyApplicationsPanelProps> = ({
                             🗺
                           </button>
                           <button
+                            className="db-action-btn db-action-btn-map db-mobile-only-inline"
+                            title="Esplora dettagli"
+                            onClick={() => setExpandedRowKey((prev) => prev === row.key ? null : row.key)}
+                          >
+                            Esplora
+                          </button>
+                          <button
                             className="db-action-btn db-action-btn-delete"
                             title="Elimina candidatura"
                             onClick={() => deleteApplication(row.key)}
@@ -387,6 +437,17 @@ const MyApplicationsPanel: React.FC<MyApplicationsPanelProps> = ({
                         </div>
                       </td>
                     </SortableRow>
+                    {expandedRowKey === row.key && (
+                      <tr className="db-mobile-only-row">
+                        <td colSpan={11} style={{ padding: "10px 14px", background: "#f8fafc", borderBottom: "1px solid var(--border)" }}>
+                          <div style={{ fontSize: "12px", color: "var(--text-secondary)", display: "grid", gap: "6px" }}>
+                            <div><strong>Responsabile:</strong> {row.responsabiliNames.length > 0 ? row.responsabiliNames.join(", ") : "—"}</div>
+                            <div><strong>HR:</strong> {row.hrManagerNames.length > 0 ? row.hrManagerNames.join(", ") : "—"}</div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                    </React.Fragment>
                   ))}
                 </tbody>
               </table>

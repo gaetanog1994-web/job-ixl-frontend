@@ -1,9 +1,11 @@
 import React from "react";
 import type { MapLocation } from "../PositionsMap";
+import type { DepartmentOption } from "../../lib/appApi";
 
 export interface MapFilters {
   locationName: string; // sede → fly to + open popup
   roleName: string;     // ruolo → highlight matching markers
+  departmentId: string; // reparto → highlight matching markers
   onlyNonFixed?: boolean; // hide/dim fixed-location roles
 }
 
@@ -11,12 +13,14 @@ interface FiltersCardProps {
   filters: MapFilters;
   onFiltersChange: (f: MapFilters) => void;
   mapLocations: MapLocation[];
+  departments: DepartmentOption[];
 }
 
 const FiltersCard: React.FC<FiltersCardProps> = ({
   filters,
   onFiltersChange,
   mapLocations,
+  departments,
 }) => {
   // Unique location names from map data
   const locationNames = Array.from(
@@ -30,9 +34,9 @@ const FiltersCard: React.FC<FiltersCardProps> = ({
     )
   ).sort();
 
-  const hasActiveFilters = filters.locationName !== "" || filters.roleName !== "" || !!filters.onlyNonFixed;
+  const hasActiveFilters = filters.locationName !== "" || filters.roleName !== "" || filters.departmentId !== "" || !!filters.onlyNonFixed;
 
-  const reset = () => onFiltersChange({ locationName: "", roleName: "", onlyNonFixed: false });
+  const reset = () => onFiltersChange({ locationName: "", roleName: "", departmentId: "", onlyNonFixed: false });
 
   return (
     <div className="db-card db-filters-card">
@@ -118,6 +122,40 @@ const FiltersCard: React.FC<FiltersCardProps> = ({
             }}
           >
             ✓ Sedi con "{filters.roleName}" evidenziate
+          </div>
+        )}
+      </div>
+
+      {/* Department filter → highlight markers */}
+      <div className="db-filter-group">
+        <label className="db-filter-label" htmlFor="filter-department">
+          🧩 Filtra per reparto
+        </label>
+        <select
+          id="filter-department"
+          className="db-filter-select"
+          value={filters.departmentId}
+          onChange={(e) =>
+            onFiltersChange({ ...filters, departmentId: e.target.value })
+          }
+        >
+          <option value="">Tutti i reparti</option>
+          {departments.map((department) => (
+            <option key={department.id} value={department.id}>
+              {department.name}
+            </option>
+          ))}
+        </select>
+        {filters.departmentId && (
+          <div
+            style={{
+              fontSize: "11px",
+              color: "#2563eb",
+              marginTop: "4px",
+              fontWeight: 500,
+            }}
+          >
+            ✓ Sedi con reparto selezionato evidenziate
           </div>
         )}
       </div>

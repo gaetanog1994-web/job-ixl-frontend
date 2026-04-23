@@ -74,8 +74,11 @@ type LocationUser = {
 };
 
 type LocationRole = {
+    group_key: string;
     role_id: string;
     role_name: string;
+    department_id?: string | null;
+    department_name?: string | null;
     users: LocationUser[];
     applied: boolean;
     priority?: number;
@@ -106,6 +109,8 @@ type Props = {
     filterLocationName?: string;
     /** Highlight all markers that have at least one role matching this name */
     filterRoleName?: string;
+    /** Highlight all markers that have at least one role matching this department */
+    filterDepartmentId?: string;
     /** Called once after each data load with the full location list */
     onLocationsLoaded?: (locations: MapLocation[]) => void;
     /** Called whenever the user successfully applies or withdraws from a role */
@@ -133,6 +138,7 @@ const PositionsMap = ({
     highlightPositionId,
     filterLocationName,
     filterRoleName,
+    filterDepartmentId,
     onLocationsLoaded,
     onApplicationUpdate,
     onLifecycleStatusLoaded,
@@ -172,8 +178,8 @@ const PositionsMap = ({
     useEffect(() => {
         setSelectedPriorities((prev) => {
             const next: Record<string, number> = {};
-            for (const [roleId, prio] of Object.entries(prev)) {
-                if (availablePriorities.includes(prio)) next[roleId] = prio;
+            for (const [groupKey, prio] of Object.entries(prev)) {
+                if (availablePriorities.includes(prio)) next[groupKey] = prio;
             }
             return next;
         });
@@ -255,7 +261,7 @@ const PositionsMap = ({
     const handleApplyToRole = async (role: LocationRole) => {
         if (!myUserId || myStatus !== "available") return;
 
-        const priority = selectedPriorities[role.role_id];
+        const priority = selectedPriorities[role.group_key];
         if (priority == null) return;
 
         try {
@@ -271,7 +277,7 @@ const PositionsMap = ({
 
         setSelectedPriorities((prev) => {
             const copy = { ...prev };
-            delete copy[role.role_id];
+            delete copy[role.group_key];
             return copy;
         });
 
@@ -311,6 +317,19 @@ const PositionsMap = ({
         if (hasApplied && hasAvailable) return "partial" as const; // giallo
         if (hasApplied) return "candidate" as const; // rosso
         return "available" as const; // verde
+    };
+
+    const roleMatchesFilters = (role: LocationRole) => {
+        const roleOk = !filterRoleName || role.role_name.toLowerCase() === filterRoleName.toLowerCase();
+        const departmentOk = !filterDepartmentId || (role.department_id ?? "") === filterDepartmentId;
+        return roleOk && departmentOk;
+    };
+
+    const formatRoleLabel = (role: LocationRole) => {
+        if (role.department_name) {
+            return `${role.role_name} — ${role.department_name}`;
+        }
+        return role.role_name;
     };
 
     const getLocationIcon = (state: "available" | "candidate" | "partial" | "inactive") => {
@@ -505,16 +524,14 @@ const PositionsMap = ({
                     })
                     .map((loc) => {
                     const markerState = getLocationMarkerState(loc.roles);
-                    // When a role filter is active, dim locations that don't match
-                    const roleMatchesFilter =
-                        !filterRoleName ||
-                        loc.roles.some(
-                            (r) => r.role_name.toLowerCase() === filterRoleName.toLowerCase()
-                        );
+                    // When filters are active, dim locations that don't match at least one (role, department) combination
+                    const matchesActiveFilters = loc.roles.some((r) => roleMatchesFilters(r));
                     // When onlyNonFixed filter is active, dim locations where ALL roles are fixed
                     const allRolesFixed =
                         filterOnlyNonFixed && loc.roles.length > 0 && loc.roles.every((r) => r.fixed_location);
-                    const locationOpacity = (filterRoleName && !roleMatchesFilter) || allRolesFixed ? 0.25 : 1;
+                    const isDimmedByFilters =
+                        (((filterRoleName || filterDepartmentId) && !matchesActiveFilters) || allRolesFixed);
+                    const locationOpacity = isDimmedByFilters ? 0.25 : 1;
                     const baseOpacity =
                         visualMode === "adminActiveMaps" && markerState === "available"
                             ? 0.5
@@ -527,7 +544,7 @@ const PositionsMap = ({
                         );
                     const zIndexOffset = (() => {
                         const base = getMarkerBaseZIndex(markerState);
-                        if (filterRoleName && roleMatchesFilter) return base + 2000;
+                        if ((filterRoleName || filterDepartmentId) && matchesActiveFilters) return base + 2000;
                         if (isHighlightTarget) return base + 2000;
                         return base;
                     })();
@@ -539,10 +556,10 @@ const PositionsMap = ({
                     const useAdminCircleMarker =
                         visualMode === "adminActiveMaps" && interaction === "read";
                     const popupPeople = loc.roles.flatMap((role) =>
-                        role.users.map((user) => ({
-                            key: `${role.role_id}-${user.position_id}`,
+                            role.users.map((user) => ({
+                            key: `${role.group_key}-${user.position_id}`,
                             fullName: user.full_name ?? "—",
-                            roleName: role.role_name ?? "—",
+                            roleName: formatRoleLabel(role),
                             locationName: loc.name ?? "—",
                         }))
                     );
@@ -602,7 +619,7 @@ const PositionsMap = ({
                         ) : (
                             <Marker
                                 position={[loc.latitude, loc.longitude]}
-                                icon={getLocationIcon(markerState)}
+                                icon={isDimmedByFilters ? icons.grey : getLocationIcon(markerState)}
                                 ref={(ref: L.Marker | null) => {
                                     if (ref) locationMarkerRefs.current[loc.location_id] = ref;
                                 }}
@@ -617,11 +634,12 @@ const PositionsMap = ({
                                     <ul style={{ marginTop: "8px", paddingLeft: "16px" }}>
                                         {loc.roles
                                             .filter((r) => !filterOnlyNonFixed || !r.fixed_location)
+                                            .filter((r) => roleMatchesFilters(r))
                                             .map((r) => {
                                             const disabled = interaction !== "write" || myStatus !== "available";
 
                                             return (
-                                                <li key={r.role_id} style={{ marginBottom: "6px" }}>
+                                                <li key={r.group_key} style={{ marginBottom: "6px" }}>
                                                     <div
                                                         style={{
                                                             display: "flex",
@@ -632,7 +650,7 @@ const PositionsMap = ({
                                                         }}
                                                     >
                                                         <span style={{ fontWeight: 500, display: "flex", alignItems: "center", flexWrap: "wrap", gap: "4px" }}>
-                                                            {r.role_name}
+                                                            {formatRoleLabel(r)} ({r.users.length})
                                                             {r.applied ? " 🔴" : " 🟢"}
                                                             {r.fixed_location && (
                                                                 <span style={{ fontSize: "11px", color: "#b45309", background: "#fef3c7", borderRadius: "6px", padding: "1px 6px" }}>
@@ -641,7 +659,7 @@ const PositionsMap = ({
                                                             )}
                                                             {isAdmin && (
                                                                 <span
-                                                                    onClick={() => setClickedRoleId((prev) => prev === r.role_id ? null : r.role_id)}
+                                                                    onClick={() => setClickedRoleId((prev) => prev === r.group_key ? null : r.group_key)}
                                                                     style={{ cursor: "pointer", fontSize: "12px", color: "#2563eb", background: "#eff6ff", borderRadius: "999px", padding: "1px 7px", userSelect: "none" }}
                                                                     title="Clicca per vedere le persone"
                                                                 >
@@ -649,7 +667,7 @@ const PositionsMap = ({
                                                                 </span>
                                                             )}
                                                         </span>
-                                                        {isAdmin && clickedRoleId === r.role_id && (
+                                                        {isAdmin && clickedRoleId === r.group_key && (
                                                             <ul style={{ margin: "4px 0 0 0", padding: "0 0 0 12px", fontSize: "12px", color: "#374151", listStyle: "disc" }}>
                                                                 {r.users.map((u) => <li key={u.id}>{u.full_name}</li>)}
                                                             </ul>
@@ -658,12 +676,12 @@ const PositionsMap = ({
                                                         {interaction === "write" && myStatus === "available" && !r.applied && (
                                                             <>
                                                                 <select
-                                                                    value={selectedPriorities[r.role_id] ?? ""}
+                                                                    value={selectedPriorities[r.group_key] ?? ""}
                                                                     disabled={campaignStatus !== "open"}
                                                                     onChange={(e) =>
                                                                         setSelectedPriorities((prev) => ({
                                                                             ...prev,
-                                                                            [r.role_id]: Number(e.target.value),
+                                                                            [r.group_key]: Number(e.target.value),
                                                                         }))
                                                                     }
                                                                 >
@@ -680,7 +698,7 @@ const PositionsMap = ({
 
                                                                 <button
                                                                     onClick={() => handleApplyToRole(r)}
-                                                                    disabled={selectedPriorities[r.role_id] == null || campaignStatus !== "open"}
+                                                                    disabled={selectedPriorities[r.group_key] == null || campaignStatus !== "open"}
                                                                     title={campaignStatus !== "open" ? "Campagna chiusa" : undefined}
                                                                 >
                                                                     Candidati

@@ -51,6 +51,17 @@ const AdminHome: React.FC = () => {
                         Individua le catene chiuse di scambio tra posizioni.
                     </p>
                 </div>
+
+                {/* 🟩 D — CAMPAGNE */}
+                <div
+                    style={boxStyle}
+                    onClick={() => navigate("/admin/campagne")}
+                >
+                    <h3>D. Campagne</h3>
+                    <p>
+                        Gestisci il lifecycle della campagna di mobilità e consulta lo storico.
+                    </p>
+                </div>
             </div>
         </div>
     );

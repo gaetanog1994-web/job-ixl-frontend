@@ -5,6 +5,8 @@ interface UserStatsCardProps {
   maxApplications: number;
   userState: "available" | "reserved" | "inactive" | null;
   locationsCount?: number;
+  roleName?: string | null;
+  departmentName?: string | null;
 }
 
 const UserStatsCard: React.FC<UserStatsCardProps> = ({
@@ -12,6 +14,8 @@ const UserStatsCard: React.FC<UserStatsCardProps> = ({
   maxApplications,
   userState,
   locationsCount,
+  roleName,
+  departmentName,
 }) => {
   const pct =
     maxApplications > 0
@@ -23,6 +27,17 @@ const UserStatsCard: React.FC<UserStatsCardProps> = ({
   return (
     <div className="db-card db-stats-card">
       <div className="db-card-title">Il mio profilo</div>
+
+      <div className="db-stat-item" style={{ marginBottom: "8px" }}>
+        <div className="db-stat-label">Posizione</div>
+        <div className="db-cell-primary" style={{ marginTop: "4px" }}>
+          {roleName
+            ? departmentName
+              ? `${roleName} — ${departmentName}`
+              : roleName
+            : "—"}
+        </div>
+      </div>
 
       <div className="db-stat-rows">
         {/* Applications count */}

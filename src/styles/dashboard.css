@@ -1561,6 +1561,18 @@
   border-color: #fecaca;
 }
 
+.db-mobile-only-inline {
+  display: none;
+}
+
+.db-mobile-only-row {
+  display: none;
+}
+
+.leaflet-marker-icon {
+  transition: opacity 0.25s ease;
+}
+
 /* Empty state */
 .db-empty-state {
   text-align: center;
@@ -1631,6 +1643,18 @@
 }
 
 @media (max-width: 760px) {
+  .db-col-desktop-only {
+    display: none;
+  }
+
+  .db-mobile-only-inline {
+    display: inline-flex;
+  }
+
+  .db-mobile-only-row {
+    display: table-row;
+  }
+
   .owner-company-grid {
     grid-template-columns: 1fr;
     padding: 12px;

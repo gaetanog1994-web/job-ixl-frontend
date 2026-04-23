@@ -59,6 +59,7 @@ const MapPanel: React.FC<MapPanelProps> = ({
             highlightPositionId={highlightPositionId}
             filterLocationName={filters.locationName || undefined}
             filterRoleName={filters.roleName || undefined}
+            filterDepartmentId={filters.departmentId || undefined}
             filterOnlyNonFixed={filters.onlyNonFixed ?? false}
             onLocationsLoaded={onLocationsLoaded}
             onApplicationUpdate={onApplicationUpdate}

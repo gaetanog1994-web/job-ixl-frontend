@@ -8,6 +8,7 @@ import OwnerAreaPage from "./pages/OwnerAreaPage";
 import CompanyPerimetersPage from "./pages/CompanyPerimetersPage";
 
 import AdminCandidatures from "./pages/AdminCandidatures";
+import AdminCampaigns from "./pages/AdminCampaigns";
 import AdminMaps from "./pages/AdminMaps";
 import AdminInterlocking from "./pages/AdminInterlocking";
 import AdminTestUsers from "./pages/AdminTestUsers";
@@ -71,6 +72,7 @@ function AppShell({ showTopBar }: { showTopBar: boolean }) {
               {/* Admin (guarded by RequireAdmin) */}
               <Route path="/admin" element={<Navigate to="/admin/interlocking" replace />} />
               <Route path="/admin/candidatures" element={<RequireAdmin><AdminCandidatures /></RequireAdmin>} />
+              <Route path="/admin/campagne" element={<RequireAdmin><AdminCampaigns /></RequireAdmin>} />
               <Route path="/admin/maps" element={<RequireAdmin><AdminMaps /></RequireAdmin>} />
               <Route
                 path="/admin/interlocking"

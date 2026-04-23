@@ -628,30 +628,6 @@ const AdminInterlocking = () => {
         }
     };
 
-    const runLifecycleAction = async (action: "openReservations" | "closeReservations" | "openCampaign" | "closeCampaign") => {
-        if (action === "closeCampaign") {
-            const confirmed = window.confirm(
-                "Chiudere la campagna?\n\nQuesta azione è irreversibile:\n• Tutte le candidature verranno eliminate\n• Tutti gli utenti torneranno INATTIVI\n• Tutte le prenotazioni verranno azzerate\n\nConfermare?"
-            );
-            if (!confirmed) return;
-        }
-        try {
-            const data =
-                action === "openReservations"
-                    ? await appApi.adminOpenReservations()
-                    : action === "closeReservations"
-                        ? await appApi.adminCloseReservations()
-                        : action === "openCampaign"
-                            ? await appApi.adminOpenCampaign()
-                            : await appApi.adminCloseCampaign();
-            setCampaignStatus(data.campaign_status);
-            setReservationsStatus(data.reservations_status);
-            setReservedUsersCount(data.reserved_users_count ?? 0);
-        } catch (e: unknown) {
-            setError("Errore aggiornamento lifecycle: " + (e instanceof Error ? e.message : "unknown"));
-        }
-    };
-
     useEffect(() => {
         const run = async () => {
             const canManage = await loadCampaignPermission();
@@ -1279,7 +1255,7 @@ const AdminInterlocking = () => {
                     </div>
                 )}
 
-                {/* ── Campaign status toggle (compact) ── */}
+                {/* ── Campaign status (read-only) ── */}
                 {campaignStatus !== null && reservationsStatus !== null && (
                     <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "10px 16px", background: "#FFFFFF", border: "1px solid #E5E7EB", borderRadius: "14px" }}
                         onClick={(e) => e.stopPropagation()}
@@ -1309,35 +1285,9 @@ const AdminInterlocking = () => {
                         <span style={{ fontSize: "12px", color: "#6B7280", fontWeight: 500 }}>
                             {reservedUsersCount} prenotat{reservedUsersCount === 1 ? "o" : "i"}
                         </span>
-                        {canManageCampaign ? (
-                            <div style={{ display: "flex", gap: "8px" }}>
-                                {campaignStatus === "closed" && reservationsStatus === "closed" && (
-                                    <button style={{ border: "1px solid #d1d5db", background: "#f9fafb", color: "#111827", borderRadius: "10px", padding: "5px 12px", cursor: "pointer", fontSize: "12px", fontWeight: 600 }} onClick={() => runLifecycleAction("openReservations")}>
-                                        Apri prenotazioni
-                                    </button>
-                                )}
-                                {campaignStatus === "closed" && reservationsStatus === "open" && (
-                                    <button style={{ border: "1px solid #d1d5db", background: "#f9fafb", color: "#111827", borderRadius: "10px", padding: "5px 12px", cursor: "pointer", fontSize: "12px", fontWeight: 600 }} onClick={() => runLifecycleAction("closeReservations")}>
-                                        Chiudi prenotazioni
-                                    </button>
-                                )}
-                                {/* Apri campagna only after reservations have been explicitly closed (not in initial Phase 0 with 0 reserved) */}
-                                {campaignStatus === "closed" && reservationsStatus === "closed" && (reservedUsersCount ?? 0) > 0 && (
-                                    <button style={{ border: "1px solid #a7f3d0", background: "#ecfdf5", color: "#059669", borderRadius: "10px", padding: "5px 12px", cursor: "pointer", fontSize: "12px", fontWeight: 600 }} onClick={() => runLifecycleAction("openCampaign")}>
-                                        Apri campagna
-                                    </button>
-                                )}
-                                {campaignStatus === "open" && (
-                                    <button style={{ border: "1px solid #fca5a5", background: "#fef2f2", color: "#dc2626", borderRadius: "10px", padding: "5px 12px", cursor: "pointer", fontSize: "12px", fontWeight: 600 }} onClick={() => runLifecycleAction("closeCampaign")}>
-                                        Chiudi campagna
-                                    </button>
-                                )}
-                            </div>
-                        ) : (
-                            <span style={{ fontSize: "12px", color: "#6B7280", fontWeight: 500 }}>
-                                Solo admin del perimeter
-                            </span>
-                        )}
+                        <a href="/admin/campagne" style={{ marginLeft: "auto", fontSize: "12px", color: "#2563eb", fontWeight: 600, textDecoration: "none" }}>
+                            Gestisci campagna →
+                        </a>
                     </div>
                 )}
 

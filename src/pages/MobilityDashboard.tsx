@@ -5,6 +5,7 @@ import { appApi } from "../lib/appApi";
 import type { UserLifecycleState } from "../lib/appApi";
 import { useAvailability } from "../lib/AvailabilityContext";
 import type { RawApplication } from "../lib/appApi";
+import type { DepartmentOption } from "../lib/appApi";
 
 import MapPanel from "../components/dashboard/MapPanel";
 import FiltersCard from "../components/dashboard/FiltersCard";
@@ -28,9 +29,11 @@ const MobilityDashboard: React.FC = () => {
 
   /* ---------- map state ---------- */
   const [mapLocations, setMapLocations] = useState<MapLocation[]>([]);
+  const [departments, setDepartments] = useState<DepartmentOption[]>([]);
   const [mapFilters, setMapFilters] = useState<MapFilters>({
     locationName: "",
     roleName: "",
+    departmentId: "",
     onlyNonFixed: false,
   });
   /* ---------- campaign status ---------- */
@@ -90,6 +93,25 @@ const MobilityDashboard: React.FC = () => {
     return () => { cancelled = true; };
   }, [user]);
 
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const rows = isAdmin
+          ? await appApi.adminGetDepartments()
+          : await appApi.publicGetDepartments();
+        if (!cancelled) setDepartments(Array.isArray(rows) ? rows : []);
+      } catch (e: unknown) {
+        console.error("[MobilityDashboard] load departments:", e instanceof Error ? e.message : e);
+        if (!cancelled) setDepartments([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user, isAdmin]);
+
   /* ---------- unique locations count for UserStats ---------- */
   const locationsCount = useMemo(
     () => (mapLocations.length > 0 ? mapLocations.length : undefined),
@@ -104,8 +126,9 @@ const MobilityDashboard: React.FC = () => {
       const occupant = position?.users;
       const locObj = Array.isArray(occupant?.locations) ? occupant.locations?.[0] : occupant?.locations;
       const roleName = occupant?.roles?.name ?? "";
+      const departmentName = occupant?.department_name ?? "";
       const locationName = locObj?.name ?? "";
-      keys.add(`${locationName}__${roleName}`);
+      keys.add(`${locationName}__${roleName}__${departmentName}`);
     }
     return keys.size;
   }, [myApplications]);
@@ -260,6 +283,7 @@ const MobilityDashboard: React.FC = () => {
               filters={mapFilters}
               onFiltersChange={setMapFilters}
               mapLocations={mapLocations}
+              departments={departments}
             />
 
             <UserStatsCard
@@ -267,6 +291,8 @@ const MobilityDashboard: React.FC = () => {
               maxApplications={maxApplications}
               userState={userState}
               locationsCount={locationsCount}
+              roleName={(userData?.role_name as string | null | undefined) ?? null}
+              departmentName={(userData?.department_name as string | null | undefined) ?? null}
             />
           </div>
         </div>
