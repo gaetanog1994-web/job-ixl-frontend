@@ -726,6 +726,15 @@ const AdminInterlocking = () => {
     const usersById = useMemo(() => {
         return new Map(usersDirectory.map((u) => [u.id, u]));
     }, [usersDirectory]);
+    const usersByNormalizedName = useMemo(() => {
+        const map = new Map<string, string>();
+        for (const user of usersDirectory) {
+            const normalized = String(user.full_name ?? "").trim().toLowerCase();
+            if (!normalized) continue;
+            if (!map.has(normalized)) map.set(normalized, user.id);
+        }
+        return map;
+    }, [usersDirectory]);
 
     const locationsById = useMemo(() => {
         return new Map(locationsDirectory.map((l) => [l.id, l]));
@@ -789,7 +798,11 @@ const AdminInterlocking = () => {
         const withFallbackUserIds = (userIds: string[], peopleNames: string[], chainIndex: number) => {
             if (userIds.length > 0) return userIds;
             if (peopleNames.length === 0) return [];
-            return peopleNames.map((name, personIndex) => `legacy:${chainIndex}:${personIndex}:${name}`);
+            return peopleNames.map((name, personIndex) => {
+                const resolved = usersByNormalizedName.get(String(name).trim().toLowerCase());
+                if (resolved) return resolved;
+                return `legacy:${chainIndex}:${personIndex}:${name}`;
+            });
         };
 
         if (
