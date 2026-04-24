@@ -17,6 +17,15 @@ type CampaignMarker = {
     toCount: number;
 };
 
+type CampaignMapPerson = {
+    key: string;
+    fullName: string;
+    roleName: string;
+    locationName: string;
+    kind: "candidate" | "target";
+    markerKey: string | null;
+};
+
 const STATUS_LABEL: Record<string, string> = {
     reservations_open: "Prenotazioni aperte",
     reservations_closed: "Prenotazioni chiuse",
@@ -176,6 +185,7 @@ export default function AdminCampaigns() {
     const [locations, setLocations] = useState<LocationRow[]>([]);
     const [openCampaignId, setOpenCampaignId] = useState<string | null>(null);
     const [loadingDetailId, setLoadingDetailId] = useState<string | null>(null);
+    const [selectedMapPersonKey, setSelectedMapPersonKey] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState(false);
     const [hoveredStep, setHoveredStep] = useState<string | null>(null);
@@ -417,9 +427,59 @@ export default function AdminCampaigns() {
         return Array.from(grouped.values()).sort((a, b) => (b.fromCount + b.toCount) - (a.fromCount + a.toCount));
     }, [selectedApplications, locationByName]);
 
+    const mapPeople = useMemo<CampaignMapPerson[]>(() => {
+        const rows: CampaignMapPerson[] = [];
+
+        const pushPerson = (
+            kind: "candidate" | "target",
+            fullName: string | null | undefined,
+            roleName: string | null | undefined,
+            locationName: string | null | undefined,
+            rowId: string
+        ) => {
+            const name = String(fullName ?? "").trim();
+            if (!name) return;
+            const role = String(roleName ?? "").trim() || "—";
+            const location = String(locationName ?? "").trim() || "—";
+            const loc = locationByName.get(location.toLowerCase());
+            const markerKey = loc && loc.latitude != null && loc.longitude != null ? (loc.id || location) : null;
+            rows.push({
+                key: `${rowId}:${kind}:${name}`,
+                fullName: name,
+                roleName: role,
+                locationName: location,
+                kind,
+                markerKey,
+            });
+        };
+
+        for (const row of selectedApplications) {
+            pushPerson("candidate", row.candidate_full_name, row.candidate_role_name, row.candidate_location_name, row.id);
+            pushPerson("target", row.target_full_name, row.target_role_name, row.target_location_name, row.id);
+        }
+
+        const dedup = new Map<string, CampaignMapPerson>();
+        for (const person of rows) {
+            const key = `${person.kind}:${person.fullName}:${person.locationName}`;
+            if (!dedup.has(key)) dedup.set(key, person);
+        }
+
+        return Array.from(dedup.values()).sort((a, b) => a.fullName.localeCompare(b.fullName, "it"));
+    }, [selectedApplications, locationByName]);
+
+    const focusedMarkerKey = useMemo(() => {
+        if (!selectedMapPersonKey) return null;
+        const person = mapPeople.find((entry) => entry.key === selectedMapPersonKey);
+        return person?.markerKey ?? null;
+    }, [selectedMapPersonKey, mapPeople]);
+
     const activeTabSafe: CampaignTab = activeTab === "candidatures" || activeTab === "map" || activeTab === "lifecycle"
         ? activeTab
         : "lifecycle";
+
+    useEffect(() => {
+        setSelectedMapPersonKey(null);
+    }, [selectedDataCampaignId, activeTabSafe]);
 
     if (loading) {
         return <div style={{ padding: 40, color: "#64748b" }}>Caricamento campagne candidature…</div>;
@@ -578,6 +638,10 @@ export default function AdminCampaigns() {
                             <div style={metricLabelStyle}>Marker mappa</div>
                             <div style={metricValueStyle}>{mapMarkers.length}</div>
                         </div>
+                        <div style={metricBoxStyle}>
+                            <div style={metricLabelStyle}>Persone cliccabili</div>
+                            <div style={metricValueStyle}>{mapPeople.length}</div>
+                        </div>
                     </div>
                 )}
 
@@ -636,7 +700,7 @@ export default function AdminCampaigns() {
                         <div style={{ padding: "10px 12px", borderBottom: "1px solid #e5e7eb", fontSize: 13, color: "#6b7280" }}>
                             Mappa sedi coinvolte nella campagna selezionata (sede candidato = blu, sede target = arancio).
                         </div>
-                        <div style={{ height: 520, position: "relative" }}>
+                        <div style={{ height: 520, position: "relative", display: "grid", gridTemplateColumns: "1.75fr 0.55fr", minHeight: 0 }}>
                             {mapMarkers.length === 0 ? (
                                 <div style={{
                                     position: "absolute",
@@ -651,39 +715,88 @@ export default function AdminCampaigns() {
                                     Nessuna sede geolocalizzata disponibile per questa campagna.
                                 </div>
                             ) : (
-                                <MapContainer
-                                    center={[41.9028, 12.4964]}
-                                    zoom={6}
-                                    style={{ width: "100%", height: "100%" }}
-                                    scrollWheelZoom={true}
-                                >
-                                    <TileLayer
-                                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                                    />
-                                    <FitMapBounds markers={mapMarkers} />
-                                    {mapMarkers.map((marker) => (
-                                        <CircleMarker
-                                            key={marker.key}
-                                            center={[marker.latitude, marker.longitude]}
-                                            radius={Math.max(8, Math.min(18, 7 + Math.log(marker.fromCount + marker.toCount + 1) * 4))}
-                                            pathOptions={{
-                                                color: marker.fromCount > marker.toCount ? "#2563eb" : "#ea580c",
-                                                fillColor: marker.fromCount > marker.toCount ? "#3b82f6" : "#f97316",
-                                                fillOpacity: 0.55,
-                                                weight: 2,
-                                            }}
+                                <>
+                                    <div style={{ minHeight: 0 }}>
+                                        <MapContainer
+                                            center={[41.9028, 12.4964]}
+                                            zoom={6}
+                                            style={{ width: "100%", height: "100%" }}
+                                            scrollWheelZoom={true}
                                         >
-                                            <Popup>
-                                                <div style={{ fontSize: 12 }}>
-                                                    <div style={{ fontWeight: 700, marginBottom: 4 }}>{marker.name}</div>
-                                                    <div>Da candidati: <b>{marker.fromCount}</b></div>
-                                                    <div>Verso target: <b>{marker.toCount}</b></div>
-                                                </div>
-                                            </Popup>
-                                        </CircleMarker>
-                                    ))}
-                                </MapContainer>
+                                            <TileLayer
+                                                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                                                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                                            />
+                                            <FitMapBounds markers={mapMarkers} />
+                                            {mapMarkers.map((marker) => {
+                                                const isFocused = focusedMarkerKey === marker.key;
+                                                return (
+                                                    <CircleMarker
+                                                        key={marker.key}
+                                                        center={[marker.latitude, marker.longitude]}
+                                                        radius={isFocused
+                                                            ? Math.max(12, Math.min(22, 10 + Math.log(marker.fromCount + marker.toCount + 1) * 4))
+                                                            : Math.max(8, Math.min(18, 7 + Math.log(marker.fromCount + marker.toCount + 1) * 4))
+                                                        }
+                                                        pathOptions={{
+                                                            color: isFocused ? "#a16207" : (marker.fromCount > marker.toCount ? "#2563eb" : "#ea580c"),
+                                                            fillColor: isFocused ? "#f59e0b" : (marker.fromCount > marker.toCount ? "#3b82f6" : "#f97316"),
+                                                            fillOpacity: isFocused ? 0.75 : 0.55,
+                                                            weight: isFocused ? 3 : 2,
+                                                        }}
+                                                    >
+                                                        <Popup>
+                                                            <div style={{ fontSize: 12 }}>
+                                                                <div style={{ fontWeight: 700, marginBottom: 4 }}>{marker.name}</div>
+                                                                <div>Da candidati: <b>{marker.fromCount}</b></div>
+                                                                <div>Verso target: <b>{marker.toCount}</b></div>
+                                                            </div>
+                                                        </Popup>
+                                                    </CircleMarker>
+                                                );
+                                            })}
+                                        </MapContainer>
+                                    </div>
+                                    <div style={{ borderLeft: "1px solid #e5e7eb", background: "#fff", minHeight: 0, display: "grid", gridTemplateRows: "auto 1fr" }}>
+                                        <div style={{ padding: "10px 12px", borderBottom: "1px solid #e5e7eb" }}>
+                                            <div style={{ fontSize: 13, fontWeight: 700, color: "#111827" }}>Persone coinvolte</div>
+                                            <div style={{ fontSize: 11, color: "#6b7280", marginTop: 2 }}>
+                                                Click per evidenziare la sede in mappa
+                                            </div>
+                                        </div>
+                                        <div style={{ overflowY: "auto", padding: "8px", display: "grid", gap: 7, alignContent: "start" }}>
+                                            {mapPeople.length === 0 ? (
+                                                <div style={{ fontSize: 12, color: "#9ca3af" }}>Nessuna persona geolocalizzabile.</div>
+                                            ) : mapPeople.map((person) => {
+                                                const isActive = selectedMapPersonKey === person.key;
+                                                return (
+                                                    <button
+                                                        key={person.key}
+                                                        type="button"
+                                                        onClick={() => setSelectedMapPersonKey(person.key)}
+                                                        style={{
+                                                            textAlign: "left",
+                                                            borderRadius: 10,
+                                                            border: isActive ? "1px solid #f59e0b" : "1px solid #e5e7eb",
+                                                            background: isActive ? "#fffbeb" : "#fff",
+                                                            padding: "8px 9px",
+                                                            cursor: "pointer",
+                                                            opacity: person.markerKey ? 1 : 0.65,
+                                                        }}
+                                                        title={person.markerKey ? "Evidenzia sede sulla mappa" : "Sede non geolocalizzata"}
+                                                        disabled={!person.markerKey}
+                                                    >
+                                                        <div style={{ fontWeight: 600, fontSize: 12, color: "#111827" }}>{person.fullName}</div>
+                                                        <div style={{ fontSize: 11, color: "#4b5563", marginTop: 2 }}>{person.roleName}</div>
+                                                        <div style={{ fontSize: 11, color: "#6b7280", marginTop: 1 }}>
+                                                            {person.locationName} · {person.kind === "candidate" ? "Candidato" : "Target"}
+                                                        </div>
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                </>
                             )}
                         </div>
                     </div>
