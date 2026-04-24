@@ -191,6 +191,13 @@ export default function AdminCampaigns() {
     const [loadingDetailId, setLoadingDetailId] = useState<string | null>(null);
     const [selectedMapPersonKey, setSelectedMapPersonKey] = useState<string | null>(null);
     const [mapDirection, setMapDirection] = useState<"from" | "to">("from");
+    const [candidaturesSearch, setCandidaturesSearch] = useState("");
+    const [filterCandidateRole, setFilterCandidateRole] = useState("");
+    const [filterCandidateLocation, setFilterCandidateLocation] = useState("");
+    const [filterTargetRole, setFilterTargetRole] = useState("");
+    const [filterTargetDepartment, setFilterTargetDepartment] = useState("");
+    const [candidaturesSortField, setCandidaturesSortField] = useState<"created_at" | "priority" | "candidate" | "target">("created_at");
+    const [candidaturesSortDir, setCandidaturesSortDir] = useState<"asc" | "desc">("desc");
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState(false);
     const [hoveredStep, setHoveredStep] = useState<string | null>(null);
@@ -554,6 +561,110 @@ export default function AdminCampaigns() {
         setMapDirection("from");
     }, [selectedDataCampaignId, activeTabSafe]);
 
+    useEffect(() => {
+        setCandidaturesSearch("");
+        setFilterCandidateRole("");
+        setFilterCandidateLocation("");
+        setFilterTargetRole("");
+        setFilterTargetDepartment("");
+        setCandidaturesSortField("created_at");
+        setCandidaturesSortDir("desc");
+    }, [selectedDataCampaignId]);
+
+    const candidateRoles = useMemo(
+        () => Array.from(new Set(selectedApplications.map((a) => a.candidate_role_name).filter(Boolean) as string[])).sort((a, b) => a.localeCompare(b, "it")),
+        [selectedApplications]
+    );
+    const candidateLocations = useMemo(
+        () => Array.from(new Set(selectedApplications.map((a) => a.candidate_location_name).filter(Boolean) as string[])).sort((a, b) => a.localeCompare(b, "it")),
+        [selectedApplications]
+    );
+    const targetRoles = useMemo(
+        () => Array.from(new Set(selectedApplications.map((a) => a.target_role_name).filter(Boolean) as string[])).sort((a, b) => a.localeCompare(b, "it")),
+        [selectedApplications]
+    );
+    const targetDepartments = useMemo(
+        () => Array.from(new Set(selectedApplications.map((a) => a.target_department_name).filter(Boolean) as string[])).sort((a, b) => a.localeCompare(b, "it")),
+        [selectedApplications]
+    );
+
+    const filteredApplications = useMemo(() => {
+        let rows = [...selectedApplications];
+        const q = candidaturesSearch.trim().toLowerCase();
+        if (q) {
+            rows = rows.filter((a) =>
+                (a.candidate_full_name ?? "").toLowerCase().includes(q) ||
+                (a.candidate_role_name ?? "").toLowerCase().includes(q) ||
+                (a.candidate_location_name ?? "").toLowerCase().includes(q) ||
+                (a.target_full_name ?? "").toLowerCase().includes(q) ||
+                (a.target_role_name ?? "").toLowerCase().includes(q) ||
+                (a.target_department_name ?? "").toLowerCase().includes(q) ||
+                (a.target_location_name ?? "").toLowerCase().includes(q) ||
+                (a.position_title ?? "").toLowerCase().includes(q)
+            );
+        }
+        if (filterCandidateRole) rows = rows.filter((a) => a.candidate_role_name === filterCandidateRole);
+        if (filterCandidateLocation) rows = rows.filter((a) => a.candidate_location_name === filterCandidateLocation);
+        if (filterTargetRole) rows = rows.filter((a) => a.target_role_name === filterTargetRole);
+        if (filterTargetDepartment) rows = rows.filter((a) => a.target_department_name === filterTargetDepartment);
+
+        rows.sort((a, b) => {
+            let va: string | number = "";
+            let vb: string | number = "";
+            if (candidaturesSortField === "created_at") {
+                va = new Date(a.original_created_at ?? 0).getTime();
+                vb = new Date(b.original_created_at ?? 0).getTime();
+            } else if (candidaturesSortField === "priority") {
+                va = a.priority ?? 9999;
+                vb = b.priority ?? 9999;
+            } else if (candidaturesSortField === "candidate") {
+                va = a.candidate_full_name ?? "";
+                vb = b.candidate_full_name ?? "";
+            } else {
+                va = a.target_full_name ?? a.position_title ?? "";
+                vb = b.target_full_name ?? b.position_title ?? "";
+            }
+            if (va < vb) return candidaturesSortDir === "asc" ? -1 : 1;
+            if (va > vb) return candidaturesSortDir === "asc" ? 1 : -1;
+            return 0;
+        });
+
+        return rows;
+    }, [
+        selectedApplications,
+        candidaturesSearch,
+        filterCandidateRole,
+        filterCandidateLocation,
+        filterTargetRole,
+        filterTargetDepartment,
+        candidaturesSortField,
+        candidaturesSortDir,
+    ]);
+
+    const candidaturesHasFilters = Boolean(
+        candidaturesSearch || filterCandidateRole || filterCandidateLocation || filterTargetRole || filterTargetDepartment
+    );
+
+    const resetCandidaturesFilters = () => {
+        setCandidaturesSearch("");
+        setFilterCandidateRole("");
+        setFilterCandidateLocation("");
+        setFilterTargetRole("");
+        setFilterTargetDepartment("");
+    };
+
+    const handleCandidaturesSort = (field: "created_at" | "priority" | "candidate" | "target") => {
+        if (candidaturesSortField === field) {
+            setCandidaturesSortDir((prev) => (prev === "asc" ? "desc" : "asc"));
+            return;
+        }
+        setCandidaturesSortField(field);
+        setCandidaturesSortDir("asc");
+    };
+
+    const sortIcon = (field: "created_at" | "priority" | "candidate" | "target") =>
+        candidaturesSortField === field ? (candidaturesSortDir === "asc" ? " ↑" : " ↓") : " ⇅";
+
     if (loading) {
         return <div style={{ padding: 40, color: "#64748b" }}>Caricamento campagne candidature…</div>;
     }
@@ -724,42 +835,137 @@ export default function AdminCampaigns() {
 
                 {activeTabSafe === "candidatures" && (
                     <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, overflow: "hidden", background: "#fff" }}>
-                        <div style={{ padding: "10px 12px", borderBottom: "1px solid #e5e7eb", fontSize: 13, color: "#6b7280" }}>
-                            Lista candidature archiviate per la campagna selezionata.
+                        <div style={{ padding: "14px 16px 0", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                            <div>
+                                <div style={{ fontSize: 15, fontWeight: 700, color: "#111827" }}>Lista candidature</div>
+                                <div style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }}>
+                                    {filteredApplications.length} di {selectedApplications.length} candidature snapshot
+                                </div>
+                            </div>
+                            {candidaturesHasFilters && (
+                                <button
+                                    type="button"
+                                    onClick={resetCandidaturesFilters}
+                                    style={{
+                                        borderRadius: 999,
+                                        border: "1px solid #d1d5db",
+                                        background: "#fff",
+                                        color: "#374151",
+                                        fontSize: 12,
+                                        fontWeight: 700,
+                                        padding: "6px 12px",
+                                        cursor: "pointer",
+                                    }}
+                                >
+                                    ↺ Azzera filtri
+                                </button>
+                            )}
                         </div>
+
+                        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", padding: "12px 16px 14px", borderBottom: "1px solid #e5e7eb", alignItems: "center" }}>
+                            <input
+                                type="text"
+                                value={candidaturesSearch}
+                                onChange={(e) => setCandidaturesSearch(e.target.value)}
+                                placeholder="Cerca nome, ruolo, sede, reparto…"
+                                style={{
+                                    flex: 1,
+                                    minWidth: 210,
+                                    border: "1px solid #d1d5db",
+                                    borderRadius: 10,
+                                    padding: "8px 10px",
+                                    fontSize: 13,
+                                    color: "#111827",
+                                    background: "#fff",
+                                }}
+                            />
+                            <select value={filterCandidateRole} onChange={(e) => setFilterCandidateRole(e.target.value)} style={tableFilterSelectStyle}>
+                                <option value="">Ruolo candidato</option>
+                                {candidateRoles.map((r) => <option key={r} value={r}>{r}</option>)}
+                            </select>
+                            <select value={filterCandidateLocation} onChange={(e) => setFilterCandidateLocation(e.target.value)} style={tableFilterSelectStyle}>
+                                <option value="">Sede candidato</option>
+                                {candidateLocations.map((s) => <option key={s} value={s}>{s}</option>)}
+                            </select>
+                            <select value={filterTargetRole} onChange={(e) => setFilterTargetRole(e.target.value)} style={tableFilterSelectStyle}>
+                                <option value="">Ruolo target</option>
+                                {targetRoles.map((r) => <option key={r} value={r}>{r}</option>)}
+                            </select>
+                            <select value={filterTargetDepartment} onChange={(e) => setFilterTargetDepartment(e.target.value)} style={tableFilterSelectStyle}>
+                                <option value="">Reparto target</option>
+                                {targetDepartments.map((d) => <option key={d} value={d}>{d}</option>)}
+                            </select>
+                        </div>
+
                         <div style={{ overflowX: "auto" }}>
-                            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 1320 }}>
                                 <thead>
-                                    <tr style={{ background: "#f3f4f6" }}>
-                                        <th style={thStyle}>Prio</th>
-                                        <th style={thStyle}>Candidato</th>
-                                        <th style={thStyle}>Posizione target</th>
-                                        <th style={thStyle}>Occupante target</th>
-                                        <th style={thStyle}>Data candidatura</th>
+                                    <tr>
+                                        <th colSpan={3} style={candidateGroupHeaderStyle}>Candidato</th>
+                                        <th colSpan={4} style={targetGroupHeaderStyle}>Posizione target</th>
+                                        <th colSpan={3} style={applicationGroupHeaderStyle}>Candidatura</th>
+                                    </tr>
+                                    <tr style={{ background: "#fafafa" }}>
+                                        <th style={tableThStyle} onClick={() => handleCandidaturesSort("candidate")}>
+                                            Nome{sortIcon("candidate")}
+                                        </th>
+                                        <th style={tableThStyle}>Ruolo</th>
+                                        <th style={{ ...tableThStyle, borderRight: "2px solid #e5e7eb" }}>Sede</th>
+
+                                        <th style={tableThStyle}>Occupato da</th>
+                                        <th style={tableThStyle}>Ruolo</th>
+                                        <th style={tableThStyle}>Reparto</th>
+                                        <th style={{ ...tableThStyle, borderRight: "2px solid #e5e7eb" }}>Sede</th>
+
+                                        <th style={tableThStyle} onClick={() => handleCandidaturesSort("created_at")}>
+                                            Data{sortIcon("created_at")}
+                                        </th>
+                                        <th style={tableThStyle} onClick={() => handleCandidaturesSort("priority")}>
+                                            Priorità{sortIcon("priority")}
+                                        </th>
+                                        <th style={tableThStyle}>ID</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {selectedApplications.length === 0 ? (
+                                    {filteredApplications.length === 0 ? (
                                         <tr>
-                                            <td style={tdStyle} colSpan={5}>Nessuna candidatura archiviata.</td>
+                                            <td style={tableTdStyle} colSpan={10}>
+                                                {selectedApplications.length === 0
+                                                    ? "Nessuna candidatura archiviata per questa campagna."
+                                                    : "Nessun risultato con i filtri correnti."}
+                                            </td>
                                         </tr>
-                                    ) : selectedApplications.map((row) => (
-                                        <tr key={row.id}>
-                                            <td style={tdStyle}>{row.priority ?? "—"}</td>
-                                            <td style={tdStyle}>
+                                    ) : filteredApplications.map((row, index) => (
+                                        <tr
+                                            key={row.id}
+                                            style={{ background: index % 2 === 0 ? "#ffffff" : "#fafafa" }}
+                                        >
+                                            <td style={tableTdStyle}>
                                                 {row.candidate_full_name ?? "—"}
-                                                <div style={{ fontSize: 11, color: "#6b7280" }}>
-                                                    {row.candidate_role_name ?? "—"} · {row.candidate_department_name ?? "—"} · {row.candidate_location_name ?? "—"}
-                                                </div>
                                             </td>
-                                            <td style={tdStyle}>{row.position_title ?? "—"}</td>
-                                            <td style={tdStyle}>
+                                            <td style={tableTdStyle}>
+                                                <span style={candidatePillStyle}>{row.candidate_role_name ?? "—"}</span>
+                                            </td>
+                                            <td style={{ ...tableTdStyle, borderRight: "2px solid #e5e7eb" }}>
+                                                {row.candidate_location_name ?? "—"}
+                                            </td>
+
+                                            <td style={tableTdStyle}>
                                                 {row.target_full_name ?? "—"}
-                                                <div style={{ fontSize: 11, color: "#6b7280" }}>
-                                                    {row.target_role_name ?? "—"} · {row.target_department_name ?? "—"} · {row.target_location_name ?? "—"}
-                                                </div>
                                             </td>
-                                            <td style={tdStyle}>{formatDate(row.original_created_at)}</td>
+                                            <td style={tableTdStyle}>
+                                                <span style={targetPillStyle}>{row.target_role_name ?? "—"}</span>
+                                            </td>
+                                            <td style={tableTdStyle}>{row.target_department_name ?? "—"}</td>
+                                            <td style={{ ...tableTdStyle, borderRight: "2px solid #e5e7eb" }}>
+                                                {row.target_location_name ?? "—"}
+                                            </td>
+
+                                            <td style={tableTdStyle}>{formatDate(row.original_created_at)}</td>
+                                            <td style={tableTdStyle}>
+                                                {row.priority != null ? <span style={priorityBadgeStyle}>{row.priority}</span> : "—"}
+                                            </td>
+                                            <td style={tableTdStyle}>{row.id.slice(0, 8)}…</td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -954,19 +1160,25 @@ export default function AdminCampaigns() {
     );
 }
 
-const thStyle: React.CSSProperties = {
+const tableThStyle: React.CSSProperties = {
     textAlign: "left",
     fontWeight: 700,
     color: "#374151",
     borderBottom: "1px solid #e5e7eb",
     padding: "8px 10px",
+    fontSize: 11,
+    letterSpacing: "0.05em",
+    textTransform: "uppercase",
+    whiteSpace: "nowrap",
+    userSelect: "none",
 };
 
-const tdStyle: React.CSSProperties = {
+const tableTdStyle: React.CSSProperties = {
     borderBottom: "1px solid #f1f5f9",
     padding: "8px 10px",
     color: "#111827",
     verticalAlign: "top",
+    whiteSpace: "nowrap",
 };
 
 const metricBoxStyle: React.CSSProperties = {
@@ -988,5 +1200,87 @@ const metricValueStyle: React.CSSProperties = {
     marginTop: 4,
     fontSize: 20,
     color: "#111827",
+    fontWeight: 700,
+};
+
+const tableFilterSelectStyle: React.CSSProperties = {
+    minWidth: 160,
+    height: 36,
+    border: "1px solid #d1d5db",
+    borderRadius: 10,
+    background: "#fff",
+    color: "#111827",
+    fontSize: 13,
+    padding: "0 10px",
+};
+
+const candidateGroupHeaderStyle: React.CSSProperties = {
+    textAlign: "left",
+    padding: "10px 10px 6px",
+    fontSize: 10.5,
+    fontWeight: 700,
+    color: "#9a3412",
+    textTransform: "uppercase",
+    letterSpacing: "0.08em",
+    borderBottom: "2px solid #fdba74",
+    background: "rgba(251,146,60,0.08)",
+    borderRight: "2px solid #e5e7eb",
+};
+
+const targetGroupHeaderStyle: React.CSSProperties = {
+    textAlign: "left",
+    padding: "10px 10px 6px",
+    fontSize: 10.5,
+    fontWeight: 700,
+    color: "#1d4ed8",
+    textTransform: "uppercase",
+    letterSpacing: "0.08em",
+    borderBottom: "2px solid #93c5fd",
+    background: "rgba(59,130,246,0.07)",
+    borderRight: "2px solid #e5e7eb",
+};
+
+const applicationGroupHeaderStyle: React.CSSProperties = {
+    textAlign: "left",
+    padding: "10px 10px 6px",
+    fontSize: 10.5,
+    fontWeight: 700,
+    color: "#475569",
+    textTransform: "uppercase",
+    letterSpacing: "0.08em",
+    borderBottom: "2px solid #cbd5e1",
+    background: "#f8fafc",
+};
+
+const candidatePillStyle: React.CSSProperties = {
+    display: "inline-flex",
+    padding: "3px 8px",
+    borderRadius: 8,
+    background: "#fff7ed",
+    color: "#c2410c",
+    fontSize: 11,
+    fontWeight: 600,
+};
+
+const targetPillStyle: React.CSSProperties = {
+    display: "inline-flex",
+    padding: "3px 8px",
+    borderRadius: 8,
+    background: "#eff6ff",
+    color: "#1d4ed8",
+    fontSize: 11,
+    fontWeight: 600,
+};
+
+const priorityBadgeStyle: React.CSSProperties = {
+    display: "inline-flex",
+    width: 26,
+    height: 26,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    background: "#ffedd5",
+    color: "#c2410c",
+    fontSize: 12,
     fontWeight: 700,
 };
