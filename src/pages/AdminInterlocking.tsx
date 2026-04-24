@@ -252,12 +252,11 @@ function FitBounds({
     return null;
 }
 
-function formatCampaignOptionLabel(campaign: CampaignRecord) {
-    const created = new Date(campaign.created_at);
-    const createdLabel = Number.isNaN(created.getTime())
-        ? campaign.created_at
-        : created.toLocaleDateString("it-IT");
-    return `${createdLabel} · ${campaign.total_applications_count} candidature · ${campaign.reserved_users_count} prenotati`;
+function formatCampaignDate(value: string | null | undefined) {
+    if (!value) return "—";
+    const dt = new Date(value);
+    if (Number.isNaN(dt.getTime())) return value;
+    return dt.toLocaleDateString("it-IT");
 }
 
 const AdminInterlocking = () => {
@@ -690,7 +689,6 @@ const AdminInterlocking = () => {
         setFocusedPersonId(null);
         setSelectedChainIndex(null);
         setBuildResult(null);
-        if (!selectedCampaignId) setShowNewSimPanel(false);
         void loadScenarios();
     }, [canManageCampaign, selectedCampaignId]);
 
@@ -709,6 +707,24 @@ const AdminInterlocking = () => {
         () => campaigns.find((c) => c.id === selectedCampaignId) ?? null,
         [campaigns, selectedCampaignId]
     );
+    const campaignSelectionOptions = useMemo(() => {
+        const sortedAsc = [...campaigns].sort((a, b) => {
+            const ta = new Date(a.created_at).getTime();
+            const tb = new Date(b.created_at).getTime();
+            return ta - tb;
+        });
+        const byId = new Map<string, string>();
+        sortedAsc.forEach((campaign, idx) => {
+            const progressive = String(idx + 1).padStart(3, "0");
+            const openDate = formatCampaignDate(campaign.campaign_opened_at ?? campaign.created_at);
+            const closedDate = formatCampaignDate(campaign.campaign_closed_at);
+            byId.set(
+                campaign.id,
+                `${progressive} - ${openDate} / ${closedDate} · ${campaign.total_applications_count} candidature · ${campaign.reserved_users_count} prenotati`
+            );
+        });
+        return byId;
+    }, [campaigns]);
     const openCampaignManagement = () => {
         const qs = new URLSearchParams();
         if (selectedCampaignId) qs.set("campaignId", selectedCampaignId);
@@ -1351,35 +1367,16 @@ const AdminInterlocking = () => {
                     </div>
                 )}
 
-                {/* ── Campaign selector + status ── */}
+                {/* ── Campaign status strip ── */}
                 {canManageCampaign && (
                     <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "10px 16px", background: "#FFFFFF", border: "1px solid #E5E7EB", borderRadius: "14px" }}
                         onClick={(e) => e.stopPropagation()}
                     >
-                        <span style={{ fontSize: "13px", fontWeight: 600, color: "#374151" }}>Campagna simulazione:</span>
-                        <select
-                            value={selectedCampaignId ?? ""}
-                            onChange={(e) => setSelectedCampaignId(e.target.value || null)}
-                            disabled={loadingCampaigns || campaigns.length === 0}
-                            style={{
-                                border: "1px solid #D1D5DB",
-                                borderRadius: "10px",
-                                padding: "6px 10px",
-                                fontSize: "12px",
-                                color: "#111827",
-                                minWidth: "300px",
-                                background: "#FFFFFF",
-                            }}
-                        >
-                            {campaigns.length === 0 && <option value="">Nessuna campagna chiusa disponibile</option>}
-                            {campaigns.map((c) => (
-                                <option key={c.id} value={c.id}>
-                                    {formatCampaignOptionLabel(c)}
-                                </option>
-                            ))}
-                        </select>
                         {selectedCampaign && (
                             <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                                <span style={{ fontSize: "12px", color: "#374151", fontWeight: 700 }}>
+                                    Campagna selezionata: {campaignSelectionOptions.get(selectedCampaign.id) ?? selectedCampaign.id}
+                                </span>
                                 <span style={{ fontSize: "12px", color: "#6B7280", fontWeight: 500 }}>
                                     Snapshot selezionato · {selectedCampaign.total_applications_count} candidature
                                 </span>
@@ -1397,14 +1394,6 @@ const AdminInterlocking = () => {
                                     campaign_closed
                                 </span>
                             </div>
-                        )}
-                        {loadingCampaigns && (
-                            <span style={{ fontSize: "12px", color: "#6B7280" }}>Caricamento campagne…</span>
-                        )}
-                        {campaigns.length === 0 && !loadingCampaigns && (
-                            <span style={{ fontSize: "12px", color: "#92400E", fontWeight: 600 }}>
-                                Nessuna campagna chiusa: impossibile avviare simulazioni.
-                            </span>
                         )}
                         {campaignStatus !== null && reservationsStatus !== null && (
                             <>
@@ -1547,8 +1536,8 @@ const AdminInterlocking = () => {
                             <div style={{ marginBottom: "14px" }}>
                                     <button
                                         onClick={(e) => { e.stopPropagation(); setShowNewSimPanel((prev) => !prev); }}
-                                    disabled={isRestrictedReadOnly || !selectedCampaignId}
-                                    style={{
+                                    disabled={isRestrictedReadOnly}
+                            style={{
                                         display: "flex", alignItems: "center", gap: "6px",
                                         padding: "9px 16px", borderRadius: "12px",
                                         border: "1px solid #E8511A",
@@ -1558,11 +1547,6 @@ const AdminInterlocking = () => {
                                 >
                                     <span style={{ fontSize: "16px", lineHeight: 1 }}>+</span> Nuova simulazione
                                 </button>
-                                {!selectedCampaignId && (
-                                    <div style={{ marginTop: "8px", fontSize: "12px", color: "#92400E", fontWeight: 600 }}>
-                                        Seleziona una campagna chiusa per abilitare la simulazione.
-                                    </div>
-                                )}
 
                                 {showNewSimPanel && (
                                     <div
@@ -1573,6 +1557,39 @@ const AdminInterlocking = () => {
                                         }}
                                         onClick={(e) => e.stopPropagation()}
                                     >
+                                        {/* Step 0: mandatory campaign selection */}
+                                        <div style={{ display: "grid", gap: "6px", maxWidth: "640px" }}>
+                                            <label style={{ fontSize: "12px", color: "#4B5563" }}>
+                                                Campagna simulazione (obbligatoria)
+                                            </label>
+                                            <select
+                                                value={selectedCampaignId ?? ""}
+                                                onChange={(e) => setSelectedCampaignId(e.target.value || null)}
+                                                disabled={loadingCampaigns || campaigns.length === 0}
+                                                style={{
+                                                    background: "#FFF",
+                                                    color: "#111827",
+                                                    border: "1px solid #E5E7EB",
+                                                    borderRadius: "10px",
+                                                    padding: "9px 12px",
+                                                    outline: "none",
+                                                    fontSize: "13px",
+                                                }}
+                                            >
+                                                {campaigns.length === 0 && <option value="">Nessuna campagna chiusa disponibile</option>}
+                                                {campaigns.map((c) => (
+                                                    <option key={c.id} value={c.id}>
+                                                        {campaignSelectionOptions.get(c.id) ?? c.id}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            {!selectedCampaignId && (
+                                                <div style={{ fontSize: "12px", color: "#92400E", fontWeight: 600 }}>
+                                                    Seleziona una campagna chiusa prima di preparare o analizzare la simulazione.
+                                                </div>
+                                            )}
+                                        </div>
+
                                         {/* Step 1: build */}
                                         <div style={{ display: "flex", gap: "12px", alignItems: "center", flexWrap: "wrap" }}>
                                             <button
