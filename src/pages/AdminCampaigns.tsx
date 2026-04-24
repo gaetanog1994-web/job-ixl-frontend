@@ -321,6 +321,9 @@ export default function AdminCampaigns() {
     async function handleToggleCampaignDetail(campaign: CampaignRecord) {
         const willOpen = openCampaignId !== campaign.id;
         setOpenCampaignId(willOpen ? campaign.id : null);
+        if (willOpen && campaign.status === "campaign_closed") {
+            setCampaignQuery(campaign.id, activeTab);
+        }
         if (!willOpen || campaign.status !== "campaign_closed") return;
         await ensureCampaignDetailLoaded(campaign.id);
     }
