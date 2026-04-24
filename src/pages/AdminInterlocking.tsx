@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { solveOptimalChains } from "../lib/optimalChainsSolver";
 import type {
     ChainCandidate,
@@ -260,6 +261,7 @@ function formatCampaignOptionLabel(campaign: CampaignRecord) {
 }
 
 const AdminInterlocking = () => {
+    const navigate = useNavigate();
     const [loadingGraph, setLoadingGraph] = useState(false);
     const [loadingAnalyze, setLoadingAnalyze] = useState(false);
     const [loadingScenarios, setLoadingScenarios] = useState(false);
@@ -707,6 +709,12 @@ const AdminInterlocking = () => {
         () => campaigns.find((c) => c.id === selectedCampaignId) ?? null,
         [campaigns, selectedCampaignId]
     );
+    const openCampaignManagement = () => {
+        const qs = new URLSearchParams();
+        if (selectedCampaignId) qs.set("campaignId", selectedCampaignId);
+        const suffix = qs.toString() ? `?${qs.toString()}` : "";
+        navigate(`/admin/campagne${suffix}`);
+    };
     const activeScenarioSummary = useMemo(() => {
         if (!activeScenario) {
             return {
@@ -1427,9 +1435,13 @@ const AdminInterlocking = () => {
                                 </span>
                             </>
                         )}
-                        <a href="/admin/campagne" style={{ marginLeft: "auto", fontSize: "12px", color: "#2563eb", fontWeight: 600, textDecoration: "none" }}>
+                        <button
+                            type="button"
+                            onClick={openCampaignManagement}
+                            style={{ marginLeft: "auto", fontSize: "12px", color: "#2563eb", fontWeight: 600, textDecoration: "none", background: "transparent", border: "none", padding: 0, cursor: "pointer" }}
+                        >
                             Gestisci campagna →
-                        </a>
+                        </button>
                     </div>
                 )}
 
@@ -1489,9 +1501,13 @@ const AdminInterlocking = () => {
                         <span style={{ fontSize: "12px", color: "#6B7280", fontWeight: 500 }}>
                             {reservedUsersCount} prenotat{reservedUsersCount === 1 ? "o" : "i"}
                         </span>
-                        <a href="/admin/campagne" style={{ marginLeft: "auto", fontSize: "12px", color: "#2563eb", fontWeight: 600, textDecoration: "none" }}>
+                        <button
+                            type="button"
+                            onClick={openCampaignManagement}
+                            style={{ marginLeft: "auto", fontSize: "12px", color: "#2563eb", fontWeight: 600, textDecoration: "none", background: "transparent", border: "none", padding: 0, cursor: "pointer" }}
+                        >
                             Gestisci campagna →
-                        </a>
+                        </button>
                     </div>
                 )}
 

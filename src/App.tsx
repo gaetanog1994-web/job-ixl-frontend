@@ -12,6 +12,7 @@ import AdminCampaigns from "./pages/AdminCampaigns";
 import AdminMaps from "./pages/AdminMaps";
 import AdminInterlocking from "./pages/AdminInterlocking";
 import AdminTestUsers from "./pages/AdminTestUsers";
+import AdminTestScenario from "./pages/AdminTestScenario";
 
 import TopBar from "./pages/TopBar";
 import PreAuthPage from "./pages/PreAuthPage";
@@ -73,6 +74,7 @@ function AppShell({ showTopBar }: { showTopBar: boolean }) {
               <Route path="/admin" element={<Navigate to="/admin/interlocking" replace />} />
               <Route path="/admin/candidatures" element={<RequireAdmin><AdminCandidatures /></RequireAdmin>} />
               <Route path="/admin/campagne" element={<RequireAdmin><AdminCampaigns /></RequireAdmin>} />
+              <Route path="/admin/test-scenario" element={<RequireAdmin><AdminTestScenario /></RequireAdmin>} />
               <Route path="/admin/maps" element={<RequireAdmin><AdminMaps /></RequireAdmin>} />
               <Route path="/admin/configurazione" element={<RequireAdmin><AdminTestUsers /></RequireAdmin>} />
               <Route

@@ -68,7 +68,7 @@ export type TopBarTreeNode = {
 };
 
 const ADMIN_ACCESS_ROLES = new Set(["admin", "admin_user"]);
-export type AdminPageKey = "interlocking" | "configuration" | "campaigns" | "maps" | "candidatures";
+export type AdminPageKey = "interlocking" | "configuration" | "campaigns" | "testScenario" | "maps" | "candidatures";
 
 type AdminPageDefinition = {
   key: AdminPageKey;
@@ -81,6 +81,7 @@ export const ADMIN_PAGE_DEFINITIONS: AdminPageDefinition[] = [
   { key: "interlocking", id: "admin-interlocking", label: "Interlocking", path: "/admin/interlocking" },
   { key: "configuration", id: "admin-configurazione", label: "Configurazione", path: "/admin/configurazione" },
   { key: "campaigns", id: "admin-campagne", label: "Campagne candidature", path: "/admin/campagne" },
+  { key: "testScenario", id: "admin-test-scenario", label: "Test Scenario", path: "/admin/test-scenario" },
   { key: "maps", id: "admin-maps", label: "Mappe utenti attivi", path: "/admin/maps" },
   { key: "candidatures", id: "admin-candidatures", label: "Lista candidature", path: "/admin/candidatures" },
 ];

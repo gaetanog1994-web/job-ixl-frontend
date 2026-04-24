@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import { appApi, type CampaignDetail, type CampaignRecord, type CampaignLifecycleStatus } from "../lib/appApi";
 
 type LifecycleAction = "openReservations" | "closeReservations" | "openCampaign" | "closeCampaign";
@@ -193,6 +194,7 @@ function CampaignRow({
 }
 
 export default function AdminCampaigns() {
+    const [searchParams] = useSearchParams();
     const [lifecycle, setLifecycle] = useState<CampaignLifecycleStatus | null>(null);
     const [campaigns, setCampaigns] = useState<CampaignRecord[]>([]);
     const [campaignDetails, setCampaignDetails] = useState<Record<string, CampaignDetail>>({});
@@ -218,6 +220,33 @@ export default function AdminCampaigns() {
     }, []);
 
     useEffect(() => { load(); }, [load]);
+
+    useEffect(() => {
+        const requestedCampaignId = String(searchParams.get("campaignId") ?? "").trim();
+        if (!requestedCampaignId) return;
+        const targetCampaign = campaigns.find((c) => c.id === requestedCampaignId);
+        if (!targetCampaign) return;
+        if (openCampaignId !== targetCampaign.id) {
+            setOpenCampaignId(targetCampaign.id);
+        }
+        if (
+            targetCampaign.status === "campaign_closed"
+            && !campaignDetails[targetCampaign.id]
+            && loadingDetailId !== targetCampaign.id
+        ) {
+            setLoadingDetailId(targetCampaign.id);
+            void (async () => {
+                try {
+                    const detail = await appApi.adminGetCampaignDetail(targetCampaign.id);
+                    setCampaignDetails((prev) => ({ ...prev, [targetCampaign.id]: detail }));
+                } catch (e) {
+                    setError(e instanceof Error ? e.message : "Errore caricamento dettaglio campagna");
+                } finally {
+                    setLoadingDetailId(null);
+                }
+            })();
+        }
+    }, [searchParams, campaigns, openCampaignId, campaignDetails, loadingDetailId]);
 
     async function runAction(action: LifecycleAction) {
         if (actionLoading) return;
@@ -279,6 +308,10 @@ export default function AdminCampaigns() {
                     : "Azione non disponibile nello stato lifecycle corrente.";
 
     const activeCampaign = campaigns.find((c) => c.status !== "campaign_closed") ?? null;
+    const requestedCampaignId = String(searchParams.get("campaignId") ?? "").trim();
+    const requestedCampaign = requestedCampaignId
+        ? campaigns.find((c) => c.id === requestedCampaignId) ?? null
+        : null;
 
     if (loading) {
         return <div style={{ padding: 40, color: "#64748b" }}>Caricamento campagne candidature…</div>;
@@ -290,6 +323,11 @@ export default function AdminCampaigns() {
             <p style={{ fontSize: 14, color: "#6b7280", marginBottom: 28 }}>
                 Gestisci lifecycle campagne e consulta lo storico candidature del perimetro attivo.
             </p>
+            {requestedCampaign && (
+                <div style={{ background: "#eff6ff", border: "1px solid #93c5fd", borderRadius: 8, padding: "10px 14px", color: "#1d4ed8", fontSize: 13, marginBottom: 20 }}>
+                    Campagna selezionata da Interlocking: <b>{formatDate(requestedCampaign.created_at)}</b>
+                </div>
+            )}
 
             {error && (
                 <div style={{ background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: 8, padding: "10px 14px", color: "#dc2626", fontSize: 13, marginBottom: 20 }}>
