@@ -317,6 +317,18 @@ export default function AdminCampaigns() {
                 : activeCampaign
                     ? "reservations_closed"
                     : "campaign_closed";
+    const stepLabelByKey: Record<string, string> = {
+        reservations_open:
+            lifecyclePhase === "reservations_open" ? "Prenotazioni aperte" : "Apri prenotazioni",
+        reservations_closed:
+            (lifecyclePhase === "reservations_closed" || lifecyclePhase === "campaign_open" || lifecyclePhase === "campaign_closed")
+                ? "Prenotazioni chiuse"
+                : "Chiudi prenotazioni",
+        campaign_open:
+            lifecyclePhase === "campaign_open" ? "Campagna aperta" : "Apri campagna",
+        campaign_closed:
+            lifecyclePhase === "campaign_closed" ? "Campagna chiusa" : "Chiudi campagna",
+    };
     const requestedCampaignId = String(searchParams.get("campaignId") ?? "").trim();
     const requestedCampaign = requestedCampaignId
         ? campaigns.find((c) => c.id === requestedCampaignId) ?? null
@@ -356,13 +368,13 @@ export default function AdminCampaigns() {
                         }}
                     >
                         {[
-                            { key: "reservations_open", label: "Prenotazioni aperte" },
-                            { key: "reservations_closed", label: "Prenotazioni chiuse" },
-                            { key: "campaign_open", label: "Campagna aperta" },
-                            { key: "campaign_closed", label: "Campagna chiusa" },
+                            { key: "reservations_open" },
+                            { key: "reservations_closed" },
+                            { key: "campaign_open" },
+                            { key: "campaign_closed" },
                         ].map((step) => (
                             <button
-                                key={step.label}
+                                key={step.key}
                                 type="button"
                                 disabled={!stepActionByKey[step.key] || actionLoading}
                                 onClick={() => {
@@ -391,7 +403,7 @@ export default function AdminCampaigns() {
                                     transition: "box-shadow 140ms ease, border-color 140ms ease, background-color 140ms ease",
                                 }}
                             >
-                                {step.label}
+                                {stepLabelByKey[step.key]}
                             </button>
                         ))}
                     </div>
