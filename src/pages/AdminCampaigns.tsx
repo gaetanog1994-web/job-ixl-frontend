@@ -670,11 +670,7 @@ export default function AdminCampaigns() {
     }
 
     return (
-        <div style={{ padding: "32px 40px", fontFamily: "'Inter', sans-serif", maxWidth: 1400 }}>
-            <h2 style={{ fontSize: 22, fontWeight: 700, color: "#111827", marginBottom: 8 }}>Campagne candidature</h2>
-            <p style={{ fontSize: 14, color: "#6b7280", marginBottom: 28 }}>
-                Gestisci lifecycle, lista candidature e mappa candidature dalla stessa pagina, con campagna selezionabile.
-            </p>
+        <div style={{ padding: "16px 40px 28px", fontFamily: "'Inter', sans-serif", maxWidth: 1400 }}>
 
             {error && (
                 <div style={{ background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: 8, padding: "10px 14px", color: "#dc2626", fontSize: 13, marginBottom: 20 }}>
@@ -682,17 +678,27 @@ export default function AdminCampaigns() {
                 </div>
             )}
 
-            <section style={{ marginBottom: 24 }}>
-                <h3 style={{ fontSize: 15, fontWeight: 600, color: "#374151", marginBottom: 12 }}>Stato campagna attiva</h3>
-                <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, padding: "20px 24px", background: "#f8fafc" }}>
+            <section style={{ marginBottom: 20 }}>
+                <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, padding: "12px 14px", background: "#f8fafc" }}>
                     <div
                         style={{
                             display: "grid",
-                            gridTemplateColumns: "repeat(4, minmax(120px, 1fr))",
-                            gap: "10px",
-                            marginBottom: "16px",
+                            gridTemplateColumns: "auto minmax(0, 1fr) auto",
+                            gap: "10px 12px",
+                            alignItems: "center",
+                            marginBottom: 8,
                         }}
                     >
+                        <div style={{ fontSize: 12, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                            Stato campagna
+                        </div>
+                        <div
+                            style={{
+                                display: "grid",
+                                gridTemplateColumns: "repeat(4, minmax(110px, 1fr))",
+                                gap: "8px",
+                            }}
+                        >
                         {[
                             { key: "reservations_open" },
                             { key: "reservations_closed" },
@@ -722,7 +728,7 @@ export default function AdminCampaigns() {
                                             : "none",
                                     fontSize: 12,
                                     fontWeight: 600,
-                                    padding: "8px 10px",
+                                    padding: "7px 10px",
                                     textAlign: "left",
                                     cursor: stepActionByKey[step.key] && !actionLoading ? "pointer" : "default",
                                     opacity: !stepActionByKey[step.key] && lifecyclePhase !== step.key ? 0.75 : 1,
@@ -732,21 +738,15 @@ export default function AdminCampaigns() {
                                 {stepLabelByKey[step.key]}
                             </button>
                         ))}
+                        </div>
+                        <div style={{ fontSize: 12, color: "#374151", fontWeight: 600, whiteSpace: "nowrap" }}>
+                            {activeCampaign ? `ID ${campaignCodeById.get(activeCampaign.id) ?? "—"}` : "Nessuna attiva"}
+                        </div>
                     </div>
-                    {activeCampaign ? (
-                        <div style={{ marginBottom: 14 }}>
-                            <StatusBadge status={activeCampaign.status} />
-                            <span style={{ fontSize: 13, color: "#374151", marginLeft: 10 }}>
-                                ID campagna <b>{campaignCodeById.get(activeCampaign.id) ?? "—"}</b> · {reservedCount} prenotat{reservedCount === 1 ? "o" : "i"} · {availableCount} disponibili
-                            </span>
-                        </div>
-                    ) : (
-                        <div style={{ marginBottom: 14, fontSize: 13, color: "#6b7280" }}>
-                            Nessuna campagna attiva. Puoi aprire una nuova finestra prenotazioni.
-                        </div>
-                    )}
-
-                    <div style={{ marginTop: "10px", fontSize: "12px", color: "#64748b" }}>{lifecycleHint}</div>
+                    <div style={{ fontSize: 12, color: "#64748b", lineHeight: 1.4 }}>
+                        Stato corrente: <b style={{ color: "#334155" }}>{STATUS_LABEL[lifecyclePhase]}</b>. {lifecycleHint}
+                        {activeCampaign ? ` · ${reservedCount} prenotati, ${availableCount} disponibili.` : ""}
+                    </div>
                 </div>
             </section>
 

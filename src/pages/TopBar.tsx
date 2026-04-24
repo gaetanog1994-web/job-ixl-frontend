@@ -74,6 +74,13 @@ const TopBar: React.FC = () => {
     perimeterOptions.find((perimeter) => perimeter.perimeterId === activeSelection?.perimeterId)?.perimeterName ??
     "Perimetro";
   const adminPageLabel = currentAdminPage?.label ?? "Area Admin";
+  const currentPageLabel = useMemo(() => {
+    const path = location.pathname;
+    if (path === "/" || path.startsWith("/dashboard")) return "Dashboard";
+    if (path.startsWith("/account")) return "Account";
+    if (path.startsWith("/admin")) return currentAdminPage?.label ?? "Area Admin";
+    return "Contesto";
+  }, [location.pathname, currentAdminPage]);
 
   const handleProfileChange = (profile: (typeof availableProfiles)[number]) => {
     if (switchingContext || isBootstrappingContext) return;
@@ -142,6 +149,7 @@ const TopBar: React.FC = () => {
           ☰
         </button>
         <span className="app-context-bar-title">Contesto</span>
+        <span className="app-context-page-title">{currentPageLabel}</span>
       </div>
 
       <div className="app-topbar-slim-right">

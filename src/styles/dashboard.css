@@ -436,6 +436,17 @@
   white-space: nowrap;
 }
 
+.app-context-page-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #9a3412;
+  border: 1px solid #fdba74;
+  background: #fff7ed;
+  border-radius: 999px;
+  padding: 3px 10px;
+  white-space: nowrap;
+}
+
 .app-topbar-hamburger {
   background: transparent;
   border: 1px solid var(--border);
@@ -734,6 +745,10 @@
 
 @media (max-width: 1260px) {
   .app-context-bar-title {
+    display: none;
+  }
+
+  .app-context-page-title {
     display: none;
   }
 
