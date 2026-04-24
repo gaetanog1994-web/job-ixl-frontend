@@ -13,8 +13,12 @@ type CampaignMarker = {
     name: string;
     latitude: number;
     longitude: number;
-    fromCount: number;
-    toCount: number;
+    radius: number;
+    stroke: string;
+    fill: string;
+    fillOpacity: number;
+    weight: number;
+    popupLines: string[];
 };
 
 type CampaignMapPerson = {
@@ -22,8 +26,8 @@ type CampaignMapPerson = {
     fullName: string;
     roleName: string;
     locationName: string;
-    kind: "candidate" | "target";
-    markerKey: string | null;
+    latitude: number | null;
+    longitude: number | null;
 };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -186,6 +190,7 @@ export default function AdminCampaigns() {
     const [openCampaignId, setOpenCampaignId] = useState<string | null>(null);
     const [loadingDetailId, setLoadingDetailId] = useState<string | null>(null);
     const [selectedMapPersonKey, setSelectedMapPersonKey] = useState<string | null>(null);
+    const [mapDirection, setMapDirection] = useState<"from" | "to">("from");
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState(false);
     const [hoveredStep, setHoveredStep] = useState<string | null>(null);
@@ -397,84 +402,148 @@ export default function AdminCampaigns() {
         return map;
     }, [locations]);
 
-    const mapMarkers = useMemo<CampaignMarker[]>(() => {
-        if (!selectedApplications.length) return [];
-        const grouped = new Map<string, CampaignMarker>();
+    const mapGraph = useMemo(() => {
+        const byKey = new Map<string, CampaignMapPerson>();
+        const outgoingByKey = new Map<string, Set<string>>();
+        const incomingByKey = new Map<string, Set<string>>();
 
-        const upsert = (locationName: string | null | undefined, kind: "from" | "to") => {
-            const name = String(locationName ?? "").trim();
-            if (!name) return;
-            const loc = locationByName.get(name.toLowerCase());
-            if (!loc || loc.latitude == null || loc.longitude == null) return;
-            const existing = grouped.get(loc.id || name);
-            if (existing) {
-                if (kind === "from") existing.fromCount += 1;
-                else existing.toCount += 1;
-                return;
-            }
-            grouped.set(loc.id || name, {
-                key: loc.id || name,
-                name: loc.name || name,
-                latitude: Number(loc.latitude),
-                longitude: Number(loc.longitude),
-                fromCount: kind === "from" ? 1 : 0,
-                toCount: kind === "to" ? 1 : 0,
-            });
+        const makePersonKey = (
+            userId: string | null | undefined,
+            fullName: string | null | undefined,
+            locationName: string | null | undefined,
+            side: "candidate" | "target"
+        ) => {
+            const id = String(userId ?? "").trim();
+            if (id) return `user:${id}`;
+            const normalizedName = String(fullName ?? "sconosciuto").trim().toLowerCase();
+            const normalizedLocation = String(locationName ?? "sede-sconosciuta").trim().toLowerCase();
+            return `${side}:${normalizedName}:${normalizedLocation}`;
         };
 
-        for (const row of selectedApplications) {
-            upsert(row.candidate_location_name, "from");
-            upsert(row.target_location_name, "to");
-        }
-
-        return Array.from(grouped.values()).sort((a, b) => (b.fromCount + b.toCount) - (a.fromCount + a.toCount));
-    }, [selectedApplications, locationByName]);
-
-    const mapPeople = useMemo<CampaignMapPerson[]>(() => {
-        const rows: CampaignMapPerson[] = [];
-
-        const pushPerson = (
-            kind: "candidate" | "target",
+        const ensurePerson = (
+            key: string,
             fullName: string | null | undefined,
             roleName: string | null | undefined,
-            locationName: string | null | undefined,
-            rowId: string
+            locationName: string | null | undefined
         ) => {
-            const name = String(fullName ?? "").trim();
-            if (!name) return;
-            const role = String(roleName ?? "").trim() || "—";
-            const location = String(locationName ?? "").trim() || "—";
-            const loc = locationByName.get(location.toLowerCase());
-            const markerKey = loc && loc.latitude != null && loc.longitude != null ? (loc.id || location) : null;
-            rows.push({
-                key: `${rowId}:${kind}:${name}`,
-                fullName: name,
-                roleName: role,
-                locationName: location,
-                kind,
-                markerKey,
-            });
+            const normalizedName = String(fullName ?? "").trim() || "Utente sconosciuto";
+            const normalizedRole = String(roleName ?? "").trim() || "—";
+            const normalizedLocation = String(locationName ?? "").trim() || "—";
+            const loc = locationByName.get(normalizedLocation.toLowerCase());
+            const latitude = loc?.latitude != null ? Number(loc.latitude) : null;
+            const longitude = loc?.longitude != null ? Number(loc.longitude) : null;
+            if (!byKey.has(key)) {
+                byKey.set(key, {
+                    key,
+                    fullName: normalizedName,
+                    roleName: normalizedRole,
+                    locationName: normalizedLocation,
+                    latitude,
+                    longitude,
+                });
+            }
+        };
+
+        const addEdge = (fromKey: string, toKey: string) => {
+            if (fromKey === toKey) return;
+            const outgoing = outgoingByKey.get(fromKey) ?? new Set<string>();
+            outgoing.add(toKey);
+            outgoingByKey.set(fromKey, outgoing);
+            const incoming = incomingByKey.get(toKey) ?? new Set<string>();
+            incoming.add(fromKey);
+            incomingByKey.set(toKey, incoming);
         };
 
         for (const row of selectedApplications) {
-            pushPerson("candidate", row.candidate_full_name, row.candidate_role_name, row.candidate_location_name, row.id);
-            pushPerson("target", row.target_full_name, row.target_role_name, row.target_location_name, row.id);
+            const candidateKey = makePersonKey(row.user_id, row.candidate_full_name, row.candidate_location_name, "candidate");
+            ensurePerson(candidateKey, row.candidate_full_name, row.candidate_role_name, row.candidate_location_name);
+            const targetName = row.target_full_name ?? row.position_title ?? "Destinazione";
+            const targetKey = makePersonKey(row.target_user_id, targetName, row.target_location_name, "target");
+            ensurePerson(targetKey, targetName, row.target_role_name, row.target_location_name);
+            addEdge(candidateKey, targetKey);
         }
 
-        const dedup = new Map<string, CampaignMapPerson>();
-        for (const person of rows) {
-            const key = `${person.kind}:${person.fullName}:${person.locationName}`;
-            if (!dedup.has(key)) dedup.set(key, person);
-        }
-
-        return Array.from(dedup.values()).sort((a, b) => a.fullName.localeCompare(b.fullName, "it"));
+        const people = Array.from(byKey.values()).sort((a, b) => a.fullName.localeCompare(b.fullName, "it"));
+        return { people, outgoingByKey, incomingByKey };
     }, [selectedApplications, locationByName]);
 
-    const focusedMarkerKey = useMemo(() => {
-        if (!selectedMapPersonKey) return null;
-        const person = mapPeople.find((entry) => entry.key === selectedMapPersonKey);
-        return person?.markerKey ?? null;
-    }, [selectedMapPersonKey, mapPeople]);
+    const mapPeople = mapGraph.people;
+
+    const mapMarkers = useMemo<CampaignMarker[]>(() => {
+        const geolocated = mapPeople.filter((person) => person.latitude != null && person.longitude != null);
+        if (!geolocated.length) return [];
+
+        if (!selectedMapPersonKey) {
+            return geolocated.map((person) => ({
+                key: person.key,
+                name: person.fullName,
+                latitude: Number(person.latitude),
+                longitude: Number(person.longitude),
+                radius: 8,
+                stroke: "#0f766e",
+                fill: "#34d399",
+                fillOpacity: 0.68,
+                weight: 2,
+                popupLines: [person.fullName, `${person.roleName} · ${person.locationName}`],
+            }));
+        }
+
+        const selected = mapPeople.find((person) => person.key === selectedMapPersonKey) ?? null;
+        if (!selected) return [];
+
+        const relationKeys =
+            mapDirection === "from"
+                ? mapGraph.outgoingByKey.get(selected.key) ?? new Set<string>()
+                : mapGraph.incomingByKey.get(selected.key) ?? new Set<string>();
+
+        const related = Array.from(relationKeys)
+            .map((key) => mapPeople.find((person) => person.key === key) ?? null)
+            .filter((person): person is CampaignMapPerson => Boolean(person))
+            .filter((person) => person.latitude != null && person.longitude != null);
+
+        const markers: CampaignMarker[] = [];
+        if (selected.latitude != null && selected.longitude != null) {
+            markers.push({
+                key: `selected:${selected.key}`,
+                name: selected.fullName,
+                latitude: Number(selected.latitude),
+                longitude: Number(selected.longitude),
+                radius: 11,
+                stroke: "#0f172a",
+                fill: "#f59e0b",
+                fillOpacity: 0.9,
+                weight: 3,
+                popupLines: [
+                    `${selected.fullName} (riferimento)`,
+                    `${selected.roleName} · ${selected.locationName}`,
+                ],
+            });
+        }
+
+        const relationStroke = mapDirection === "from" ? "#1d4ed8" : "#b91c1c";
+        const relationFill = mapDirection === "from" ? "#3b82f6" : "#ef4444";
+
+        for (const person of related) {
+            markers.push({
+                key: `related:${person.key}`,
+                name: person.fullName,
+                latitude: Number(person.latitude),
+                longitude: Number(person.longitude),
+                radius: 9,
+                stroke: relationStroke,
+                fill: relationFill,
+                fillOpacity: 0.72,
+                weight: 2,
+                popupLines: [
+                    person.fullName,
+                    `${person.roleName} · ${person.locationName}`,
+                    mapDirection === "from" ? "Candidatura DA utente selezionato" : "Candidatura VERSO utente selezionato",
+                ],
+            });
+        }
+
+        return markers;
+    }, [mapPeople, selectedMapPersonKey, mapDirection, mapGraph.outgoingByKey, mapGraph.incomingByKey]);
 
     const activeTabSafe: CampaignTab = activeTab === "candidatures" || activeTab === "map" || activeTab === "lifecycle"
         ? activeTab
@@ -482,6 +551,7 @@ export default function AdminCampaigns() {
 
     useEffect(() => {
         setSelectedMapPersonKey(null);
+        setMapDirection("from");
     }, [selectedDataCampaignId, activeTabSafe]);
 
     if (loading) {
@@ -701,7 +771,7 @@ export default function AdminCampaigns() {
                 {activeTabSafe === "map" && (
                     <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, overflow: "hidden", background: "#fff" }}>
                         <div style={{ padding: "10px 12px", borderBottom: "1px solid #e5e7eb", fontSize: 13, color: "#6b7280" }}>
-                            Mappa sedi coinvolte nella campagna selezionata (sede candidato = blu, sede target = arancio).
+                            Mappa utenti attivi della campagna selezionata: vista completa iniziale, poi filtro DA/VERSO su persona selezionata.
                         </div>
                         <div style={{ height: 520, position: "relative", display: "grid", gridTemplateColumns: "1.75fr 0.55fr", minHeight: 0 }}>
                             {mapMarkers.length === 0 ? (
@@ -731,40 +801,91 @@ export default function AdminCampaigns() {
                                                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                                             />
                                             <FitMapBounds markers={mapMarkers} />
-                                            {mapMarkers.map((marker) => {
-                                                const isFocused = focusedMarkerKey === marker.key;
-                                                return (
-                                                    <CircleMarker
-                                                        key={marker.key}
-                                                        center={[marker.latitude, marker.longitude]}
-                                                        radius={isFocused
-                                                            ? Math.max(12, Math.min(22, 10 + Math.log(marker.fromCount + marker.toCount + 1) * 4))
-                                                            : Math.max(8, Math.min(18, 7 + Math.log(marker.fromCount + marker.toCount + 1) * 4))
-                                                        }
-                                                        pathOptions={{
-                                                            color: isFocused ? "#a16207" : (marker.fromCount > marker.toCount ? "#2563eb" : "#ea580c"),
-                                                            fillColor: isFocused ? "#f59e0b" : (marker.fromCount > marker.toCount ? "#3b82f6" : "#f97316"),
-                                                            fillOpacity: isFocused ? 0.75 : 0.55,
-                                                            weight: isFocused ? 3 : 2,
-                                                        }}
-                                                    >
-                                                        <Popup>
-                                                            <div style={{ fontSize: 12 }}>
-                                                                <div style={{ fontWeight: 700, marginBottom: 4 }}>{marker.name}</div>
-                                                                <div>Da candidati: <b>{marker.fromCount}</b></div>
-                                                                <div>Verso target: <b>{marker.toCount}</b></div>
-                                                            </div>
-                                                        </Popup>
-                                                    </CircleMarker>
-                                                );
-                                            })}
+                                            {mapMarkers.map((marker) => (
+                                                <CircleMarker
+                                                    key={marker.key}
+                                                    center={[marker.latitude, marker.longitude]}
+                                                    radius={marker.radius}
+                                                    pathOptions={{
+                                                        color: marker.stroke,
+                                                        fillColor: marker.fill,
+                                                        fillOpacity: marker.fillOpacity,
+                                                        weight: marker.weight,
+                                                    }}
+                                                >
+                                                    <Popup>
+                                                        <div style={{ fontSize: 12 }}>
+                                                            {marker.popupLines.map((line, index) => (
+                                                                <div key={`${marker.key}:${index}`} style={{ fontWeight: index === 0 ? 700 : 500, marginBottom: index === 0 ? 4 : 0 }}>
+                                                                    {line}
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </Popup>
+                                                </CircleMarker>
+                                            ))}
                                         </MapContainer>
                                     </div>
                                     <div style={{ borderLeft: "1px solid #e5e7eb", background: "#fff", minHeight: 0, display: "grid", gridTemplateRows: "auto 1fr" }}>
                                         <div style={{ padding: "10px 12px", borderBottom: "1px solid #e5e7eb" }}>
                                             <div style={{ fontSize: 13, fontWeight: 700, color: "#111827" }}>Persone coinvolte</div>
-                                            <div style={{ fontSize: 11, color: "#6b7280", marginTop: 2 }}>
-                                                Click per evidenziare la sede in mappa
+                                            <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setMapDirection("from")}
+                                                    style={{
+                                                        borderRadius: 999,
+                                                        border: `1px solid ${mapDirection === "from" ? "#1d4ed8" : "#d1d5db"}`,
+                                                        background: mapDirection === "from" ? "#eff6ff" : "#fff",
+                                                        color: mapDirection === "from" ? "#1d4ed8" : "#4b5563",
+                                                        fontSize: 11,
+                                                        fontWeight: 700,
+                                                        padding: "4px 10px",
+                                                        cursor: "pointer",
+                                                    }}
+                                                >
+                                                    DA
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setMapDirection("to")}
+                                                    style={{
+                                                        borderRadius: 999,
+                                                        border: `1px solid ${mapDirection === "to" ? "#b91c1c" : "#d1d5db"}`,
+                                                        background: mapDirection === "to" ? "#fef2f2" : "#fff",
+                                                        color: mapDirection === "to" ? "#b91c1c" : "#4b5563",
+                                                        fontSize: 11,
+                                                        fontWeight: 700,
+                                                        padding: "4px 10px",
+                                                        cursor: "pointer",
+                                                    }}
+                                                >
+                                                    VERSO
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setSelectedMapPersonKey(null)}
+                                                    style={{
+                                                        borderRadius: 999,
+                                                        border: "1px solid #d1d5db",
+                                                        background: "#fff",
+                                                        color: "#4b5563",
+                                                        fontSize: 11,
+                                                        fontWeight: 700,
+                                                        padding: "4px 10px",
+                                                        cursor: "pointer",
+                                                        marginLeft: "auto",
+                                                    }}
+                                                >
+                                                    Reset
+                                                </button>
+                                            </div>
+                                            <div style={{ fontSize: 11, color: "#6b7280", marginTop: 6 }}>
+                                                {selectedMapPersonKey
+                                                    ? mapDirection === "from"
+                                                        ? "Blu: utenti verso cui il selezionato si è candidato"
+                                                        : "Rosso: utenti che si sono candidati verso il selezionato"
+                                                    : "Nessuna selezione: vedi tutti i partecipanti con colore unico"}
                                             </div>
                                         </div>
                                         <div style={{ overflowY: "auto", padding: "8px", display: "grid", gap: 7, alignContent: "start" }}>
@@ -784,15 +905,14 @@ export default function AdminCampaigns() {
                                                             background: isActive ? "#fffbeb" : "#fff",
                                                             padding: "8px 9px",
                                                             cursor: "pointer",
-                                                            opacity: person.markerKey ? 1 : 0.65,
+                                                            opacity: person.latitude != null && person.longitude != null ? 1 : 0.72,
                                                         }}
-                                                        title={person.markerKey ? "Evidenzia sede sulla mappa" : "Sede non geolocalizzata"}
-                                                        disabled={!person.markerKey}
+                                                        title={person.latitude != null && person.longitude != null ? "Evidenzia sede sulla mappa" : "Sede non geolocalizzata"}
                                                     >
                                                         <div style={{ fontWeight: 600, fontSize: 12, color: "#111827" }}>{person.fullName}</div>
                                                         <div style={{ fontSize: 11, color: "#4b5563", marginTop: 2 }}>{person.roleName}</div>
                                                         <div style={{ fontSize: 11, color: "#6b7280", marginTop: 1 }}>
-                                                            {person.locationName} · {person.kind === "candidate" ? "Candidato" : "Target"}
+                                                            {person.locationName}
                                                         </div>
                                                     </button>
                                                 );
