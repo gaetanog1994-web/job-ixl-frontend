@@ -437,13 +437,11 @@
 }
 
 .app-context-page-title {
-  font-size: 12px;
+  margin-left: 12px;
+  font-size: 18px;
+  line-height: 1.1;
   font-weight: 700;
-  color: #9a3412;
-  border: 1px solid #fdba74;
-  background: #fff7ed;
-  border-radius: 999px;
-  padding: 3px 10px;
+  color: var(--text-primary);
   white-space: nowrap;
 }
 
