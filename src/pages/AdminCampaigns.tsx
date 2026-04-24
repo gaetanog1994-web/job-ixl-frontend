@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { appApi, type CampaignDetail, type CampaignRecord, type CampaignLifecycleStatus } from "../lib/appApi";
 
@@ -84,12 +84,14 @@ function ActionButton({
 
 function CampaignRow({
     campaign,
+    campaignCode,
     isOpen,
     detail,
     loadingDetail,
     onToggle,
 }: {
     campaign: CampaignRecord;
+    campaignCode: string;
     isOpen: boolean;
     detail: CampaignDetail | null;
     loadingDetail: boolean;
@@ -112,6 +114,21 @@ function CampaignRow({
                 }}
                 onClick={onToggle}
             >
+                <span
+                    style={{
+                        fontSize: 12,
+                        fontWeight: 700,
+                        color: "#9a3412",
+                        background: "#fff7ed",
+                        border: "1px solid #fdba74",
+                        borderRadius: 999,
+                        padding: "2px 8px",
+                        minWidth: 44,
+                        textAlign: "center",
+                    }}
+                >
+                    {campaignCode}
+                </span>
                 <span style={{ fontSize: 13, color: "#6b7280", minWidth: 180 }}>{formatDate(campaign.created_at)}</span>
                 <StatusBadge status={campaign.status} />
                 <span style={{ fontSize: 12, color: "#374151", marginLeft: 8 }}>
@@ -297,6 +314,19 @@ export default function AdminCampaigns() {
     const canCloseReservations = cs === "closed" && rs === "open";
     const canOpenCampaign = cs === "closed" && rs === "closed";
     const canCloseCampaign = cs === "open";
+    const campaignCodeById = useMemo(() => {
+        const sorted = [...campaigns].sort((a, b) => {
+            const ta = new Date(a.created_at).getTime();
+            const tb = new Date(b.created_at).getTime();
+            if (ta !== tb) return ta - tb;
+            return a.id.localeCompare(b.id);
+        });
+        const map = new Map<string, string>();
+        sorted.forEach((campaign, index) => {
+            map.set(campaign.id, String(index + 1).padStart(3, "0"));
+        });
+        return map;
+    }, [campaigns]);
     const lifecycleHint = canCloseCampaign
         ? "Campagna attiva: puoi chiuderla per congelare snapshot e azzerare il ciclo operativo."
         : canOpenCampaign
@@ -333,7 +363,7 @@ export default function AdminCampaigns() {
             </p>
             {requestedCampaign && (
                 <div style={{ background: "#eff6ff", border: "1px solid #93c5fd", borderRadius: 8, padding: "10px 14px", color: "#1d4ed8", fontSize: 13, marginBottom: 20 }}>
-                    Campagna selezionata da Interlocking: <b>{formatDate(requestedCampaign.created_at)}</b>
+                    Campagna selezionata da Interlocking: <b>{campaignCodeById.get(requestedCampaign.id) ?? "—"} · {formatDate(requestedCampaign.created_at)}</b>
                 </div>
             )}
 
@@ -383,6 +413,7 @@ export default function AdminCampaigns() {
                         <div style={{ marginBottom: 14 }}>
                             <StatusBadge status={activeCampaign.status} />
                             <span style={{ fontSize: 13, color: "#374151", marginLeft: 10 }}>
+                                ID campagna <b>{campaignCodeById.get(activeCampaign.id) ?? "—"}</b> ·{" "}
                                 {reservedCount} prenotat{reservedCount === 1 ? "o" : "i"} · {availableCount} disponibili
                             </span>
                         </div>
@@ -436,6 +467,7 @@ export default function AdminCampaigns() {
                             <CampaignRow
                                 key={campaign.id}
                                 campaign={campaign}
+                                campaignCode={campaignCodeById.get(campaign.id) ?? "—"}
                                 isOpen={openCampaignId === campaign.id}
                                 detail={campaignDetails[campaign.id] ?? null}
                                 loadingDetail={loadingDetailId === campaign.id}

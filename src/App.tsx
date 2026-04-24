@@ -71,7 +71,7 @@ function AppShell({ showTopBar }: { showTopBar: boolean }) {
               <Route path="/account" element={<AccountPage />} />
 
               {/* Admin (guarded by RequireAdmin) */}
-              <Route path="/admin" element={<Navigate to="/admin/interlocking" replace />} />
+              <Route path="/admin" element={<Navigate to="/admin/campagne" replace />} />
               <Route path="/admin/candidatures" element={<RequireAdmin><AdminCandidatures /></RequireAdmin>} />
               <Route path="/admin/campagne" element={<RequireAdmin><AdminCampaigns /></RequireAdmin>} />
               <Route path="/admin/test-scenario" element={<RequireAdmin><AdminTestScenario /></RequireAdmin>} />

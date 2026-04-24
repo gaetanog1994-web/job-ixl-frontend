@@ -56,7 +56,7 @@ export const PROFILE_LABELS: Record<ActiveProfile, string> = {
 export const CANONICAL_PROFILE_ROUTES: Record<ActiveProfile, string> = {
   owner: "/owner",
   super_admin: "/companies/:companyId/perimeters",
-  admin: "/admin/interlocking",
+  admin: "/admin/campagne",
   user: "/dashboard",
 };
 

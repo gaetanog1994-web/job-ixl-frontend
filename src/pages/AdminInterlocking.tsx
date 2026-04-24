@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { solveOptimalChains } from "../lib/optimalChainsSolver";
 import type {
@@ -725,6 +725,12 @@ const AdminInterlocking = () => {
         });
         return byId;
     }, [campaigns]);
+    const formatScenarioCampaignLabel = useCallback((campaignId: string | null | undefined) => {
+        if (!campaignId) return "—";
+        const known = campaignSelectionOptions.get(campaignId);
+        if (known) return known;
+        return campaignId.slice(0, 8);
+    }, [campaignSelectionOptions]);
     const openCampaignManagement = () => {
         const qs = new URLSearchParams();
         if (selectedCampaignId) qs.set("campaignId", selectedCampaignId);
@@ -1660,7 +1666,7 @@ const AdminInterlocking = () => {
                             <div
                                 style={{
                                     display: "grid",
-                                    gridTemplateColumns: "32px 1fr 1.2fr 0.65fr 0.65fr 0.65fr 0.7fr 0.65fr 0.9fr 0.95fr 56px 32px",
+                                    gridTemplateColumns: "32px 1fr 1.2fr 1.4fr 0.65fr 0.65fr 0.65fr 0.7fr 0.65fr 0.9fr 0.95fr 56px 32px",
                                     gap: "6px", padding: "9px 10px",
                                     fontSize: "10px", fontWeight: 700, color: "#92400E",
                                     textTransform: "uppercase", letterSpacing: "0.06em",
@@ -1668,7 +1674,7 @@ const AdminInterlocking = () => {
                                     background: "#FEF3C7", borderRadius: "10px", marginBottom: "8px",
                                 }}
                             >
-                                <div /><div>ID</div><div>Data e ora</div><div>Catene</div>
+                                <div /><div>ID</div><div>Data e ora</div><div>Campagna</div><div>Catene</div>
                                 <div>Persone</div><div>Cov.</div><div>L.med</div><div>L.max</div>
                                 <div>Priorità</div><div>Strategia</div><div>CSV</div><div />
                             </div>
@@ -1708,7 +1714,7 @@ const AdminInterlocking = () => {
                                                 <div
                                                     style={{
                                                         display: "grid",
-                                                        gridTemplateColumns: "32px 1fr 1.2fr 0.65fr 0.65fr 0.65fr 0.7fr 0.65fr 0.9fr 0.95fr 56px 32px",
+                                                        gridTemplateColumns: "32px 1fr 1.2fr 1.4fr 0.65fr 0.65fr 0.65fr 0.7fr 0.65fr 0.9fr 0.95fr 56px 32px",
                                                         gap: "6px", alignItems: "center",
                                                         padding: "11px 10px", fontSize: "12px", textAlign: "left",
                                                     }}
@@ -1733,6 +1739,9 @@ const AdminInterlocking = () => {
                                                                 selezionato
                                                             </span>
                                                         )}
+                                                    </div>
+                                                    <div style={{ color: "#374151", fontSize: "11px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                                        {formatScenarioCampaignLabel(scenario.campaign_id)}
                                                     </div>
                                                     <div>{scenario.total_chains}</div>
                                                     <div>{scenario.unique_people}</div>
