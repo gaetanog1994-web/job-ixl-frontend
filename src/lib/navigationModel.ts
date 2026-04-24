@@ -68,7 +68,7 @@ export type TopBarTreeNode = {
 };
 
 const ADMIN_ACCESS_ROLES = new Set(["admin", "admin_user"]);
-export type AdminPageKey = "interlocking" | "configuration" | "campaigns" | "testScenario" | "maps" | "candidatures";
+export type AdminPageKey = "interlocking" | "configuration" | "campaigns" | "testScenario";
 
 type AdminPageDefinition = {
   key: AdminPageKey;
@@ -82,8 +82,6 @@ export const ADMIN_PAGE_DEFINITIONS: AdminPageDefinition[] = [
   { key: "configuration", id: "admin-configurazione", label: "Configurazione", path: "/admin/configurazione" },
   { key: "campaigns", id: "admin-campagne", label: "Campagne candidature", path: "/admin/campagne" },
   { key: "testScenario", id: "admin-test-scenario", label: "Test Scenario", path: "/admin/test-scenario" },
-  { key: "maps", id: "admin-maps", label: "Mappe utenti attivi", path: "/admin/maps" },
-  { key: "candidatures", id: "admin-candidatures", label: "Lista candidature", path: "/admin/candidatures" },
 ];
 
 function isPathActive(pathname: string, targetPath: string): boolean {

@@ -53,22 +53,22 @@ const AdminHome: React.FC = () => {
                 {/* 🟩 D — MAPPE UTENTI ATTIVI */}
                 <div
                     style={boxStyle}
-                    onClick={() => navigate("/admin/maps")}
+                    onClick={() => navigate("/admin/campagne?tab=map")}
                 >
                     <h3>D. Mappe utenti attivi</h3>
                     <p>
-                        Analizza le candidature dal punto di vista di ciascun utente.
+                        Apri la mappa candidature della campagna selezionata.
                     </p>
                 </div>
 
                 {/* 🟩 E — LISTA CANDIDATURE */}
                 <div
                     style={boxStyle}
-                    onClick={() => navigate("/admin/candidatures")}
+                    onClick={() => navigate("/admin/campagne?tab=candidatures")}
                 >
                     <h3>E. Lista candidature</h3>
                     <p>
-                        Visualizza le candidature correnti della campagna aperta.
+                        Apri la lista candidature della campagna selezionata.
                     </p>
                 </div>
             </div>

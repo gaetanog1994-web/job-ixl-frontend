@@ -87,17 +87,17 @@ const Sidebar: React.FC<SidebarProps> = ({
               </button>
               <button
                 className="db-admin-sub-item"
-                onClick={() => navigate("/admin/candidatures")}
+                onClick={() => navigate("/admin/campagne?tab=candidatures")}
                 id="nav-admin-candidatures"
               >
-                Candidature
+                Campagne · Lista
               </button>
               <button
                 className="db-admin-sub-item"
-                onClick={() => navigate("/admin/maps")}
+                onClick={() => navigate("/admin/campagne?tab=map")}
                 id="nav-admin-maps"
               >
-                Mappe utenti
+                Campagne · Mappa
               </button>
               <button
                 className="db-admin-sub-item"

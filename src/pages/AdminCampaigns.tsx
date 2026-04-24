@@ -1,8 +1,21 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
+import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from "react-leaflet";
+import "leaflet/dist/leaflet.css";
 import { appApi, type CampaignDetail, type CampaignRecord, type CampaignLifecycleStatus } from "../lib/appApi";
 
 type LifecycleAction = "openReservations" | "closeReservations" | "openCampaign" | "closeCampaign";
+type CampaignTab = "lifecycle" | "candidatures" | "map";
+type LocationRow = { id: string; name: string; latitude: number | null; longitude: number | null };
+
+type CampaignMarker = {
+    key: string;
+    name: string;
+    latitude: number;
+    longitude: number;
+    fromCount: number;
+    toCount: number;
+};
 
 const STATUS_LABEL: Record<string, string> = {
     reservations_open: "Prenotazioni aperte",
@@ -44,6 +57,27 @@ function StatusBadge({ status }: { status: string }) {
 function formatDate(iso: string | null | undefined) {
     if (!iso) return "—";
     return new Date(iso).toLocaleString("it-IT", { dateStyle: "short", timeStyle: "short" });
+}
+
+function formatCampaignDate(iso: string | null | undefined) {
+    if (!iso) return "—";
+    return new Date(iso).toLocaleDateString("it-IT");
+}
+
+function FitMapBounds({ markers }: { markers: CampaignMarker[] }) {
+    const map = useMap();
+
+    useEffect(() => {
+        if (!markers.length) return;
+        if (markers.length === 1) {
+            map.setView([markers[0].latitude, markers[0].longitude], 7);
+            return;
+        }
+        const bounds = markers.map((m) => [m.latitude, m.longitude]) as [number, number][];
+        map.fitBounds(bounds, { padding: [40, 40] });
+    }, [map, markers]);
+
+    return null;
 }
 
 function CampaignRow({
@@ -124,49 +158,9 @@ function CampaignRow({
                     )}
 
                     {campaign.status === "campaign_closed" && !loadingDetail && detail && (
-                        <>
-                            <div style={{ fontSize: 12, fontWeight: 700, color: "#374151", marginBottom: 8 }}>
-                                Dettaglio campagna · {detail.applications.length} candidature archiviate
-                            </div>
-                            {detail.applications.length === 0 ? (
-                                <div style={{ fontSize: 12, color: "#6b7280" }}>Nessuna candidatura archiviata per questa campagna.</div>
-                            ) : (
-                                <div style={{ overflowX: "auto", border: "1px solid #e5e7eb", borderRadius: 8, background: "#fff" }}>
-                                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-                                        <thead>
-                                            <tr style={{ background: "#f3f4f6" }}>
-                                                <th style={thStyle}>Prio</th>
-                                                <th style={thStyle}>Candidato</th>
-                                                <th style={thStyle}>Posizione target</th>
-                                                <th style={thStyle}>Occupante target</th>
-                                                <th style={thStyle}>Data candidatura</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {detail.applications.map((row) => (
-                                                <tr key={row.id}>
-                                                    <td style={tdStyle}>{row.priority ?? "—"}</td>
-                                                    <td style={tdStyle}>
-                                                        {row.candidate_full_name ?? "—"}
-                                                        <div style={{ fontSize: 11, color: "#6b7280" }}>
-                                                            {row.candidate_role_name ?? "—"} · {row.candidate_department_name ?? "—"} · {row.candidate_location_name ?? "—"}
-                                                        </div>
-                                                    </td>
-                                                    <td style={tdStyle}>{row.position_title ?? "—"}</td>
-                                                    <td style={tdStyle}>
-                                                        {row.target_full_name ?? "—"}
-                                                        <div style={{ fontSize: 11, color: "#6b7280" }}>
-                                                            {row.target_role_name ?? "—"} · {row.target_department_name ?? "—"} · {row.target_location_name ?? "—"}
-                                                        </div>
-                                                    </td>
-                                                    <td style={tdStyle}>{formatDate(row.original_created_at)}</td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            )}
-                        </>
+                        <div style={{ fontSize: 12, color: "#374151" }}>
+                            Snapshot disponibile: <b>{detail.applications.length} candidature archiviate</b>
+                        </div>
                     )}
                 </div>
             )}
@@ -175,10 +169,11 @@ function CampaignRow({
 }
 
 export default function AdminCampaigns() {
-    const [searchParams] = useSearchParams();
+    const [searchParams, setSearchParams] = useSearchParams();
     const [lifecycle, setLifecycle] = useState<CampaignLifecycleStatus | null>(null);
     const [campaigns, setCampaigns] = useState<CampaignRecord[]>([]);
     const [campaignDetails, setCampaignDetails] = useState<Record<string, CampaignDetail>>({});
+    const [locations, setLocations] = useState<LocationRow[]>([]);
     const [openCampaignId, setOpenCampaignId] = useState<string | null>(null);
     const [loadingDetailId, setLoadingDetailId] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
@@ -186,14 +181,35 @@ export default function AdminCampaigns() {
     const [hoveredStep, setHoveredStep] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
 
+    const activeTab = (searchParams.get("tab") as CampaignTab | null) ?? "lifecycle";
+    const selectedDataCampaignId = searchParams.get("campaignId")?.trim() || null;
+
+    const setCampaignQuery = useCallback((nextCampaignId: string | null, nextTab?: CampaignTab) => {
+        const next = new URLSearchParams(searchParams);
+        if (nextCampaignId) next.set("campaignId", nextCampaignId);
+        else next.delete("campaignId");
+        if (nextTab) next.set("tab", nextTab);
+        setSearchParams(next, { replace: true });
+    }, [searchParams, setSearchParams]);
+
     const load = useCallback(async () => {
         try {
-            const [lc, list] = await Promise.all([
+            const [lc, list, locs] = await Promise.all([
                 appApi.adminGetCampaignStatus(),
                 appApi.adminListCampaigns(),
+                appApi.adminGetLocations(),
             ]);
             setLifecycle(lc);
             setCampaigns(list);
+            const normalizedLocs: LocationRow[] = Array.isArray(locs)
+                ? locs.map((l: Record<string, unknown>) => ({
+                    id: String(l.id ?? ""),
+                    name: String(l.name ?? ""),
+                    latitude: l.latitude == null ? null : Number(l.latitude),
+                    longitude: l.longitude == null ? null : Number(l.longitude),
+                }))
+                : [];
+            setLocations(normalizedLocs);
         } catch (e) {
             setError(e instanceof Error ? e.message : "Errore caricamento campagne");
         } finally {
@@ -201,7 +217,57 @@ export default function AdminCampaigns() {
         }
     }, []);
 
-    useEffect(() => { load(); }, [load]);
+    useEffect(() => { void load(); }, [load]);
+
+    const closedCampaigns = useMemo(
+        () => campaigns.filter((c) => c.status === "campaign_closed"),
+        [campaigns]
+    );
+
+    const campaignCodeById = useMemo(() => {
+        const sorted = [...campaigns].sort((a, b) => {
+            const ta = new Date(a.created_at).getTime();
+            const tb = new Date(b.created_at).getTime();
+            if (ta !== tb) return ta - tb;
+            return a.id.localeCompare(b.id);
+        });
+        const map = new Map<string, string>();
+        sorted.forEach((campaign, index) => {
+            map.set(campaign.id, String(index + 1).padStart(3, "0"));
+        });
+        return map;
+    }, [campaigns]);
+
+    useEffect(() => {
+        if (!closedCampaigns.length) return;
+        const exists = selectedDataCampaignId && closedCampaigns.some((c) => c.id === selectedDataCampaignId);
+        if (!exists) {
+            setCampaignQuery(closedCampaigns[0].id, activeTab);
+        }
+    }, [closedCampaigns, selectedDataCampaignId, setCampaignQuery, activeTab]);
+
+    const selectedDataCampaign = useMemo(
+        () => (selectedDataCampaignId ? campaigns.find((c) => c.id === selectedDataCampaignId) ?? null : null),
+        [campaigns, selectedDataCampaignId]
+    );
+
+    const ensureCampaignDetailLoaded = useCallback(async (campaignId: string) => {
+        if (!campaignId || campaignDetails[campaignId]) return;
+        setLoadingDetailId(campaignId);
+        try {
+            const detail = await appApi.adminGetCampaignDetail(campaignId);
+            setCampaignDetails((prev) => ({ ...prev, [campaignId]: detail }));
+        } catch (e) {
+            setError(e instanceof Error ? e.message : "Errore caricamento dettaglio campagna");
+        } finally {
+            setLoadingDetailId(null);
+        }
+    }, [campaignDetails]);
+
+    useEffect(() => {
+        if (!selectedDataCampaignId) return;
+        void ensureCampaignDetailLoaded(selectedDataCampaignId);
+    }, [selectedDataCampaignId, ensureCampaignDetailLoaded]);
 
     useEffect(() => {
         const requestedCampaignId = String(searchParams.get("campaignId") ?? "").trim();
@@ -211,24 +277,10 @@ export default function AdminCampaigns() {
         if (openCampaignId !== targetCampaign.id) {
             setOpenCampaignId(targetCampaign.id);
         }
-        if (
-            targetCampaign.status === "campaign_closed"
-            && !campaignDetails[targetCampaign.id]
-            && loadingDetailId !== targetCampaign.id
-        ) {
-            setLoadingDetailId(targetCampaign.id);
-            void (async () => {
-                try {
-                    const detail = await appApi.adminGetCampaignDetail(targetCampaign.id);
-                    setCampaignDetails((prev) => ({ ...prev, [targetCampaign.id]: detail }));
-                } catch (e) {
-                    setError(e instanceof Error ? e.message : "Errore caricamento dettaglio campagna");
-                } finally {
-                    setLoadingDetailId(null);
-                }
-            })();
+        if (targetCampaign.status === "campaign_closed") {
+            void ensureCampaignDetailLoaded(targetCampaign.id);
         }
-    }, [searchParams, campaigns, openCampaignId, campaignDetails, loadingDetailId]);
+    }, [searchParams, campaigns, openCampaignId, ensureCampaignDetailLoaded]);
 
     async function runAction(action: LifecycleAction) {
         if (actionLoading) return;
@@ -245,7 +297,6 @@ export default function AdminCampaigns() {
             setCampaigns(list);
             if (action === "closeCampaign") {
                 setOpenCampaignId(null);
-                setCampaignDetails({});
             }
         } catch (e) {
             setError(e instanceof Error ? e.message : "Errore azione campagna");
@@ -257,17 +308,8 @@ export default function AdminCampaigns() {
     async function handleToggleCampaignDetail(campaign: CampaignRecord) {
         const willOpen = openCampaignId !== campaign.id;
         setOpenCampaignId(willOpen ? campaign.id : null);
-        if (!willOpen || campaign.status !== "campaign_closed" || campaignDetails[campaign.id]) return;
-
-        setLoadingDetailId(campaign.id);
-        try {
-            const detail = await appApi.adminGetCampaignDetail(campaign.id);
-            setCampaignDetails((prev) => ({ ...prev, [campaign.id]: detail }));
-        } catch (e) {
-            setError(e instanceof Error ? e.message : "Errore caricamento dettaglio campagna");
-        } finally {
-            setLoadingDetailId(null);
-        }
+        if (!willOpen || campaign.status !== "campaign_closed") return;
+        await ensureCampaignDetailLoaded(campaign.id);
     }
 
     const cs = lifecycle?.campaign_status ?? "closed";
@@ -279,19 +321,7 @@ export default function AdminCampaigns() {
     const canCloseReservations = cs === "closed" && rs === "open";
     const canOpenCampaign = cs === "closed" && rs === "closed";
     const canCloseCampaign = cs === "open";
-    const campaignCodeById = useMemo(() => {
-        const sorted = [...campaigns].sort((a, b) => {
-            const ta = new Date(a.created_at).getTime();
-            const tb = new Date(b.created_at).getTime();
-            if (ta !== tb) return ta - tb;
-            return a.id.localeCompare(b.id);
-        });
-        const map = new Map<string, string>();
-        sorted.forEach((campaign, index) => {
-            map.set(campaign.id, String(index + 1).padStart(3, "0"));
-        });
-        return map;
-    }, [campaigns]);
+
     const lifecycleHint = canCloseCampaign
         ? "Campagna attiva: puoi chiuderla per congelare snapshot e azzerare il ciclo operativo."
         : canOpenCampaign
@@ -301,6 +331,7 @@ export default function AdminCampaigns() {
                 : canOpenReservations
                     ? "Ciclo in stato iniziale: puoi aprire la finestra prenotazioni."
                     : "Azione non disponibile nello stato lifecycle corrente.";
+
     const stepActionByKey: Record<string, LifecycleAction | null> = {
         reservations_open: canOpenReservations ? "openReservations" : null,
         reservations_closed: canCloseReservations ? "closeReservations" : null,
@@ -315,6 +346,7 @@ export default function AdminCampaigns() {
     const activeCampaign = activeCampaignId
         ? campaigns.find((c) => c.id === activeCampaignId) ?? null
         : null;
+
     const lifecyclePhase: "reservations_open" | "reservations_closed" | "campaign_open" | "campaign_closed" =
         cs === "open"
             ? "campaign_open"
@@ -323,6 +355,7 @@ export default function AdminCampaigns() {
                 : activeCampaignId
                     ? "reservations_closed"
                     : "campaign_closed";
+
     const stepLabelByKey: Record<string, string> = {
         reservations_open:
             lifecyclePhase === "reservations_open" ? "Prenotazioni aperte" : "Apri prenotazioni",
@@ -335,26 +368,66 @@ export default function AdminCampaigns() {
         campaign_closed:
             lifecyclePhase === "campaign_closed" ? "Campagna chiusa" : "Chiudi campagna",
     };
-    const requestedCampaignId = String(searchParams.get("campaignId") ?? "").trim();
-    const requestedCampaign = requestedCampaignId
-        ? campaigns.find((c) => c.id === requestedCampaignId) ?? null
-        : null;
+
+    const selectedDetail = selectedDataCampaignId ? campaignDetails[selectedDataCampaignId] ?? null : null;
+    const selectedApplications = selectedDetail?.applications ?? [];
+
+    const locationByName = useMemo(() => {
+        const map = new Map<string, LocationRow>();
+        for (const loc of locations) {
+            const key = loc.name.trim().toLowerCase();
+            if (key) map.set(key, loc);
+        }
+        return map;
+    }, [locations]);
+
+    const mapMarkers = useMemo<CampaignMarker[]>(() => {
+        if (!selectedApplications.length) return [];
+        const grouped = new Map<string, CampaignMarker>();
+
+        const upsert = (locationName: string | null | undefined, kind: "from" | "to") => {
+            const name = String(locationName ?? "").trim();
+            if (!name) return;
+            const loc = locationByName.get(name.toLowerCase());
+            if (!loc || loc.latitude == null || loc.longitude == null) return;
+            const existing = grouped.get(loc.id || name);
+            if (existing) {
+                if (kind === "from") existing.fromCount += 1;
+                else existing.toCount += 1;
+                return;
+            }
+            grouped.set(loc.id || name, {
+                key: loc.id || name,
+                name: loc.name || name,
+                latitude: Number(loc.latitude),
+                longitude: Number(loc.longitude),
+                fromCount: kind === "from" ? 1 : 0,
+                toCount: kind === "to" ? 1 : 0,
+            });
+        };
+
+        for (const row of selectedApplications) {
+            upsert(row.candidate_location_name, "from");
+            upsert(row.target_location_name, "to");
+        }
+
+        return Array.from(grouped.values()).sort((a, b) => (b.fromCount + b.toCount) - (a.fromCount + a.toCount));
+    }, [selectedApplications, locationByName]);
+
+    const activeTabSafe: CampaignTab = activeTab === "candidatures" || activeTab === "map" || activeTab === "lifecycle"
+        ? activeTab
+        : "lifecycle";
 
     if (loading) {
         return <div style={{ padding: 40, color: "#64748b" }}>Caricamento campagne candidature…</div>;
     }
 
     return (
-        <div style={{ padding: "32px 40px", fontFamily: "'Inter', sans-serif", maxWidth: 1200 }}>
+        <div style={{ padding: "32px 40px", fontFamily: "'Inter', sans-serif", maxWidth: 1400 }}>
             <h2 style={{ fontSize: 22, fontWeight: 700, color: "#111827", marginBottom: 8 }}>Campagne candidature</h2>
             <p style={{ fontSize: 14, color: "#6b7280", marginBottom: 28 }}>
-                Gestisci lifecycle campagne e consulta lo storico candidature del perimetro attivo.
+                Gestisci lifecycle, lista candidature e mappa candidature dalla stessa pagina, con campagna selezionabile.
             </p>
-            {requestedCampaign && (
-                <div style={{ background: "#eff6ff", border: "1px solid #93c5fd", borderRadius: 8, padding: "10px 14px", color: "#1d4ed8", fontSize: 13, marginBottom: 20 }}>
-                    Campagna selezionata da Interlocking: <b>{campaignCodeById.get(requestedCampaign.id) ?? "—"} · {formatDate(requestedCampaign.created_at)}</b>
-                </div>
-            )}
 
             {error && (
                 <div style={{ background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: 8, padding: "10px 14px", color: "#dc2626", fontSize: 13, marginBottom: 20 }}>
@@ -362,7 +435,7 @@ export default function AdminCampaigns() {
                 </div>
             )}
 
-            <section style={{ marginBottom: 32 }}>
+            <section style={{ marginBottom: 24 }}>
                 <h3 style={{ fontSize: 15, fontWeight: 600, color: "#374151", marginBottom: 12 }}>Stato campagna attiva</h3>
                 <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, padding: "20px 24px", background: "#f8fafc" }}>
                     <div
@@ -399,7 +472,7 @@ export default function AdminCampaigns() {
                                         ? "0 0 0 1px rgba(251,146,60,0.35), 0 0 18px rgba(251,146,60,0.28)"
                                         : (stepActionByKey[step.key] && hoveredStep === step.key)
                                             ? "0 0 0 1px rgba(251,146,60,0.28), 0 0 14px rgba(251,146,60,0.24)"
-                                        : "none",
+                                            : "none",
                                     fontSize: 12,
                                     fontWeight: 600,
                                     padding: "8px 10px",
@@ -417,8 +490,7 @@ export default function AdminCampaigns() {
                         <div style={{ marginBottom: 14 }}>
                             <StatusBadge status={activeCampaign.status} />
                             <span style={{ fontSize: 13, color: "#374151", marginLeft: 10 }}>
-                                ID campagna <b>{campaignCodeById.get(activeCampaign.id) ?? "—"}</b> ·{" "}
-                                {reservedCount} prenotat{reservedCount === 1 ? "o" : "i"} · {availableCount} disponibili
+                                ID campagna <b>{campaignCodeById.get(activeCampaign.id) ?? "—"}</b> · {reservedCount} prenotat{reservedCount === 1 ? "o" : "i"} · {availableCount} disponibili
                             </span>
                         </div>
                     ) : (
@@ -431,28 +503,214 @@ export default function AdminCampaigns() {
                 </div>
             </section>
 
-            <section>
-                <h3 style={{ fontSize: 15, fontWeight: 600, color: "#374151", marginBottom: 12 }}>
-                    Storico campagne del perimetro {campaigns.length > 0 ? `(${campaigns.length})` : ""}
-                </h3>
-                {campaigns.length === 0 ? (
-                    <div style={{ color: "#9ca3af", fontSize: 13 }}>Nessuna campagna registrata.</div>
-                ) : (
-                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                        {campaigns.map((campaign) => (
-                            <CampaignRow
-                                key={campaign.id}
-                                campaign={campaign}
-                                campaignCode={campaignCodeById.get(campaign.id) ?? "—"}
-                                isOpen={openCampaignId === campaign.id}
-                                detail={campaignDetails[campaign.id] ?? null}
-                                loadingDetail={loadingDetailId === campaign.id}
-                                onToggle={() => handleToggleCampaignDetail(campaign)}
-                            />
-                        ))}
+            <section style={{ marginBottom: 24 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
+                    <h3 style={{ fontSize: 15, fontWeight: 600, color: "#374151", margin: 0 }}>Dati campagna chiusa</h3>
+                    <select
+                        value={selectedDataCampaignId ?? ""}
+                        onChange={(e) => setCampaignQuery(e.target.value || null, activeTabSafe)}
+                        style={{
+                            minWidth: 520,
+                            maxWidth: "100%",
+                            border: "1px solid #d1d5db",
+                            borderRadius: 8,
+                            padding: "8px 10px",
+                            fontSize: 13,
+                            background: "#fff",
+                            color: "#111827",
+                        }}
+                    >
+                        {closedCampaigns.length === 0 ? (
+                            <option value="">Nessuna campagna chiusa disponibile</option>
+                        ) : (
+                            closedCampaigns.map((c) => {
+                                const code = campaignCodeById.get(c.id) ?? "—";
+                                const label = `${code} - ${formatCampaignDate(c.campaign_opened_at ?? c.created_at)} / ${formatCampaignDate(c.campaign_closed_at)} · ${c.total_applications_count} candidature · ${c.reserved_users_count} prenotati`;
+                                return <option key={c.id} value={c.id}>{label}</option>;
+                            })
+                        )}
+                    </select>
+                </div>
+
+                <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+                    {[
+                        { id: "lifecycle", label: "Lifecycle + Storico" },
+                        { id: "candidatures", label: "Lista candidature" },
+                        { id: "map", label: "Mappa candidature" },
+                    ].map((tab) => {
+                        const isActive = activeTabSafe === tab.id;
+                        return (
+                            <button
+                                key={tab.id}
+                                type="button"
+                                onClick={() => setCampaignQuery(selectedDataCampaignId, tab.id as CampaignTab)}
+                                style={{
+                                    borderRadius: 999,
+                                    border: `1px solid ${isActive ? "#fb923c" : "#d1d5db"}`,
+                                    background: isActive ? "#fff7ed" : "#fff",
+                                    color: isActive ? "#9a3412" : "#374151",
+                                    fontSize: 12,
+                                    fontWeight: 700,
+                                    padding: "6px 12px",
+                                    cursor: "pointer",
+                                }}
+                            >
+                                {tab.label}
+                            </button>
+                        );
+                    })}
+                </div>
+
+                {selectedDataCampaign && (
+                    <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
+                        <div style={metricBoxStyle}>
+                            <div style={metricLabelStyle}>ID campagna</div>
+                            <div style={metricValueStyle}>{campaignCodeById.get(selectedDataCampaign.id) ?? "—"}</div>
+                        </div>
+                        <div style={metricBoxStyle}>
+                            <div style={metricLabelStyle}>Candidature snapshot</div>
+                            <div style={metricValueStyle}>{selectedApplications.length}</div>
+                        </div>
+                        <div style={metricBoxStyle}>
+                            <div style={metricLabelStyle}>Marker mappa</div>
+                            <div style={metricValueStyle}>{mapMarkers.length}</div>
+                        </div>
+                    </div>
+                )}
+
+                {loadingDetailId === selectedDataCampaignId && (
+                    <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 10 }}>Caricamento dettagli campagna…</div>
+                )}
+
+                {activeTabSafe === "candidatures" && (
+                    <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, overflow: "hidden", background: "#fff" }}>
+                        <div style={{ padding: "10px 12px", borderBottom: "1px solid #e5e7eb", fontSize: 13, color: "#6b7280" }}>
+                            Lista candidature archiviate per la campagna selezionata.
+                        </div>
+                        <div style={{ overflowX: "auto" }}>
+                            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                                <thead>
+                                    <tr style={{ background: "#f3f4f6" }}>
+                                        <th style={thStyle}>Prio</th>
+                                        <th style={thStyle}>Candidato</th>
+                                        <th style={thStyle}>Posizione target</th>
+                                        <th style={thStyle}>Occupante target</th>
+                                        <th style={thStyle}>Data candidatura</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {selectedApplications.length === 0 ? (
+                                        <tr>
+                                            <td style={tdStyle} colSpan={5}>Nessuna candidatura archiviata.</td>
+                                        </tr>
+                                    ) : selectedApplications.map((row) => (
+                                        <tr key={row.id}>
+                                            <td style={tdStyle}>{row.priority ?? "—"}</td>
+                                            <td style={tdStyle}>
+                                                {row.candidate_full_name ?? "—"}
+                                                <div style={{ fontSize: 11, color: "#6b7280" }}>
+                                                    {row.candidate_role_name ?? "—"} · {row.candidate_department_name ?? "—"} · {row.candidate_location_name ?? "—"}
+                                                </div>
+                                            </td>
+                                            <td style={tdStyle}>{row.position_title ?? "—"}</td>
+                                            <td style={tdStyle}>
+                                                {row.target_full_name ?? "—"}
+                                                <div style={{ fontSize: 11, color: "#6b7280" }}>
+                                                    {row.target_role_name ?? "—"} · {row.target_department_name ?? "—"} · {row.target_location_name ?? "—"}
+                                                </div>
+                                            </td>
+                                            <td style={tdStyle}>{formatDate(row.original_created_at)}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
+
+                {activeTabSafe === "map" && (
+                    <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, overflow: "hidden", background: "#fff" }}>
+                        <div style={{ padding: "10px 12px", borderBottom: "1px solid #e5e7eb", fontSize: 13, color: "#6b7280" }}>
+                            Mappa sedi coinvolte nella campagna selezionata (sede candidato = blu, sede target = arancio).
+                        </div>
+                        <div style={{ height: 520, position: "relative" }}>
+                            {mapMarkers.length === 0 ? (
+                                <div style={{
+                                    position: "absolute",
+                                    inset: 0,
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    color: "#9ca3af",
+                                    fontSize: 14,
+                                    background: "#f8fafc",
+                                }}>
+                                    Nessuna sede geolocalizzata disponibile per questa campagna.
+                                </div>
+                            ) : (
+                                <MapContainer
+                                    center={[41.9028, 12.4964]}
+                                    zoom={6}
+                                    style={{ width: "100%", height: "100%" }}
+                                    scrollWheelZoom={true}
+                                >
+                                    <TileLayer
+                                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                                    />
+                                    <FitMapBounds markers={mapMarkers} />
+                                    {mapMarkers.map((marker) => (
+                                        <CircleMarker
+                                            key={marker.key}
+                                            center={[marker.latitude, marker.longitude]}
+                                            radius={Math.max(8, Math.min(18, 7 + Math.log(marker.fromCount + marker.toCount + 1) * 4))}
+                                            pathOptions={{
+                                                color: marker.fromCount > marker.toCount ? "#2563eb" : "#ea580c",
+                                                fillColor: marker.fromCount > marker.toCount ? "#3b82f6" : "#f97316",
+                                                fillOpacity: 0.55,
+                                                weight: 2,
+                                            }}
+                                        >
+                                            <Popup>
+                                                <div style={{ fontSize: 12 }}>
+                                                    <div style={{ fontWeight: 700, marginBottom: 4 }}>{marker.name}</div>
+                                                    <div>Da candidati: <b>{marker.fromCount}</b></div>
+                                                    <div>Verso target: <b>{marker.toCount}</b></div>
+                                                </div>
+                                            </Popup>
+                                        </CircleMarker>
+                                    ))}
+                                </MapContainer>
+                            )}
+                        </div>
                     </div>
                 )}
             </section>
+
+            {activeTabSafe === "lifecycle" && (
+                <section>
+                    <h3 style={{ fontSize: 15, fontWeight: 600, color: "#374151", marginBottom: 12 }}>
+                        Storico campagne del perimetro {campaigns.length > 0 ? `(${campaigns.length})` : ""}
+                    </h3>
+                    {campaigns.length === 0 ? (
+                        <div style={{ color: "#9ca3af", fontSize: 13 }}>Nessuna campagna registrata.</div>
+                    ) : (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                            {campaigns.map((campaign) => (
+                                <CampaignRow
+                                    key={campaign.id}
+                                    campaign={campaign}
+                                    campaignCode={campaignCodeById.get(campaign.id) ?? "—"}
+                                    isOpen={openCampaignId === campaign.id}
+                                    detail={campaignDetails[campaign.id] ?? null}
+                                    loadingDetail={loadingDetailId === campaign.id}
+                                    onToggle={() => { void handleToggleCampaignDetail(campaign); }}
+                                />
+                            ))}
+                        </div>
+                    )}
+                </section>
+            )}
         </div>
     );
 }
@@ -470,4 +728,26 @@ const tdStyle: React.CSSProperties = {
     padding: "8px 10px",
     color: "#111827",
     verticalAlign: "top",
+};
+
+const metricBoxStyle: React.CSSProperties = {
+    border: "1px solid #e5e7eb",
+    borderRadius: 8,
+    background: "#fff",
+    padding: "8px 10px",
+    minWidth: 150,
+};
+
+const metricLabelStyle: React.CSSProperties = {
+    fontSize: 11,
+    color: "#6b7280",
+    fontWeight: 600,
+    textTransform: "uppercase",
+};
+
+const metricValueStyle: React.CSSProperties = {
+    marginTop: 4,
+    fontSize: 20,
+    color: "#111827",
+    fontWeight: 700,
 };

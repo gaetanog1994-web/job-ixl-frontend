@@ -7,9 +7,7 @@ import HomeEntry from "./pages/HomeEntry";
 import OwnerAreaPage from "./pages/OwnerAreaPage";
 import CompanyPerimetersPage from "./pages/CompanyPerimetersPage";
 
-import AdminCandidatures from "./pages/AdminCandidatures";
 import AdminCampaigns from "./pages/AdminCampaigns";
-import AdminMaps from "./pages/AdminMaps";
 import AdminInterlocking from "./pages/AdminInterlocking";
 import AdminTestUsers from "./pages/AdminTestUsers";
 import AdminTestScenario from "./pages/AdminTestScenario";
@@ -72,10 +70,10 @@ function AppShell({ showTopBar }: { showTopBar: boolean }) {
 
               {/* Admin (guarded by RequireAdmin) */}
               <Route path="/admin" element={<Navigate to="/admin/campagne" replace />} />
-              <Route path="/admin/candidatures" element={<RequireAdmin><AdminCandidatures /></RequireAdmin>} />
               <Route path="/admin/campagne" element={<RequireAdmin><AdminCampaigns /></RequireAdmin>} />
+              <Route path="/admin/candidatures" element={<Navigate to="/admin/campagne?tab=candidatures" replace />} />
               <Route path="/admin/test-scenario" element={<RequireAdmin><AdminTestScenario /></RequireAdmin>} />
-              <Route path="/admin/maps" element={<RequireAdmin><AdminMaps /></RequireAdmin>} />
+              <Route path="/admin/maps" element={<Navigate to="/admin/campagne?tab=map" replace />} />
               <Route path="/admin/configurazione" element={<RequireAdmin><AdminTestUsers /></RequireAdmin>} />
               <Route
                 path="/admin/interlocking"
