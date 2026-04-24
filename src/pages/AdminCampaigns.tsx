@@ -295,12 +295,12 @@ export default function AdminCampaigns() {
 
     const canOpenReservations = cs === "closed" && rs === "closed";
     const canCloseReservations = cs === "closed" && rs === "open";
-    const canOpenCampaign = cs === "closed" && rs === "closed" && reservedCount > 0;
+    const canOpenCampaign = cs === "closed" && rs === "closed";
     const canCloseCampaign = cs === "open";
     const lifecycleHint = canCloseCampaign
         ? "Campagna attiva: puoi chiuderla per congelare snapshot e azzerare il ciclo operativo."
         : canOpenCampaign
-            ? "Prenotazioni chiuse e utenti prenotati presenti: puoi aprire la campagna."
+            ? "Prenotazioni chiuse: puoi aprire la campagna anche con 0 prenotati."
             : canCloseReservations
                 ? "Prenotazioni attive: chiudile prima di aprire la campagna."
                 : canOpenReservations
@@ -348,7 +348,7 @@ export default function AdminCampaigns() {
                     >
                         {[
                             { label: "Prenotazioni aperte", active: cs === "closed" && rs === "open" },
-                            { label: "Prenotazioni chiuse", active: cs === "closed" && rs === "closed" && reservedCount > 0 },
+                            { label: "Prenotazioni chiuse", active: cs === "closed" && rs === "closed" },
                             { label: "Campagna aperta", active: cs === "open" },
                             { label: "Campagna chiusa", active: cs === "closed" && rs === "closed" && !activeCampaign },
                         ].map((step) => (
