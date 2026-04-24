@@ -308,6 +308,14 @@ export default function AdminCampaigns() {
                     : "Azione non disponibile nello stato lifecycle corrente.";
 
     const activeCampaign = campaigns.find((c) => c.status !== "campaign_closed") ?? null;
+    const lifecyclePhase: "reservations_open" | "reservations_closed" | "campaign_open" | "campaign_closed" =
+        cs === "open"
+            ? "campaign_open"
+            : rs === "open"
+                ? "reservations_open"
+                : activeCampaign
+                    ? "reservations_closed"
+                    : "campaign_closed";
     const requestedCampaignId = String(searchParams.get("campaignId") ?? "").trim();
     const requestedCampaign = requestedCampaignId
         ? campaigns.find((c) => c.id === requestedCampaignId) ?? null
@@ -347,18 +355,21 @@ export default function AdminCampaigns() {
                         }}
                     >
                         {[
-                            { label: "Prenotazioni aperte", active: cs === "closed" && rs === "open" },
-                            { label: "Prenotazioni chiuse", active: cs === "closed" && rs === "closed" },
-                            { label: "Campagna aperta", active: cs === "open" },
-                            { label: "Campagna chiusa", active: cs === "closed" && rs === "closed" && !activeCampaign },
+                            { key: "reservations_open", label: "Prenotazioni aperte" },
+                            { key: "reservations_closed", label: "Prenotazioni chiuse" },
+                            { key: "campaign_open", label: "Campagna aperta" },
+                            { key: "campaign_closed", label: "Campagna chiusa" },
                         ].map((step) => (
                             <div
                                 key={step.label}
                                 style={{
                                     borderRadius: 8,
-                                    border: `1px solid ${step.active ? "#86efac" : "#e5e7eb"}`,
-                                    background: step.active ? "#f0fdf4" : "#ffffff",
-                                    color: step.active ? "#166534" : "#6b7280",
+                                    border: `1px solid ${lifecyclePhase === step.key ? "#fb923c" : "#e5e7eb"}`,
+                                    background: lifecyclePhase === step.key ? "#fff7ed" : "#ffffff",
+                                    color: lifecyclePhase === step.key ? "#9a3412" : "#6b7280",
+                                    boxShadow: lifecyclePhase === step.key
+                                        ? "0 0 0 1px rgba(251,146,60,0.35), 0 0 18px rgba(251,146,60,0.28)"
+                                        : "none",
                                     fontSize: 12,
                                     fontWeight: 600,
                                     padding: "8px 10px",
