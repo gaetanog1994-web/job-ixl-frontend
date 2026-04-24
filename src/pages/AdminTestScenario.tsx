@@ -16,12 +16,14 @@ type ScenarioApplication = {
 type InitializeResult = {
   insertedApplications?: number;
   activatedUsers?: number;
+  reservedUsersCount?: number;
 };
 
 export default function AdminTestScenario() {
   const [loading, setLoading] = useState(true);
   const [initializing, setInitializing] = useState(false);
   const [clearing, setClearing] = useState(false);
+  const [savingScenario, setSavingScenario] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -93,8 +95,9 @@ export default function AdminTestScenario() {
       const result: InitializeResult = response?.result ?? {};
       const inserted = Number(result.insertedApplications ?? 0);
       const activated = Number(result.activatedUsers ?? 0);
+      const reservedUsers = Number(result.reservedUsersCount ?? 0);
       setMessage(
-        `Scenario inizializzato. Candidature inserite: ${inserted}. Utenti attivati: ${activated}.`
+        `Scenario inizializzato. Candidature inserite: ${inserted}. Utenti attivati: ${activated}. Prenotati campagna aggiornati: ${reservedUsers}.`
       );
       await loadScenarioApplications(selectedScenarioId);
     } catch (e) {
@@ -117,6 +120,64 @@ export default function AdminTestScenario() {
       setError(e instanceof Error ? e.message : "Errore durante lo svuotamento scenario");
     } finally {
       setClearing(false);
+    }
+  }
+
+  async function handleCreateScenario() {
+    const name = prompt("Nome nuovo scenario");
+    if (!name || !name.trim()) return;
+    setSavingScenario(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const created = await appApi.createTestScenario(name.trim());
+      await loadScenarios();
+      setSelectedScenarioId(created.id);
+      setMessage(`Scenario creato: ${created.name}`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Errore creazione scenario");
+    } finally {
+      setSavingScenario(false);
+    }
+  }
+
+  async function handleRenameScenario() {
+    if (!selectedScenario) return;
+    const name = prompt("Nuovo nome scenario", selectedScenario.name);
+    if (!name || !name.trim()) return;
+    setSavingScenario(true);
+    setError(null);
+    setMessage(null);
+    try {
+      await appApi.adminRenameScenario(selectedScenario.id, name.trim());
+      await loadScenarios();
+      setSelectedScenarioId(selectedScenario.id);
+      setMessage(`Scenario rinominato in: ${name.trim()}`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Errore rinomina scenario");
+    } finally {
+      setSavingScenario(false);
+    }
+  }
+
+  async function handleDeleteScenario() {
+    if (!selectedScenario) return;
+    const ok = confirm(`Eliminare lo scenario "${selectedScenario.name}"? Questa azione rimuove anche le candidature test collegate.`);
+    if (!ok) return;
+    setSavingScenario(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const removedId = selectedScenario.id;
+      await appApi.adminDeleteScenario(removedId);
+      await loadScenarios();
+      setSelectedScenarioId((prev) => (prev === removedId ? null : prev));
+      setApplications([]);
+      setMessage("Scenario eliminato.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Errore eliminazione scenario");
+    } finally {
+      setSavingScenario(false);
     }
   }
 
@@ -151,7 +212,7 @@ export default function AdminTestScenario() {
                 id="test-scenario-select"
                 value={selectedScenarioId ?? ""}
                 onChange={(e) => setSelectedScenarioId(e.target.value || null)}
-                disabled={scenarios.length === 0 || initializing || clearing}
+                disabled={scenarios.length === 0 || initializing || clearing || savingScenario}
                 style={{ border: "1px solid #d1d5db", borderRadius: 8, padding: "8px 10px", minWidth: 320, fontSize: 13 }}
               >
                 {scenarios.length === 0 && <option value="">Nessuno scenario disponibile</option>}
@@ -165,7 +226,7 @@ export default function AdminTestScenario() {
               <button
                 type="button"
                 onClick={handleInitialize}
-                disabled={!selectedScenarioId || initializing || clearing}
+                disabled={!selectedScenarioId || initializing || clearing || savingScenario}
                 style={{ ...buttonStyle, background: "#ecfdf5", borderColor: "#86efac", color: "#166534" }}
               >
                 {initializing ? "Inizializzazione…" : "Inizializza scenario"}
@@ -174,7 +235,7 @@ export default function AdminTestScenario() {
               <button
                 type="button"
                 onClick={handleClearScenario}
-                disabled={!selectedScenarioId || clearing || initializing}
+                disabled={!selectedScenarioId || clearing || initializing || savingScenario}
                 style={{ ...buttonStyle, background: "#fef2f2", borderColor: "#fca5a5", color: "#b91c1c" }}
               >
                 {clearing ? "Svuotamento…" : "Svuota scenario"}
@@ -182,8 +243,35 @@ export default function AdminTestScenario() {
 
               <button
                 type="button"
+                onClick={handleCreateScenario}
+                disabled={initializing || clearing || savingScenario}
+                style={{ ...buttonStyle, background: "#eff6ff", borderColor: "#93c5fd", color: "#1d4ed8" }}
+              >
+                + Nuovo scenario
+              </button>
+
+              <button
+                type="button"
+                onClick={handleRenameScenario}
+                disabled={!selectedScenarioId || initializing || clearing || savingScenario}
+                style={buttonStyle}
+              >
+                Rinomina scenario
+              </button>
+
+              <button
+                type="button"
+                onClick={handleDeleteScenario}
+                disabled={!selectedScenarioId || initializing || clearing || savingScenario}
+                style={{ ...buttonStyle, background: "#fff1f2", borderColor: "#fda4af", color: "#be123c" }}
+              >
+                Elimina scenario
+              </button>
+
+              <button
+                type="button"
                 onClick={() => void reload()}
-                disabled={initializing || clearing}
+                disabled={initializing || clearing || savingScenario}
                 style={buttonStyle}
               >
                 Ricarica
