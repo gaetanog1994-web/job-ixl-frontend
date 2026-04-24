@@ -777,35 +777,46 @@ export default function AdminCampaigns() {
                             })
                         )}
                     </select>
-                </div>
-
-                <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
-                    {[
-                        { id: "lifecycle", label: "Lifecycle + Storico" },
-                        { id: "candidatures", label: "Lista candidature" },
-                        { id: "map", label: "Mappa candidature" },
-                    ].map((tab) => {
-                        const isActive = activeTabSafe === tab.id;
-                        return (
-                            <button
-                                key={tab.id}
-                                type="button"
-                                onClick={() => setCampaignQuery(selectedDataCampaignId, tab.id as CampaignTab)}
-                                style={{
-                                    borderRadius: 999,
-                                    border: `1px solid ${isActive ? "#fb923c" : "#d1d5db"}`,
-                                    background: isActive ? "#fff7ed" : "#fff",
-                                    color: isActive ? "#9a3412" : "#374151",
-                                    fontSize: 12,
-                                    fontWeight: 700,
-                                    padding: "6px 12px",
-                                    cursor: "pointer",
-                                }}
-                            >
-                                {tab.label}
-                            </button>
-                        );
-                    })}
+                    <div
+                        style={{
+                            marginLeft: "auto",
+                            display: "flex",
+                            gap: 8,
+                            alignItems: "center",
+                            border: "1px solid #e5e7eb",
+                            background: "#f8fafc",
+                            borderRadius: 12,
+                            padding: "6px 8px",
+                        }}
+                    >
+                        {[
+                            { id: "lifecycle", label: "Lifecycle + Storico" },
+                            { id: "candidatures", label: "Lista candidature" },
+                            { id: "map", label: "Mappa candidature" },
+                        ].map((tab) => {
+                            const isActive = activeTabSafe === tab.id;
+                            return (
+                                <button
+                                    key={tab.id}
+                                    type="button"
+                                    onClick={() => setCampaignQuery(selectedDataCampaignId, tab.id as CampaignTab)}
+                                    style={{
+                                        borderRadius: 999,
+                                        border: `1px solid ${isActive ? "#fb923c" : "#d1d5db"}`,
+                                        background: isActive ? "#fff7ed" : "#fff",
+                                        color: isActive ? "#9a3412" : "#374151",
+                                        fontSize: 12,
+                                        fontWeight: 700,
+                                        padding: "6px 12px",
+                                        cursor: "pointer",
+                                        whiteSpace: "nowrap",
+                                    }}
+                                >
+                                    {tab.label}
+                                </button>
+                            );
+                        })}
+                    </div>
                 </div>
 
                 {selectedDataCampaign && (
