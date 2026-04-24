@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
@@ -180,6 +180,7 @@ export default function AdminCampaigns() {
     const [actionLoading, setActionLoading] = useState(false);
     const [hoveredStep, setHoveredStep] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const lastRequestedCampaignIdRef = useRef<string | null>(null);
 
     const activeTab = (searchParams.get("tab") as CampaignTab | null) ?? "lifecycle";
     const selectedDataCampaignId = searchParams.get("campaignId")?.trim() || null;
@@ -274,12 +275,14 @@ export default function AdminCampaigns() {
         if (!requestedCampaignId) return;
         const targetCampaign = campaigns.find((c) => c.id === requestedCampaignId);
         if (!targetCampaign) return;
-        if (openCampaignId !== targetCampaign.id) {
+        const requestedChanged = lastRequestedCampaignIdRef.current !== targetCampaign.id;
+        if (requestedChanged || openCampaignId === null) {
             setOpenCampaignId(targetCampaign.id);
         }
         if (targetCampaign.status === "campaign_closed") {
             void ensureCampaignDetailLoaded(targetCampaign.id);
         }
+        lastRequestedCampaignIdRef.current = targetCampaign.id;
     }, [searchParams, campaigns, openCampaignId, ensureCampaignDetailLoaded]);
 
     async function runAction(action: LifecycleAction) {
