@@ -308,13 +308,19 @@ export default function AdminCampaigns() {
         campaign_closed: canCloseCampaign ? "closeCampaign" : null,
     };
 
-    const activeCampaign = campaigns.find((c) => c.status !== "campaign_closed") ?? null;
+    const activeCampaignId =
+        typeof lifecycle?.campaign_id === "string" && lifecycle.campaign_id.trim().length > 0
+            ? lifecycle.campaign_id
+            : null;
+    const activeCampaign = activeCampaignId
+        ? campaigns.find((c) => c.id === activeCampaignId) ?? null
+        : null;
     const lifecyclePhase: "reservations_open" | "reservations_closed" | "campaign_open" | "campaign_closed" =
         cs === "open"
             ? "campaign_open"
             : rs === "open"
                 ? "reservations_open"
-                : activeCampaign
+                : activeCampaignId
                     ? "reservations_closed"
                     : "campaign_closed";
     const stepLabelByKey: Record<string, string> = {
