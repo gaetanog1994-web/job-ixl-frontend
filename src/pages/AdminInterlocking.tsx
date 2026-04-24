@@ -154,6 +154,34 @@ type ScenarioLocationMarker = {
     colorMode: "default-green" | "scenario-red" | "focused-gold";
 };
 
+const toStringArray = (value: unknown): string[] => {
+    if (!Array.isArray(value)) return [];
+    return value
+        .map((item) => (typeof item === "string" ? item.trim() : String(item ?? "").trim()))
+        .filter((item) => item.length > 0);
+};
+
+const normalizeChainPayload = (chain: Record<string, unknown>): InterlockingChain => {
+    const users = toStringArray(chain?.users);
+    const people = toStringArray(chain?.peopleNames);
+    const legacyPeople = toStringArray(chain?.people);
+    const legacyNodeIds = toStringArray(chain?.nodeIds);
+
+    const normalizedUsers = users.length > 0 ? users : legacyNodeIds;
+    const normalizedPeopleNames = people.length > 0 ? people : legacyPeople;
+    const fallbackLength =
+        normalizedUsers.length > 0
+            ? normalizedUsers.length
+            : normalizedPeopleNames.length;
+
+    return {
+        users: normalizedUsers,
+        peopleNames: normalizedPeopleNames,
+        length: Number(chain?.length ?? fallbackLength),
+        avgPriority: typeof chain?.avgPriority === "number" ? chain.avgPriority : null,
+    };
+};
+
 const pageStyle: React.CSSProperties = {
     padding: "26px",
     background:
@@ -435,6 +463,7 @@ const AdminInterlocking = () => {
     ) => {
         const totalChains = chains.length;
         const uniqueUsers = new Set<string>();
+        const uniqueNames = new Set<string>();
         let totalLength = 0;
         let maxLengthFound = 0;
         let prioritySum = 0;
@@ -442,12 +471,14 @@ const AdminInterlocking = () => {
 
         for (const chain of chains) {
             const chainUsers = Array.isArray(chain.users) ? chain.users : [];
+            const chainPeopleNames = Array.isArray(chain.peopleNames) ? chain.peopleNames : [];
             const length = chain.length ?? chainUsers.length ?? 0;
 
             totalLength += length;
             maxLengthFound = Math.max(maxLengthFound, length);
 
             for (const userId of chainUsers) uniqueUsers.add(userId);
+            for (const personName of chainPeopleNames) uniqueNames.add(personName);
 
             if (typeof chain.avgPriority === "number") {
                 prioritySum += chain.avgPriority;
@@ -455,7 +486,7 @@ const AdminInterlocking = () => {
             }
         }
 
-        const uniquePeople = uniqueUsers.size;
+        const uniquePeople = uniqueUsers.size > 0 ? uniqueUsers.size : uniqueNames.size;
         const avgLength = totalChains > 0 ? totalLength / totalChains : 0;
         const avgPriority = priorityCount > 0 ? prioritySum / priorityCount : null;
         const coverage =
@@ -755,6 +786,12 @@ const AdminInterlocking = () => {
     const getScenarioViewChains = (scenario: SavedScenario | null): ScenarioChainView[] => {
         if (!scenario) return [];
 
+        const withFallbackUserIds = (userIds: string[], peopleNames: string[], chainIndex: number) => {
+            if (userIds.length > 0) return userIds;
+            if (peopleNames.length === 0) return [];
+            return peopleNames.map((name, personIndex) => `legacy:${chainIndex}:${personIndex}:${name}`);
+        };
+
         if (
             scenario.strategy !== "NONE" &&
             scenario.optimal_chains_json &&
@@ -808,18 +845,20 @@ const AdminInterlocking = () => {
             });
         }
 
-        return scenario.chains_json.map((c) => {
+        return scenario.chains_json.map((c, idx) => {
             const userIds = Array.isArray(c.users) ? c.users : [];
+            const rawPeopleNames = Array.isArray(c.peopleNames) ? c.peopleNames : [];
             const peopleNames =
-                Array.isArray(c.peopleNames) && c.peopleNames.length > 0
-                    ? c.peopleNames
+                rawPeopleNames.length > 0
+                    ? rawPeopleNames
                     : userIds.map((id) => usersById.get(id)?.full_name ?? id);
+            const safeUserIds = withFallbackUserIds(userIds, peopleNames, idx);
 
             return {
-                userIds,
+                userIds: safeUserIds,
                 peopleNames,
                 avgPriority: c.avgPriority ?? null,
-                length: c.length ?? userIds.length,
+                length: c.length ?? (safeUserIds.length || peopleNames.length),
             };
         });
     };
@@ -1080,14 +1119,9 @@ const AdminInterlocking = () => {
             const json = await appApi.adminFindChains({ maxLen, campaign_id: selectedCampaignId });
             const raw = Array.isArray(json?.chains) ? json.chains : [];
 
-            const normalized: InterlockingChain[] = raw.map((c: Record<string, unknown>) => ({
-                users: Array.isArray(c?.users) ? c.users : [],
-                peopleNames: Array.isArray(c?.peopleNames) ? c.peopleNames : [],
-                length: Number(
-                    c?.length ?? (Array.isArray(c?.users) ? c.users.length : 0)
-                ),
-                avgPriority: c?.avgPriority ?? null,
-            }));
+            const normalized: InterlockingChain[] = raw.map((c: Record<string, unknown>) =>
+                normalizeChainPayload(c)
+            );
 
             let optimalChains: ChainCandidate[] | null = null;
             let statsSource = normalized;
