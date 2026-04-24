@@ -46,42 +46,6 @@ function formatDate(iso: string | null | undefined) {
     return new Date(iso).toLocaleString("it-IT", { dateStyle: "short", timeStyle: "short" });
 }
 
-function ActionButton({
-    label,
-    enabled,
-    loading,
-    onClick,
-    tone = "default",
-}: {
-    label: string;
-    enabled: boolean;
-    loading: boolean;
-    onClick: () => void;
-    tone?: "default" | "open" | "danger";
-}) {
-    const toneStyle: React.CSSProperties = tone === "open"
-        ? { background: "#ecfdf5", color: "#059669", border: "1px solid #a7f3d0" }
-        : tone === "danger"
-            ? { background: "#fef2f2", color: "#dc2626", border: "1px solid #fca5a5" }
-            : {};
-
-    return (
-        <button
-            type="button"
-            disabled={!enabled || loading}
-            style={{
-                ...btnStyle,
-                ...toneStyle,
-                opacity: !enabled || loading ? 0.5 : 1,
-                cursor: !enabled || loading ? "not-allowed" : "pointer",
-            }}
-            onClick={onClick}
-        >
-            {label}
-        </button>
-    );
-}
-
 function CampaignRow({
     campaign,
     campaignCode,
@@ -219,6 +183,7 @@ export default function AdminCampaigns() {
     const [loadingDetailId, setLoadingDetailId] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState(false);
+    const [hoveredStep, setHoveredStep] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
 
     const load = useCallback(async () => {
@@ -336,6 +301,12 @@ export default function AdminCampaigns() {
                 : canOpenReservations
                     ? "Ciclo in stato iniziale: puoi aprire la finestra prenotazioni."
                     : "Azione non disponibile nello stato lifecycle corrente.";
+    const stepActionByKey: Record<string, LifecycleAction | null> = {
+        reservations_open: canOpenReservations ? "openReservations" : null,
+        reservations_closed: canCloseReservations ? "closeReservations" : null,
+        campaign_open: canOpenCampaign ? "openCampaign" : null,
+        campaign_closed: canCloseCampaign ? "closeCampaign" : null,
+    };
 
     const activeCampaign = campaigns.find((c) => c.status !== "campaign_closed") ?? null;
     const lifecyclePhase: "reservations_open" | "reservations_closed" | "campaign_open" | "campaign_closed" =
@@ -390,8 +361,17 @@ export default function AdminCampaigns() {
                             { key: "campaign_open", label: "Campagna aperta" },
                             { key: "campaign_closed", label: "Campagna chiusa" },
                         ].map((step) => (
-                            <div
+                            <button
                                 key={step.label}
+                                type="button"
+                                disabled={!stepActionByKey[step.key] || actionLoading}
+                                onClick={() => {
+                                    const action = stepActionByKey[step.key];
+                                    if (!action || actionLoading) return;
+                                    void runAction(action);
+                                }}
+                                onMouseEnter={() => setHoveredStep(step.key)}
+                                onMouseLeave={() => setHoveredStep((prev) => (prev === step.key ? null : prev))}
                                 style={{
                                     borderRadius: 8,
                                     border: `1px solid ${lifecyclePhase === step.key ? "#fb923c" : "#e5e7eb"}`,
@@ -399,14 +379,20 @@ export default function AdminCampaigns() {
                                     color: lifecyclePhase === step.key ? "#9a3412" : "#6b7280",
                                     boxShadow: lifecyclePhase === step.key
                                         ? "0 0 0 1px rgba(251,146,60,0.35), 0 0 18px rgba(251,146,60,0.28)"
+                                        : (stepActionByKey[step.key] && hoveredStep === step.key)
+                                            ? "0 0 0 1px rgba(251,146,60,0.28), 0 0 14px rgba(251,146,60,0.24)"
                                         : "none",
                                     fontSize: 12,
                                     fontWeight: 600,
                                     padding: "8px 10px",
+                                    textAlign: "left",
+                                    cursor: stepActionByKey[step.key] && !actionLoading ? "pointer" : "default",
+                                    opacity: !stepActionByKey[step.key] && lifecyclePhase !== step.key ? 0.75 : 1,
+                                    transition: "box-shadow 140ms ease, border-color 140ms ease, background-color 140ms ease",
                                 }}
                             >
                                 {step.label}
-                            </div>
+                            </button>
                         ))}
                     </div>
                     {activeCampaign ? (
@@ -423,34 +409,6 @@ export default function AdminCampaigns() {
                         </div>
                     )}
 
-                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                        <ActionButton
-                            label="Apri prenotazioni"
-                            enabled={canOpenReservations}
-                            loading={actionLoading}
-                            onClick={() => runAction("openReservations")}
-                        />
-                        <ActionButton
-                            label="Chiudi prenotazioni"
-                            enabled={canCloseReservations}
-                            loading={actionLoading}
-                            onClick={() => runAction("closeReservations")}
-                        />
-                        <ActionButton
-                            label="Apri campagna"
-                            enabled={canOpenCampaign}
-                            loading={actionLoading}
-                            tone="open"
-                            onClick={() => runAction("openCampaign")}
-                        />
-                        <ActionButton
-                            label="Chiudi campagna"
-                            enabled={canCloseCampaign}
-                            loading={actionLoading}
-                            tone="danger"
-                            onClick={() => runAction("closeCampaign")}
-                        />
-                    </div>
                     <div style={{ marginTop: "10px", fontSize: "12px", color: "#64748b" }}>{lifecycleHint}</div>
                 </div>
             </section>
@@ -480,17 +438,6 @@ export default function AdminCampaigns() {
         </div>
     );
 }
-
-const btnStyle: React.CSSProperties = {
-    border: "1px solid #d1d5db",
-    background: "#f9fafb",
-    color: "#111827",
-    borderRadius: 10,
-    padding: "6px 14px",
-    cursor: "pointer",
-    fontSize: 13,
-    fontWeight: 600,
-};
 
 const thStyle: React.CSSProperties = {
     textAlign: "left",
