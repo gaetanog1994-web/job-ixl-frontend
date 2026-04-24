@@ -108,7 +108,7 @@ const Sidebar: React.FC<SidebarProps> = ({
               </button>
               <button
                 className="db-admin-sub-item"
-                onClick={() => navigate("/admin/test-users")}
+                onClick={() => navigate("/admin/configurazione")}
                 id="nav-admin-config"
               >
                 Configurazione

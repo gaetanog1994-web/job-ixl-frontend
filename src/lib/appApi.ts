@@ -37,6 +37,18 @@ export type DepartmentOption = {
   name: string;
 };
 
+export type AdminRoleCompatibility = {
+    compatible_role_id: string;
+    compatible_role_name: string;
+};
+
+export type AdminRole = {
+    id: string;
+    name: string;
+    assigned_users_count?: number;
+    compatibilities?: AdminRoleCompatibility[];
+};
+
 export type RawApplication = {
   id: string;
   position_id: string;
@@ -73,7 +85,34 @@ export type CampaignRecord = {
     created_at: string;
 };
 
+export type CampaignSnapshotApplication = {
+    id: string;
+    user_id: string;
+    position_id: string;
+    position_title: string | null;
+    target_user_id: string | null;
+    priority: number | null;
+    original_created_at: string | null;
+    snapshot_at: string;
+    candidate_full_name: string | null;
+    candidate_role_name: string | null;
+    candidate_location_name: string | null;
+    candidate_department_name: string | null;
+    target_full_name: string | null;
+    target_role_name: string | null;
+    target_location_name: string | null;
+    target_department_name: string | null;
+};
+
+export type CampaignDetail = {
+    campaign: CampaignRecord;
+    applications: CampaignSnapshotApplication[];
+};
+
 export type AdminCandidaturesStats = {
+    campaign_id?: string | null;
+    campaign_status?: "open" | "closed";
+    reservations_status?: "open" | "closed";
     reserved_count: number;
     active_users_count: number;
     active_users_pct: number;
@@ -726,14 +765,14 @@ export const appApi = {
         return apiFetch(`/api/admin/graph/warmup`, { method: "POST", body: JSON.stringify({}) });
     },
 
-    async syncGraph() {
+    async syncGraph(campaignId: string) {
         return apiFetch(`/api/admin/sync-graph`, {
             method: "POST",
-            body: JSON.stringify({}),
+            body: JSON.stringify({ campaign_id: campaignId }),
         });
     },
 
-    async adminFindChains(body: Record<string, unknown>) {
+    async adminFindChains(body: Record<string, unknown> & { campaign_id: string }) {
         return apiFetch(`/api/admin/graph/chains`, {
             method: "POST",
             body: JSON.stringify(body ?? {}),
@@ -814,6 +853,9 @@ export const appApi = {
     async adminGetCandidaturesStats(): Promise<AdminCandidaturesStats> {
         const json = await apiFetch(`/api/admin/candidatures/stats`, { method: "GET" });
         return {
+            campaign_id: json?.campaign_id ?? null,
+            campaign_status: json?.campaign_status ?? "closed",
+            reservations_status: json?.reservations_status ?? "closed",
             reserved_count: Number(json?.reserved_count ?? 0),
             active_users_count: Number(json?.active_users_count ?? 0),
             active_users_pct: Number(json?.active_users_pct ?? 0),
@@ -854,7 +896,7 @@ export const appApi = {
         return json.membership ?? null;
     },
 
-    async adminGetRoles() {
+    async adminGetRoles(): Promise<AdminRole[]> {
         const json = await apiFetch(`/api/admin/roles`, { method: "GET" });
         return json.roles ?? [];
     },
@@ -1043,8 +1085,29 @@ export const appApi = {
         return json.role;
     },
 
+    async adminUpdateRole(id: string, params: { name: string }) {
+        const json = await apiFetch(`/api/admin/roles/${id}`, {
+            method: "PUT",
+            body: JSON.stringify(params),
+        });
+        return json.role ?? null;
+    },
+
     async adminDeleteRole(id: string) {
         return apiFetch(`/api/admin/roles/${id}`, { method: "DELETE" });
+    },
+
+    async adminAddRoleCompatibility(id: string, targetRoleId: string) {
+        return apiFetch(`/api/admin/roles/${id}/compatibility`, {
+            method: "POST",
+            body: JSON.stringify({ targetRoleId }),
+        });
+    },
+
+    async adminDeleteRoleCompatibility(id: string, targetId: string) {
+        return apiFetch(`/api/admin/roles/${id}/compatibility/${targetId}`, {
+            method: "DELETE",
+        });
     },
 
     async getConfig(): Promise<{ maxApplications: number } | null> {
@@ -1091,14 +1154,16 @@ export const appApi = {
        INTERLOCKING SCENARIOS
        ========================= */
 
-    async adminListInterlockingScenarios() {
-        const json = await apiFetch(`/api/admin/interlocking-scenarios`, {
+    async adminListInterlockingScenarios(campaignId: string) {
+        const qs = new URLSearchParams({ campaign_id: campaignId });
+        const json = await apiFetch(`/api/admin/interlocking-scenarios?${qs.toString()}`, {
             method: "GET",
         });
         return { scenarios: json.scenarios ?? [] };
     },
 
     async adminSaveInterlockingScenario(payload: {
+        campaign_id: string;
         scenario_code: string;
         generated_at: string;
         strategy: string;
@@ -1120,8 +1185,11 @@ export const appApi = {
         });
     },
 
-    async adminDeleteInterlockingScenarios(payload: { ids: string[] }) {
-        return apiFetch(`/api/admin/interlocking-scenarios`, {
+    async adminDeleteInterlockingScenarios(payload: { ids: string[]; campaign_id?: string }) {
+        const qs = new URLSearchParams();
+        if (payload.campaign_id) qs.set("campaign_id", payload.campaign_id);
+        const suffix = qs.toString() ? `?${qs.toString()}` : "";
+        return apiFetch(`/api/admin/interlocking-scenarios${suffix}`, {
             method: "DELETE",
             body: JSON.stringify(payload),
         });
@@ -1199,6 +1267,14 @@ export const appApi = {
     async adminListCampaigns(): Promise<CampaignRecord[]> {
         const json = await apiFetch(`/api/admin/campaigns`, { method: "GET" });
         return json.campaigns ?? [];
+    },
+
+    async adminGetCampaignDetail(campaignId: string): Promise<CampaignDetail> {
+        const json = await apiFetch(`/api/admin/campaigns/${campaignId}`, { method: "GET" });
+        return {
+            campaign: json.campaign,
+            applications: json.applications ?? [],
+        };
     },
 
     async platformGetCompanies() {

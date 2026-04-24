@@ -1,23 +1,12 @@
 import { useEffect, useState } from "react";
-import { supabase } from "../lib/supabaseClient";
-
-/* =======================
-   TYPES
-======================= */
+import { appApi } from "../lib/appApi";
 
 type Location = {
     id: string;
     name: string;
-    region: string | null;
-    province: string | null;
     latitude: number | null;
     longitude: number | null;
-    fixed_location: boolean;
 };
-
-/* =======================
-   COMPONENT
-======================= */
 
 const AdminLocationsManager = () => {
     const [locations, setLocations] = useState<Location[]>([]);
@@ -26,102 +15,64 @@ const AdminLocationsManager = () => {
 
     const [form, setForm] = useState({
         name: "",
-        region: "",
-        province: "",
         latitude: "",
         longitude: "",
-        fixed_location: true,
     });
 
-    /* =======================
-       LOAD
-    ======================= */
-
     const loadLocations = async () => {
-        const { data, error } = await supabase
-            .from("locations")
-            .select("*")
-            .order("name");
-
-        if (error) {
-            setError(error.message);
-            return;
+        setLoading(true);
+        setError(null);
+        try {
+            const data = await appApi.adminGetLocations();
+            setLocations(data ?? []);
+        } catch (e: any) {
+            setError(e?.message ?? "Impossibile caricare le sedi.");
+        } finally {
+            setLoading(false);
         }
-
-        setLocations(data ?? []);
     };
 
     useEffect(() => {
-        loadLocations();
+        void loadLocations();
     }, []);
 
-    /* =======================
-       ACTIONS
-    ======================= */
-
     const addLocation = async () => {
-        if (!form.name || !form.latitude || !form.longitude) {
-            setError("Nome, latitudine e longitudine sono obbligatori.");
+        const name = form.name.trim();
+        if (!name) {
+            setError("Il nome sede è obbligatorio.");
             return;
         }
 
         setLoading(true);
         setError(null);
-
         try {
-            const { error } = await supabase.from("locations").insert({
-                name: form.name,
-                region: form.region || null,
-                province: form.province || null,
-                latitude: Number(form.latitude),
-                longitude: Number(form.longitude),
-                fixed_location: form.fixed_location,
+            await appApi.adminCreateLocation({
+                name,
+                latitude: form.latitude.trim() ? Number(form.latitude) : null,
+                longitude: form.longitude.trim() ? Number(form.longitude) : null,
             });
-
-            if (error) throw new Error(error.message);
-
-            setForm({
-                name: "",
-                region: "",
-                province: "",
-                latitude: "",
-                longitude: "",
-                fixed_location: true,
-            });
-
+            setForm({ name: "", latitude: "", longitude: "" });
             await loadLocations();
-        } catch (e: unknown) {
-            setError(e instanceof Error ? e.message : String(e));
+        } catch (e: any) {
+            setError(e?.message ?? "Creazione sede fallita.");
         } finally {
             setLoading(false);
         }
     };
 
     const deleteLocation = async (id: string) => {
-        if (!confirm("Eliminare questa sede?")) return;
-
+        if (!window.confirm("Eliminare questa sede?")) return;
         setLoading(true);
         setError(null);
-
         try {
-            const { error } = await supabase
-                .from("locations")
-                .delete()
-                .eq("id", id);
-
-            if (error) throw new Error(error.message);
-
+            await appApi.adminDeleteLocation(id);
             await loadLocations();
-        } catch (e: unknown) {
-            setError(e instanceof Error ? e.message : String(e));
+        } catch (e: any) {
+            setError(e?.message ?? "Eliminazione sede fallita.");
         } finally {
             setLoading(false);
         }
     };
-
-    /* =======================
-       UI
-    ======================= */
 
     return (
         <div className="db-card">
@@ -133,60 +84,40 @@ const AdminLocationsManager = () => {
 
             {error && <div style={{ margin: "16px 20px", padding: "10px", background: "#fef2f2", color: "#b91c1c", border: "1px solid #fecaca", borderRadius: "8px", fontSize: "13px" }}>{error}</div>}
 
-            {/* ADD FORM */}
-            <div style={{ padding: "16px 20px", background: "var(--surface)", borderBottom: "1px solid var(--border)", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: "10px", alignItems: "center" }}>
+            <div style={{ padding: "16px 20px", background: "var(--surface)", borderBottom: "1px solid var(--border)", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: "10px", alignItems: "center" }}>
                 <input className="db-filter-select" placeholder="Nome sede*" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-                <input className="db-filter-select" placeholder="Regione" value={form.region} onChange={(e) => setForm({ ...form, region: e.target.value })} />
-                <input className="db-filter-select" placeholder="Provincia" value={form.province} onChange={(e) => setForm({ ...form, province: e.target.value })} />
-                <input className="db-filter-select" placeholder="Latitudine*" value={form.latitude} onChange={(e) => setForm({ ...form, latitude: e.target.value })} />
-                <input className="db-filter-select" placeholder="Longitudine*" value={form.longitude} onChange={(e) => setForm({ ...form, longitude: e.target.value })} />
-                <label style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "13px", color: "var(--text-primary)", fontWeight: 600 }}>
-                    <input type="checkbox" checked={form.fixed_location} onChange={(e) => setForm({ ...form, fixed_location: e.target.checked })} style={{ width: "16px", height: "16px", accentColor: "var(--brand)" }} />
-                    Fissa
-                </label>
+                <input className="db-filter-select" placeholder="Latitudine" value={form.latitude} onChange={(e) => setForm({ ...form, latitude: e.target.value })} />
+                <input className="db-filter-select" placeholder="Longitudine" value={form.longitude} onChange={(e) => setForm({ ...form, longitude: e.target.value })} />
                 <button className="db-btn" style={{ background: "var(--brand)", color: "white" }} onClick={addLocation} disabled={loading}>
-                    ➕ Aggiungi
+                    Aggiungi
                 </button>
             </div>
 
-            {/* LIST */}
             <div style={{ overflowX: "auto" }}>
                 <table className="db-apps-table" style={{ width: "100%", whiteSpace: "nowrap" }}>
                     <thead>
                         <tr>
                             <th>Nome</th>
-                            <th>Regione</th>
-                            <th>Provincia</th>
                             <th>Latitudine</th>
                             <th>Longitudine</th>
-                            <th align="center">Sede Fissa</th>
                             <th>Azioni</th>
                         </tr>
                     </thead>
                     <tbody>
                         {locations.length === 0 && (
                             <tr>
-                                <td colSpan={7} style={{ textAlign: "center", padding: "30px", color: "var(--text-muted)" }}>
+                                <td colSpan={4} style={{ textAlign: "center", padding: "30px", color: "var(--text-muted)" }}>
                                     Nessuna sede configurata.
                                 </td>
                             </tr>
                         )}
-                        {locations.map((l) => (
-                            <tr key={l.id}>
-                                <td><span style={{ fontWeight: 600 }}>{l.name}</span></td>
-                                <td>{l.region || "—"}</td>
-                                <td>{l.province || "—"}</td>
-                                <td style={{ color: "var(--text-secondary)" }}>{l.latitude}</td>
-                                <td style={{ color: "var(--text-secondary)" }}>{l.longitude}</td>
-                                <td align="center">
-                                    {l.fixed_location ? (
-                                        <span style={{ color: "#10b981", fontSize: "16px" }}>✓</span>
-                                    ) : (
-                                        <span style={{ color: "var(--border)" }}>—</span>
-                                    )}
-                                </td>
+                        {locations.map((location) => (
+                            <tr key={location.id}>
+                                <td><span style={{ fontWeight: 600 }}>{location.name}</span></td>
+                                <td style={{ color: "var(--text-secondary)" }}>{location.latitude ?? "—"}</td>
+                                <td style={{ color: "var(--text-secondary)" }}>{location.longitude ?? "—"}</td>
                                 <td>
-                                    <button className="db-action-btn db-action-btn-delete" onClick={() => deleteLocation(l.id)} disabled={loading}>
+                                    <button className="db-action-btn db-action-btn-delete" onClick={() => deleteLocation(location.id)} disabled={loading}>
                                         Elimina
                                     </button>
                                 </td>

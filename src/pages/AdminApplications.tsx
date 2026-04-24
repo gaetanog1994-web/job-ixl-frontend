@@ -1,69 +1,57 @@
 import { useEffect, useState } from "react";
-import { supabase } from "../lib/supabaseClient";
 import { useNavigate, useLocation } from "react-router-dom";
+import { appApi } from "../lib/appApi";
+
+type AppRow = {
+    id: string;
+    created_at?: string;
+    candidate_name?: string;
+    candidate_role_name?: string;
+    occupant_name?: string;
+    occupant_role_name?: string;
+};
 
 const AdminApplications = () => {
     const navigate = useNavigate();
-    type AppRow = {
-        id: string;
-        created_at: string;
-        users?: { full_name?: string };
-        positions?: { title?: string; users?: { full_name?: string } };
-    };
-    const [applications, setApplications] = useState<AppRow[]>([]);
     const location = useLocation();
+    const [applications, setApplications] = useState<AppRow[]>([]);
 
     useEffect(() => {
         const load = async () => {
-            const { data } = await supabase
-                .from("applications")
-                .select(`
-          id,
-          created_at,
-          users ( full_name ),
-          positions (
-            title,
-            users ( full_name )
-          )
-        `)
-                .order("created_at", { ascending: false });
-
-            if (data) setApplications(data as AppRow[]);
+            try {
+                const data = await appApi.adminGetCandidatures();
+                setApplications(data ?? []);
+            } catch {
+                setApplications([]);
+            }
         };
-
-        load();
+        void load();
     }, [location.key]);
 
     return (
         <div style={{ padding: "30px" }}>
             <button onClick={() => navigate("/admin")}>Dashboard</button>
 
-            <h3 style={{ marginTop: "20px" }}>
-                A. Tabelle delle candidature
-            </h3>
-
-            <button style={{ marginBottom: "10px" }}>
-                Visualizza grafo
-            </button>
+            <h3 style={{ marginTop: "20px" }}>A. Tabelle delle candidature</h3>
 
             <table width="100%">
                 <thead>
                     <tr>
                         <th>Candidato</th>
-                        <th>Posizione</th>
-                        <th>Occupata da</th>
+                        <th>Ruolo candidato</th>
+                        <th>Occupante</th>
+                        <th>Ruolo occupante</th>
                         <th>Data</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {applications.map(app => (
+                    {applications.map((app) => (
                         <tr key={app.id}>
-                            <td>{app.users?.full_name}</td>
-                            <td>{app.positions?.title}</td>
-                            <td>{app.positions?.users?.full_name}</td>
-                            <td>
-                                {new Date(app.created_at).toLocaleDateString("it-IT")}
-                            </td>
+                            <td>{app.candidate_name ?? "—"}</td>
+                            <td>{app.candidate_role_name ?? "—"}</td>
+                            <td>{app.occupant_name ?? "—"}</td>
+                            <td>{app.occupant_role_name ?? "—"}</td>
+                            <td>{app.created_at ? new Date(app.created_at).toLocaleDateString("it-IT") : "—"}</td>
                         </tr>
                     ))}
                 </tbody>

@@ -4,7 +4,7 @@ import type {
     ChainCandidate,
     OptimizationStrategy,
 } from "../lib/optimalChainsSolver";
-import { appApi } from "../lib/appApi";
+import { appApi, type CampaignRecord } from "../lib/appApi";
 import { canManageCampaignInCurrentPerimeter } from "../lib/operationalAccess";
 import {
     MapContainer,
@@ -82,6 +82,7 @@ type InterlockingChain = {
 
 type SavedScenario = {
     id: string;
+    campaign_id: string;
     scenario_code: string;
     generated_at: string;
     strategy: UiStrategy | string;
@@ -250,6 +251,14 @@ function FitBounds({
     return null;
 }
 
+function formatCampaignOptionLabel(campaign: CampaignRecord) {
+    const created = new Date(campaign.created_at);
+    const createdLabel = Number.isNaN(created.getTime())
+        ? campaign.created_at
+        : created.toLocaleDateString("it-IT");
+    return `${createdLabel} · ${campaign.total_applications_count} candidature · ${campaign.reserved_users_count} prenotati`;
+}
+
 const AdminInterlocking = () => {
     const [loadingGraph, setLoadingGraph] = useState(false);
     const [loadingAnalyze, setLoadingAnalyze] = useState(false);
@@ -260,6 +269,9 @@ const AdminInterlocking = () => {
     const [reservationsStatus, setReservationsStatus] = useState<"open" | "closed" | null>(null);
     const [reservedUsersCount, setReservedUsersCount] = useState<number>(0);
     const [canManageCampaign, setCanManageCampaign] = useState(false);
+    const [campaigns, setCampaigns] = useState<CampaignRecord[]>([]);
+    const [loadingCampaigns, setLoadingCampaigns] = useState(false);
+    const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(null);
 
     const [buildResult, setBuildResult] = useState<BuildResult | null>(null);
     const [strategy, setStrategy] = useState<UiStrategy>("NONE");
@@ -547,14 +559,20 @@ const AdminInterlocking = () => {
     };
 
     const loadScenarios = async () => {
+        if (!selectedCampaignId) {
+            setScenarios([]);
+            setActiveScenarioId(null);
+            return;
+        }
         try {
             setLoadingScenarios(true);
             setError(null);
-            const json = await appApi.adminListInterlockingScenarios();
+            const json = await appApi.adminListInterlockingScenarios(selectedCampaignId);
             const raw = Array.isArray(json?.scenarios) ? json.scenarios : [];
 
             const normalizedScenarios: SavedScenario[] = raw.map((s: Record<string, unknown>) => ({
                 id: String(s.id),
+                campaign_id: String(s.campaign_id ?? selectedCampaignId),
                 scenario_code: String(s.scenario_code ?? ""),
                 generated_at: String(s.generated_at ?? ""),
                 strategy: String(s.strategy ?? "NONE"),
@@ -603,6 +621,25 @@ const AdminInterlocking = () => {
         }
     };
 
+    const loadClosedCampaigns = async () => {
+        try {
+            setLoadingCampaigns(true);
+            const list = await appApi.adminListCampaigns();
+            const closed = list.filter((c) => c.status === "campaign_closed");
+            setCampaigns(closed);
+            setSelectedCampaignId((prev) => {
+                if (prev && closed.some((c) => c.id === prev)) return prev;
+                return closed[0]?.id ?? null;
+            });
+        } catch (err: unknown) {
+            setCampaigns([]);
+            setSelectedCampaignId(null);
+            setError(err instanceof Error ? err.message : String(err));
+        } finally {
+            setLoadingCampaigns(false);
+        }
+    };
+
     const loadCampaignStatus = async () => {
         try {
             const data = await appApi.adminGetCampaignStatus();
@@ -632,16 +669,28 @@ const AdminInterlocking = () => {
         const run = async () => {
             const canManage = await loadCampaignPermission();
             if (canManage) {
-                await Promise.all([loadScenarios(), loadReferenceData(), loadCampaignStatus()]);
+                await Promise.all([loadClosedCampaigns(), loadReferenceData(), loadCampaignStatus()]);
                 return;
             }
             setScenarios([]);
             setUsersDirectory([]);
             setLocationsDirectory([]);
             setCampaignStatus(null);
+            setCampaigns([]);
+            setSelectedCampaignId(null);
         };
         void run();
     }, []);
+
+    useEffect(() => {
+        if (!canManageCampaign) return;
+        setActiveScenarioId(null);
+        setFocusedPersonId(null);
+        setSelectedChainIndex(null);
+        setBuildResult(null);
+        if (!selectedCampaignId) setShowNewSimPanel(false);
+        void loadScenarios();
+    }, [canManageCampaign, selectedCampaignId]);
 
     const usersById = useMemo(() => {
         return new Map(usersDirectory.map((u) => [u.id, u]));
@@ -654,6 +703,24 @@ const AdminInterlocking = () => {
     const activeScenario = useMemo(() => {
         return scenarios.find((s) => s.id === activeScenarioId) ?? null;
     }, [scenarios, activeScenarioId]);
+    const selectedCampaign = useMemo(
+        () => campaigns.find((c) => c.id === selectedCampaignId) ?? null,
+        [campaigns, selectedCampaignId]
+    );
+    const activeScenarioSummary = useMemo(() => {
+        if (!activeScenario) {
+            return {
+                totalChains: 0,
+                uniquePeople: 0,
+                avgPriority: null as number | null,
+            };
+        }
+        return {
+            totalChains: activeScenario.total_chains ?? 0,
+            uniquePeople: activeScenario.unique_people ?? 0,
+            avgPriority: activeScenario.avg_priority ?? null,
+        };
+    }, [activeScenario]);
 
     const getScenarioViewChains = (scenario: SavedScenario | null): ScenarioChainView[] => {
         if (!scenario) return [];
@@ -919,6 +986,10 @@ const AdminInterlocking = () => {
             return;
         }
         if (loadingGraph) return;
+        if (!selectedCampaignId) {
+            setError("Seleziona una campagna chiusa prima di costruire il grafo.");
+            return;
+        }
 
         try {
             setLoadingGraph(true);
@@ -929,7 +1000,7 @@ const AdminInterlocking = () => {
             // piccolo tempo di assestamento dopo il warmup
             await sleep(1200);
 
-            const json = await appApi.syncGraph();
+            const json = await appApi.syncGraph(selectedCampaignId);
 
             setBuildResult({
                 nodes: Number(json?.engine?.nodes ?? 0),
@@ -959,11 +1030,24 @@ const AdminInterlocking = () => {
             setError("Disponibile solo per Admin del perimetro.");
             return;
         }
+        if (!selectedCampaignId) {
+            setError("Seleziona una campagna chiusa prima di avviare la simulazione.");
+            return;
+        }
         try {
             setLoadingAnalyze(true);
             setError(null);
 
-            const json = await appApi.adminFindChains({ maxLen });
+            // Enforcement: ogni analisi ricarica il grafo dalla campagna selezionata
+            // per evitare contaminazioni tra campagne diverse.
+            const sync = await appApi.syncGraph(selectedCampaignId);
+            const currentBuild = {
+                nodes: Number(sync?.engine?.nodes ?? 0),
+                relationships: Number(sync?.engine?.relationships ?? 0),
+            };
+            setBuildResult(currentBuild);
+
+            const json = await appApi.adminFindChains({ maxLen, campaign_id: selectedCampaignId });
             const raw = Array.isArray(json?.chains) ? json.chains : [];
 
             const normalized: InterlockingChain[] = raw.map((c: Record<string, unknown>) => ({
@@ -1002,6 +1086,7 @@ const AdminInterlocking = () => {
             const payload = {
                 scenario_code: getScenarioCode(),
                 generated_at: new Date().toISOString(),
+                campaign_id: selectedCampaignId,
                 strategy,
                 max_len: maxLen,
                 total_chains: stats.totalChains,
@@ -1010,8 +1095,8 @@ const AdminInterlocking = () => {
                 avg_length: stats.avgLength,
                 max_length: stats.maxLengthFound,
                 avg_priority: stats.avgPriority,
-                build_nodes: buildResult?.nodes ?? null,
-                build_relationships: buildResult?.relationships ?? null,
+                build_nodes: currentBuild.nodes ?? null,
+                build_relationships: currentBuild.relationships ?? null,
                 chains_json: normalized,
                 optimal_chains_json: optimalChains,
             };
@@ -1054,7 +1139,10 @@ const AdminInterlocking = () => {
         try {
             setDeleting(true);
             setError(null);
-            await appApi.adminDeleteInterlockingScenarios({ ids: selectedScenarioIds });
+            await appApi.adminDeleteInterlockingScenarios({
+                ids: selectedScenarioIds,
+                campaign_id: selectedCampaignId ?? undefined,
+            });
             setSelectedScenarioIds([]);
             await loadScenarios();
             setFocusedPersonId(null);
@@ -1255,8 +1343,124 @@ const AdminInterlocking = () => {
                     </div>
                 )}
 
-                {/* ── Campaign status (read-only) ── */}
-                {campaignStatus !== null && reservationsStatus !== null && (
+                {/* ── Campaign selector + status ── */}
+                {canManageCampaign && (
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "10px 16px", background: "#FFFFFF", border: "1px solid #E5E7EB", borderRadius: "14px" }}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <span style={{ fontSize: "13px", fontWeight: 600, color: "#374151" }}>Campagna simulazione:</span>
+                        <select
+                            value={selectedCampaignId ?? ""}
+                            onChange={(e) => setSelectedCampaignId(e.target.value || null)}
+                            disabled={loadingCampaigns || campaigns.length === 0}
+                            style={{
+                                border: "1px solid #D1D5DB",
+                                borderRadius: "10px",
+                                padding: "6px 10px",
+                                fontSize: "12px",
+                                color: "#111827",
+                                minWidth: "300px",
+                                background: "#FFFFFF",
+                            }}
+                        >
+                            {campaigns.length === 0 && <option value="">Nessuna campagna chiusa disponibile</option>}
+                            {campaigns.map((c) => (
+                                <option key={c.id} value={c.id}>
+                                    {formatCampaignOptionLabel(c)}
+                                </option>
+                            ))}
+                        </select>
+                        {selectedCampaign && (
+                            <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                                <span style={{ fontSize: "12px", color: "#6B7280", fontWeight: 500 }}>
+                                    Snapshot selezionato · {selectedCampaign.total_applications_count} candidature
+                                </span>
+                                <span style={{
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    padding: "2px 8px",
+                                    borderRadius: "999px",
+                                    fontSize: "11px",
+                                    fontWeight: 700,
+                                    border: "1px solid #d1d5db",
+                                    background: "#f9fafb",
+                                    color: "#374151",
+                                }}>
+                                    campaign_closed
+                                </span>
+                            </div>
+                        )}
+                        {loadingCampaigns && (
+                            <span style={{ fontSize: "12px", color: "#6B7280" }}>Caricamento campagne…</span>
+                        )}
+                        {campaigns.length === 0 && !loadingCampaigns && (
+                            <span style={{ fontSize: "12px", color: "#92400E", fontWeight: 600 }}>
+                                Nessuna campagna chiusa: impossibile avviare simulazioni.
+                            </span>
+                        )}
+                        {campaignStatus !== null && reservationsStatus !== null && (
+                            <>
+                                <span style={{ fontSize: "13px", fontWeight: 600, color: "#374151" }}>Campagna live:</span>
+                                <div style={{
+                                    display: "inline-flex", alignItems: "center", gap: "5px",
+                                    padding: "3px 10px", borderRadius: "999px", fontSize: "12px", fontWeight: 700,
+                                    background: campaignStatus === "open" ? "#ecfdf5" : "#eff6ff",
+                                    color: campaignStatus === "open" ? "#059669" : "#1d4ed8",
+                                    border: `1px solid ${campaignStatus === "open" ? "#a7f3d0" : "#93c5fd"}`,
+                                }}>
+                                    <div style={{ width: 7, height: 7, borderRadius: "50%", background: campaignStatus === "open" ? "#10b981" : "#3b82f6" }} />
+                                    {campaignStatus === "open" ? "Aperta" : "Chiusa"}
+                                </div>
+                                <span style={{ fontSize: "13px", fontWeight: 600, color: "#374151" }}>Prenotazioni:</span>
+                                <div style={{
+                                    display: "inline-flex", alignItems: "center", gap: "5px",
+                                    padding: "3px 10px", borderRadius: "999px", fontSize: "12px", fontWeight: 700,
+                                    background: reservationsStatus === "open" ? "#ecfdf5" : "#f3f4f6",
+                                    color: reservationsStatus === "open" ? "#059669" : "#374151",
+                                    border: `1px solid ${reservationsStatus === "open" ? "#a7f3d0" : "#d1d5db"}`,
+                                }}>
+                                    <div style={{ width: 7, height: 7, borderRadius: "50%", background: reservationsStatus === "open" ? "#10b981" : "#6b7280" }} />
+                                    {reservationsStatus === "open" ? "Aperte" : "Chiuse"}
+                                </div>
+                                <span style={{ fontSize: "12px", color: "#6B7280", fontWeight: 500 }}>
+                                    {reservedUsersCount} prenotat{reservedUsersCount === 1 ? "o" : "i"}
+                                </span>
+                            </>
+                        )}
+                        <a href="/admin/campagne" style={{ marginLeft: "auto", fontSize: "12px", color: "#2563eb", fontWeight: 600, textDecoration: "none" }}>
+                            Gestisci campagna →
+                        </a>
+                    </div>
+                )}
+
+                {canManageCampaign && (
+                    <div
+                        style={{
+                            display: "grid",
+                            gridTemplateColumns: "repeat(3, minmax(180px, 1fr))",
+                            gap: "10px",
+                        }}
+                    >
+                        <div style={{ border: "1px solid #E5E7EB", borderRadius: "12px", background: "#fff", padding: "10px 12px" }}>
+                            <div style={{ fontSize: "11px", color: "#6B7280", fontWeight: 600, textTransform: "uppercase" }}>Numero catene</div>
+                            <div style={{ fontSize: "22px", fontWeight: 700, color: "#111827" }}>{activeScenarioSummary.totalChains}</div>
+                            <div style={{ fontSize: "11px", color: "#9CA3AF" }}>Scenario {activeScenario ? "attivo" : "non selezionato"}</div>
+                        </div>
+                        <div style={{ border: "1px solid #E5E7EB", borderRadius: "12px", background: "#fff", padding: "10px 12px" }}>
+                            <div style={{ fontSize: "11px", color: "#6B7280", fontWeight: 600, textTransform: "uppercase" }}>Persone coinvolte</div>
+                            <div style={{ fontSize: "22px", fontWeight: 700, color: "#111827" }}>{activeScenarioSummary.uniquePeople}</div>
+                            <div style={{ fontSize: "11px", color: "#9CA3AF" }}>Scenario {activeScenario ? "attivo" : "non selezionato"}</div>
+                        </div>
+                        <div style={{ border: "1px solid #E5E7EB", borderRadius: "12px", background: "#fff", padding: "10px 12px" }}>
+                            <div style={{ fontSize: "11px", color: "#6B7280", fontWeight: 600, textTransform: "uppercase" }}>Avg priority</div>
+                            <div style={{ fontSize: "22px", fontWeight: 700, color: "#111827" }}>
+                                {activeScenarioSummary.avgPriority == null ? "—" : formatNumber(activeScenarioSummary.avgPriority, 2)}
+                            </div>
+                            <div style={{ fontSize: "11px", color: "#9CA3AF" }}>Scenario {activeScenario ? "attivo" : "non selezionato"}</div>
+                        </div>
+                    </div>
+                )}
+                {!canManageCampaign && campaignStatus !== null && reservationsStatus !== null && (
                     <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "10px 16px", background: "#FFFFFF", border: "1px solid #E5E7EB", borderRadius: "14px" }}
                         onClick={(e) => e.stopPropagation()}
                     >
@@ -1325,9 +1529,9 @@ const AdminInterlocking = () => {
 
                             {/* ── Nuova simulazione panel ── */}
                             <div style={{ marginBottom: "14px" }}>
-                                <button
-                                    onClick={(e) => { e.stopPropagation(); setShowNewSimPanel((prev) => !prev); }}
-                                    disabled={isRestrictedReadOnly}
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); setShowNewSimPanel((prev) => !prev); }}
+                                    disabled={isRestrictedReadOnly || !selectedCampaignId}
                                     style={{
                                         display: "flex", alignItems: "center", gap: "6px",
                                         padding: "9px 16px", borderRadius: "12px",
@@ -1338,6 +1542,11 @@ const AdminInterlocking = () => {
                                 >
                                     <span style={{ fontSize: "16px", lineHeight: 1 }}>+</span> Nuova simulazione
                                 </button>
+                                {!selectedCampaignId && (
+                                    <div style={{ marginTop: "8px", fontSize: "12px", color: "#92400E", fontWeight: 600 }}>
+                                        Seleziona una campagna chiusa per abilitare la simulazione.
+                                    </div>
+                                )}
 
                                 {showNewSimPanel && (
                                     <div
@@ -1352,7 +1561,7 @@ const AdminInterlocking = () => {
                                         <div style={{ display: "flex", gap: "12px", alignItems: "center", flexWrap: "wrap" }}>
                                             <button
                                                 onClick={handleBuildGraph}
-                                                disabled={loadingGraph || isRestrictedReadOnly}
+                                                disabled={loadingGraph || isRestrictedReadOnly || !selectedCampaignId}
                                                 style={{
                                                     ...ghostButtonStyle,
                                                     background: buildResult ? "#ECFDF5" : "#FFFFFF",
@@ -1398,7 +1607,7 @@ const AdminInterlocking = () => {
                                             </label>
                                             <button
                                                 onClick={handleAnalyzeScenarios}
-                                                disabled={loadingAnalyze || !buildResult || isRestrictedReadOnly}
+                                                disabled={loadingAnalyze || !buildResult || isRestrictedReadOnly || !selectedCampaignId}
                                                 style={{ ...ghostButtonStyle, background: "#6366F1", color: "#FFFFFF", border: "1px solid #4F46E5", fontWeight: 600, whiteSpace: "nowrap" }}
                                             >
                                                 {loadingAnalyze ? "Analisi…" : "Analizza scenari"}
@@ -1479,7 +1688,19 @@ const AdminInterlocking = () => {
                                                         ) : null}
                                                     </div>
                                                     <div style={{ fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{scenario.scenario_code}</div>
-                                                    <div style={{ color: "#6B7280", fontSize: "11px" }}>{formatDateTime(scenario.generated_at)}</div>
+                                                    <div style={{ color: "#6B7280", fontSize: "11px", display: "flex", alignItems: "center", gap: "6px" }}>
+                                                        <span>{formatDateTime(scenario.generated_at)}</span>
+                                                        {isActive && (
+                                                            <span style={{ fontSize: "10px", fontWeight: 700, color: "#065F46", background: "#D1FAE5", border: "1px solid #6EE7B7", borderRadius: "999px", padding: "1px 6px" }}>
+                                                                attivo
+                                                            </span>
+                                                        )}
+                                                        {isSelected && !isActive && (
+                                                            <span style={{ fontSize: "10px", fontWeight: 700, color: "#1D4ED8", background: "#DBEAFE", border: "1px solid #93C5FD", borderRadius: "999px", padding: "1px 6px" }}>
+                                                                selezionato
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                     <div>{scenario.total_chains}</div>
                                                     <div>{scenario.unique_people}</div>
                                                     <div>{formatNumber(scenario.coverage, 1)}%</div>

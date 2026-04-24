@@ -68,7 +68,7 @@ export type TopBarTreeNode = {
 };
 
 const ADMIN_ACCESS_ROLES = new Set(["admin", "admin_user"]);
-export type AdminPageKey = "interlocking" | "maps" | "candidatures" | "configuration";
+export type AdminPageKey = "interlocking" | "configuration" | "campaigns" | "maps" | "candidatures";
 
 type AdminPageDefinition = {
   key: AdminPageKey;
@@ -79,9 +79,10 @@ type AdminPageDefinition = {
 
 export const ADMIN_PAGE_DEFINITIONS: AdminPageDefinition[] = [
   { key: "interlocking", id: "admin-interlocking", label: "Interlocking", path: "/admin/interlocking" },
+  { key: "configuration", id: "admin-configurazione", label: "Configurazione", path: "/admin/configurazione" },
+  { key: "campaigns", id: "admin-campagne", label: "Campagne candidature", path: "/admin/campagne" },
   { key: "maps", id: "admin-maps", label: "Mappe utenti attivi", path: "/admin/maps" },
-  { key: "candidatures", id: "admin-candidatures", label: "Candidature", path: "/admin/candidatures" },
-  { key: "configuration", id: "admin-test-users", label: "Configurazione", path: "/admin/test-users" },
+  { key: "candidatures", id: "admin-candidatures", label: "Lista candidature", path: "/admin/candidatures" },
 ];
 
 function isPathActive(pathname: string, targetPath: string): boolean {
@@ -284,47 +285,25 @@ export function buildTopBarHierarchy(
       const perimeterName = String(perimeter?.perimeter_name ?? "Perimeter");
       const hasOperationalAccess = input.isSuperAdmin || isOperationalAdminAccess(perimeter?.access_role);
 
-      const adminChildren: NavLeafItem[] = [];
-      if (hasOperationalAccess) {
-        adminChildren.push(
-          {
-            id: `area-admin-candidatures-${companyId}-${perimeterId}`,
-            label: "Candidature",
-            path: "/admin/candidatures",
-            isActive:
-              input.currentCompanyId === companyId
-              && input.currentPerimeterId === perimeterId
-              && isPathActive(input.pathname, "/admin/candidatures"),
-          },
-          {
-            id: `area-admin-maps-${companyId}-${perimeterId}`,
-            label: "Mappe utenti",
-            path: "/admin/maps",
-            isActive:
-              input.currentCompanyId === companyId
-              && input.currentPerimeterId === perimeterId
-              && isPathActive(input.pathname, "/admin/maps"),
-          },
-          {
-            id: `area-admin-config-${companyId}-${perimeterId}`,
-            label: "Configurazione",
-            path: "/admin/test-users",
-            isActive:
-              input.currentCompanyId === companyId
-              && input.currentPerimeterId === perimeterId
-              && isPathActive(input.pathname, "/admin/test-users"),
-          }
-        );
-      }
-      adminChildren.push({
-        id: `area-admin-interlocking-${companyId}-${perimeterId}`,
-        label: "Interlocking",
-        path: "/admin/interlocking",
-        isActive:
-          input.currentCompanyId === companyId
-          && input.currentPerimeterId === perimeterId
-          && input.pathname.startsWith("/admin/interlocking"),
-      });
+      const adminChildren: NavLeafItem[] = hasOperationalAccess
+        ? ADMIN_PAGE_DEFINITIONS.map((page) => ({
+          id: `area-admin-${page.key}-${companyId}-${perimeterId}`,
+          label: page.label,
+          path: page.path,
+          isActive:
+            input.currentCompanyId === companyId
+            && input.currentPerimeterId === perimeterId
+            && isPathActive(input.pathname, page.path),
+        }))
+        : [{
+          id: `area-admin-interlocking-${companyId}-${perimeterId}`,
+          label: "Interlocking",
+          path: "/admin/interlocking",
+          isActive:
+            input.currentCompanyId === companyId
+            && input.currentPerimeterId === perimeterId
+            && input.pathname.startsWith("/admin/interlocking"),
+        }];
 
       const nodeId = `area-admin-node-${companyId}-${perimeterId}`;
       if (perimeterNodesMap.has(nodeId)) continue;

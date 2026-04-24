@@ -21,7 +21,12 @@ type AdminCandidatureRow = {
 
 const AdminCandidatures = () => {
   const [applications, setApplications] = useState<AdminCandidatureRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [stats, setStats] = useState<AdminCandidaturesStats>({
+    campaign_id: null,
+    campaign_status: "closed",
+    reservations_status: "closed",
     reserved_count: 0,
     active_users_count: 0,
     active_users_pct: 0,
@@ -120,6 +125,8 @@ const AdminCandidatures = () => {
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      setLoading(true);
+      setLoadError(null);
       try {
         const [rowsRes, statsRes] = await Promise.allSettled([
           appApi.adminGetCandidatures(),
@@ -132,6 +139,9 @@ const AdminCandidatures = () => {
           statsRes.status === "fulfilled"
             ? statsRes.value
             : {
+              campaign_id: null,
+              campaign_status: "closed",
+              reservations_status: "closed",
               reserved_count: 0,
               active_users_count: 0,
               active_users_pct: 0,
@@ -141,14 +151,20 @@ const AdminCandidatures = () => {
       } catch (e: unknown) {
         console.error("[AdminCandidatures] load error:", e instanceof Error ? e.message : e);
         if (!cancelled) {
+          setLoadError(e instanceof Error ? e.message : "Errore caricamento candidature");
           setApplications([]);
           setStats({
+            campaign_id: null,
+            campaign_status: "closed",
+            reservations_status: "closed",
             reserved_count: 0,
             active_users_count: 0,
             active_users_pct: 0,
             avg_applications_per_reserved: 0,
           });
         }
+      } finally {
+        if (!cancelled) setLoading(false);
       }
     })();
     return () => { cancelled = true; };
@@ -167,6 +183,18 @@ const AdminCandidatures = () => {
     return Number.isInteger(rounded) ? `${rounded.toFixed(0)}` : `${rounded.toFixed(1)}`;
   };
 
+  const liveStateLabel = stats.campaign_status === "open"
+    ? (applications.length > 0 ? "LIVE" : "LIVE SENZA DATI")
+    : "VUOTA";
+  const liveStateStyles =
+    stats.campaign_status === "open"
+      ? {
+        background: applications.length > 0 ? "#ecfdf5" : "#fff7ed",
+        color: applications.length > 0 ? "#166534" : "#9a3412",
+        border: applications.length > 0 ? "#86efac" : "#fed7aa",
+      }
+      : { background: "#f3f4f6", color: "#374151", border: "#d1d5db" };
+
   /* ---------- render ---------- */
   return (
     <div style={{
@@ -183,12 +211,56 @@ const AdminCandidatures = () => {
           color: "var(--text-primary, #0f172a)",
           margin: 0,
         }}>
-          Tabella Candidature
+          Lista candidature
         </h1>
         <p style={{ fontSize: "13px", color: "var(--text-secondary, #64748b)", marginTop: "4px" }}>
-          {applications.length} candidature totali · {filtered.length} visibili con i filtri correnti
+          {applications.length} candidature correnti · {filtered.length} visibili con i filtri correnti
         </p>
+        <div
+          style={{
+            marginTop: "8px",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "6px",
+            fontSize: "11px",
+            fontWeight: 700,
+            borderRadius: "999px",
+            padding: "4px 10px",
+            background: liveStateStyles.background,
+            color: liveStateStyles.color,
+            border: `1px solid ${liveStateStyles.border}`,
+          }}
+        >
+          Stato lista: {liveStateLabel}
+        </div>
       </div>
+
+      {loading && (
+        <div style={{ marginBottom: "16px", fontSize: "12px", color: "#64748b" }}>
+          Caricamento candidature in corso…
+        </div>
+      )}
+      {loadError && (
+        <div style={{ marginBottom: "16px", border: "1px solid #fca5a5", background: "#fef2f2", color: "#b91c1c", borderRadius: "10px", padding: "10px 12px", fontSize: "12px" }}>
+          {loadError}
+        </div>
+      )}
+
+      {stats.campaign_status !== "open" && (
+        <div
+          style={{
+            marginBottom: "16px",
+            border: "1px solid #d1d5db",
+            borderRadius: "10px",
+            padding: "10px 12px",
+            background: "#f8fafc",
+            fontSize: "12px",
+            color: "#475569",
+          }}
+        >
+          Campagna non aperta: la lista mostra solo candidature correnti e risulta vuota finché la campagna non è in stato aperto.
+        </div>
+      )}
 
       <div
         className="db-card"

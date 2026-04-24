@@ -74,6 +74,7 @@ function AppShell({ showTopBar }: { showTopBar: boolean }) {
               <Route path="/admin/candidatures" element={<RequireAdmin><AdminCandidatures /></RequireAdmin>} />
               <Route path="/admin/campagne" element={<RequireAdmin><AdminCampaigns /></RequireAdmin>} />
               <Route path="/admin/maps" element={<RequireAdmin><AdminMaps /></RequireAdmin>} />
+              <Route path="/admin/configurazione" element={<RequireAdmin><AdminTestUsers /></RequireAdmin>} />
               <Route
                 path="/admin/interlocking"
                 element={
@@ -82,7 +83,7 @@ function AppShell({ showTopBar }: { showTopBar: boolean }) {
                   </RequirePerimeterAccess>
                 }
               />
-              <Route path="/admin/test-users" element={<RequireAdmin><AdminTestUsers /></RequireAdmin>} />
+              <Route path="/admin/test-users" element={<Navigate to="/admin/configurazione" replace />} />
 
               {/* Fallback */}
               <Route path="*" element={<Navigate to="/" replace />} />

@@ -17,49 +17,58 @@ const AdminHome: React.FC = () => {
                     marginTop: "40px",
                 }}
             >
-                {/* 🟩 A — TABELLE CANDIDATURE */}
-                <div
-                    style={boxStyle}
-                    onClick={() => navigate("/admin/candidatures")}
-                >
-                    <h3>A. Tabelle candidature</h3>
-                    <p>
-                        Visualizza e monitora tutte le candidature presenti
-                        sulla piattaforma.
-                    </p>
-                </div>
-
-                {/* 🟩 B — MAPPE UTENTI ATTIVI */}
-                <div
-                    style={boxStyle}
-                    onClick={() => navigate("/admin/maps")}
-                >
-                    <h3>B. Mappe utenti attivi</h3>
-                    <p>
-                        Analizza le candidature dal punto di vista di ciascun
-                        utente.
-                    </p>
-                </div>
-
-                {/* 🟩 C — INTERLOCKING */}
+                {/* 🟩 A — INTERLOCKING */}
                 <div
                     style={boxStyle}
                     onClick={() => navigate("/admin/interlocking")}
                 >
-                    <h3>C. Catene di interlocking</h3>
+                    <h3>A. Interlocking</h3>
                     <p>
                         Individua le catene chiuse di scambio tra posizioni.
                     </p>
                 </div>
 
-                {/* 🟩 D — CAMPAGNE */}
+                {/* 🟩 B — CONFIGURAZIONE */}
+                <div
+                    style={boxStyle}
+                    onClick={() => navigate("/admin/configurazione")}
+                >
+                    <h3>B. Configurazione</h3>
+                    <p>
+                        Gestisci utenti, ruoli, reparti, sedi, responsabili e HR.
+                    </p>
+                </div>
+
+                {/* 🟩 C — CAMPAGNE CANDIDATURE */}
                 <div
                     style={boxStyle}
                     onClick={() => navigate("/admin/campagne")}
                 >
-                    <h3>D. Campagne</h3>
+                    <h3>C. Campagne candidature</h3>
                     <p>
-                        Gestisci il lifecycle della campagna di mobilità e consulta lo storico.
+                        Gestisci il lifecycle della campagna e lo storico perimetro.
+                    </p>
+                </div>
+
+                {/* 🟩 D — MAPPE UTENTI ATTIVI */}
+                <div
+                    style={boxStyle}
+                    onClick={() => navigate("/admin/maps")}
+                >
+                    <h3>D. Mappe utenti attivi</h3>
+                    <p>
+                        Analizza le candidature dal punto di vista di ciascun utente.
+                    </p>
+                </div>
+
+                {/* 🟩 E — LISTA CANDIDATURE */}
+                <div
+                    style={boxStyle}
+                    onClick={() => navigate("/admin/candidatures")}
+                >
+                    <h3>E. Lista candidature</h3>
+                    <p>
+                        Visualizza le candidature correnti della campagna aperta.
                     </p>
                 </div>
             </div>

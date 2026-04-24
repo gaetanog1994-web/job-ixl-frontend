@@ -1068,7 +1068,7 @@ const AdminTestUsers = () => {
   const switchTab = (nextTab: ConfigTab) => {
     setActiveTab(nextTab);
     if (typeof window !== "undefined") {
-      window.history.replaceState({}, "", `/admin/test-users?section=${nextTab}`);
+      window.history.replaceState({}, "", `/admin/configurazione?section=${nextTab}`);
     }
   };
 

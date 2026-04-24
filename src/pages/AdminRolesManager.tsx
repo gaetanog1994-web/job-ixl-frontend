@@ -1,196 +1,204 @@
-import { useEffect, useState } from "react";
-import { supabase } from "../lib/supabaseClient";
+import { useEffect, useMemo, useState } from "react";
+import { appApi, type AdminRole } from "../lib/appApi";
 
-/* =======================
-   TYPES
-======================= */
-
-type Role = {
-    id: string;
-    name: string;
-};
-
-type Compatibility = {
-    id: string;
-    compatible_role_id: string;
-    compatible_role_name: string;
-};
-
-/* =======================
-   COMPONENT
-======================= */
+type RoleDrafts = Record<string, string>;
+type SelectedCompat = Record<string, string>;
 
 const AdminRolesManager = () => {
-    const [roles, setRoles] = useState<Role[]>([]);
-    const [compatMap, setCompatMap] = useState<Record<string, Compatibility[]>>({});
+    const [roles, setRoles] = useState<AdminRole[]>([]);
     const [newRoleName, setNewRoleName] = useState("");
+    const [drafts, setDrafts] = useState<RoleDrafts>({});
+    const [selectedCompat, setSelectedCompat] = useState<SelectedCompat>({});
+    const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [success, setSuccess] = useState<string | null>(null);
 
-    const [selectedCompat, setSelectedCompat] = useState<Record<string, string>>({});
-
-    /* =======================
-       LOADERS
-    ======================= */
+    const rolesById = useMemo(() => {
+        const map = new Map<string, AdminRole>();
+        for (const role of roles) map.set(role.id, role);
+        return map;
+    }, [roles]);
 
     const loadRoles = async () => {
-        const { data, error } = await supabase
-            .from("roles")
-            .select("id, name")
-            .order("name");
-
-        if (!error) setRoles(data ?? []);
-    };
-
-    const loadAllCompatibilities = async () => {
-        const { data, error } = await supabase
-            .from("role_compatibilities")
-            .select(`
-                id,
-                role_id,
-                compatible_role_id,
-                roles:compatible_role_id ( name )
-            `);
-
-        if (error) {
-            setError(error.message);
-            return;
-        }
-
-        const map: Record<string, Compatibility[]> = {};
-
-        (data ?? []).forEach((c) => {
-            if (!map[c.role_id]) map[c.role_id] = [];
-
-            map[c.role_id].push({
-                id: c.id,
-                compatible_role_id: c.compatible_role_id,
-                compatible_role_name: (Array.isArray(c.roles) ? c.roles[0]?.name : null) ?? "",
+        setLoading(true);
+        setError(null);
+        try {
+            const data = await appApi.adminGetRoles();
+            setRoles(data);
+            setDrafts((prev) => {
+                const next: RoleDrafts = {};
+                for (const role of data) next[role.id] = prev[role.id] ?? role.name;
+                return next;
             });
-        });
-
-        setCompatMap(map);
+        } catch (e: any) {
+            setError(e?.message ?? "Impossibile caricare i ruoli.");
+        } finally {
+            setLoading(false);
+        }
     };
 
     useEffect(() => {
-        const init = async () => {
-            await loadRoles();
-            await loadAllCompatibilities();
-        };
-        void init();
+        void loadRoles();
     }, []);
 
-    /* =======================
-       ACTIONS
-    ======================= */
+    const resetFeedback = () => {
+        setError(null);
+        setSuccess(null);
+    };
 
     const addRole = async () => {
-        if (!newRoleName.trim()) return;
+        const name = newRoleName.trim();
+        if (!name) return;
 
-        setError(null);
-
-        const { error } = await supabase
-            .from("roles")
-            .insert({ name: newRoleName.trim() });
-
-        if (error) {
-            setError(error.message);
-            return;
+        resetFeedback();
+        setLoading(true);
+        try {
+            await appApi.adminCreateRole({ name });
+            setNewRoleName("");
+            setSuccess("Ruolo creato correttamente.");
+            await loadRoles();
+        } catch (e: any) {
+            setError(e?.message ?? "Creazione ruolo fallita.");
+        } finally {
+            setLoading(false);
         }
+    };
 
-        setNewRoleName("");
-        loadRoles();
+    const updateRole = async (roleId: string) => {
+        const role = rolesById.get(roleId);
+        if (!role) return;
+        const nextName = (drafts[roleId] ?? "").trim();
+        if (!nextName || nextName === role.name) return;
+
+        resetFeedback();
+        setLoading(true);
+        try {
+            await appApi.adminUpdateRole(roleId, { name: nextName });
+            setSuccess("Ruolo aggiornato.");
+            await loadRoles();
+        } catch (e: any) {
+            setError(e?.message ?? "Aggiornamento ruolo fallito.");
+        } finally {
+            setLoading(false);
+        }
     };
 
     const deleteRole = async (roleId: string) => {
-        if (!confirm("Eliminare questo ruolo?")) return;
+        const role = rolesById.get(roleId);
+        if (!role) return;
+        if (!window.confirm(`Eliminare il ruolo "${role.name}"?`)) return;
 
-        const { error } = await supabase
-            .from("roles")
-            .delete()
-            .eq("id", roleId);
-
-        if (error) {
-            setError(error.message);
-            return;
+        resetFeedback();
+        setLoading(true);
+        try {
+            await appApi.adminDeleteRole(roleId);
+            setSuccess("Ruolo eliminato.");
+            await loadRoles();
+        } catch (e: any) {
+            setError(e?.message ?? "Eliminazione ruolo fallita.");
+        } finally {
+            setLoading(false);
         }
-
-        loadRoles();
-        loadAllCompatibilities();
     };
 
     const addCompatibility = async (roleId: string) => {
-        const compatibleRoleId = selectedCompat[roleId];
-        if (!compatibleRoleId) return;
+        const targetRoleId = (selectedCompat[roleId] ?? "").trim();
+        if (!targetRoleId) return;
 
-        setError(null);
-
-        const { error } = await supabase
-            .from("role_compatibilities")
-            .insert({
-                role_id: roleId,
-                compatible_role_id: compatibleRoleId,
-            });
-
-        if (error) {
-            setError(error.message);
-            return;
+        resetFeedback();
+        setLoading(true);
+        try {
+            await appApi.adminAddRoleCompatibility(roleId, targetRoleId);
+            setSelectedCompat((prev) => ({ ...prev, [roleId]: "" }));
+            setSuccess("Compatibilità aggiunta.");
+            await loadRoles();
+        } catch (e: any) {
+            setError(e?.message ?? "Aggiunta compatibilità fallita.");
+        } finally {
+            setLoading(false);
         }
-
-        setSelectedCompat((prev) => ({ ...prev, [roleId]: "" }));
-        loadAllCompatibilities();
     };
 
-    const deleteCompatibility = async (id: string) => {
-        const { error } = await supabase
-            .from("role_compatibilities")
-            .delete()
-            .eq("id", id);
-
-        if (error) {
-            setError(error.message);
-            return;
+    const deleteCompatibility = async (roleId: string, targetRoleId: string) => {
+        resetFeedback();
+        setLoading(true);
+        try {
+            await appApi.adminDeleteRoleCompatibility(roleId, targetRoleId);
+            setSuccess("Compatibilità rimossa.");
+            await loadRoles();
+        } catch (e: any) {
+            setError(e?.message ?? "Rimozione compatibilità fallita.");
+        } finally {
+            setLoading(false);
         }
-
-        loadAllCompatibilities();
     };
-
-    /* =======================
-       UI
-    ======================= */
 
     return (
         <div className="db-card">
-            <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div
+                style={{
+                    padding: "16px 20px",
+                    borderBottom: "1px solid var(--border)",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    gap: "10px",
+                }}
+            >
                 <h2 style={{ margin: 0, fontSize: "16px", fontWeight: 700, color: "var(--text-primary)" }}>
                     Ruoli Aziendali ({roles.length})
                 </h2>
+                {loading && <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>Aggiornamento in corso…</span>}
             </div>
 
-            {error && <div style={{ margin: "16px 20px", padding: "10px", background: "#fef2f2", color: "#b91c1c", border: "1px solid #fecaca", borderRadius: "8px", fontSize: "13px" }}>{error}</div>}
+            {error && (
+                <div style={{ margin: "16px 20px", padding: "10px", background: "#fef2f2", color: "#b91c1c", border: "1px solid #fecaca", borderRadius: "8px", fontSize: "13px" }}>
+                    {error}
+                </div>
+            )}
 
-            {/* ADD ROLE */}
-            <div style={{ padding: "16px 20px", background: "var(--surface)", borderBottom: "1px solid var(--border)", display: "flex", gap: "12px", alignItems: "center" }}>
+            {success && (
+                <div style={{ margin: "16px 20px", padding: "10px", background: "#f0fdf4", color: "#166534", border: "1px solid #86efac", borderRadius: "8px", fontSize: "13px" }}>
+                    {success}
+                </div>
+            )}
+
+            <div
+                style={{
+                    padding: "16px 20px",
+                    background: "var(--surface)",
+                    borderBottom: "1px solid var(--border)",
+                    display: "flex",
+                    gap: "12px",
+                    alignItems: "center",
+                }}
+            >
                 <input
                     className="db-filter-select"
-                    style={{ flex: 1, maxWidth: "300px" }}
+                    style={{ flex: 1, maxWidth: "320px" }}
                     placeholder="Nome nuovo ruolo"
                     value={newRoleName}
                     onChange={(e) => setNewRoleName(e.target.value)}
+                    disabled={loading}
                 />
-                <button className="db-btn" style={{ background: "var(--brand)", color: "white" }} onClick={addRole}>
-                    ➕ Aggiungi ruolo
+                <button
+                    className="db-btn"
+                    style={{ background: "var(--brand)", color: "white" }}
+                    onClick={addRole}
+                    disabled={loading || !newRoleName.trim()}
+                >
+                    Crea ruolo
                 </button>
             </div>
 
-            {/* ROLES TABLE */}
             <div style={{ overflowX: "auto" }}>
-                <table className="db-apps-table" style={{ width: "100%", whiteSpace: "wrap" }}>
+                <table className="db-apps-table" style={{ width: "100%", whiteSpace: "normal" }}>
                     <thead>
                         <tr>
-                            <th style={{ width: "20%" }}>Ruolo</th>
-                            <th style={{ width: "30%" }}>Aggiungi compatibilità</th>
-                            <th style={{ width: "40%" }}>Ruoli Compatibili (per incastri)</th>
-                            <th style={{ width: "10%" }} align="right">Azioni</th>
+                            <th style={{ width: "26%" }}>Ruolo</th>
+                            <th style={{ width: "26%" }}>Aggiungi compatibilità</th>
+                            <th style={{ width: "34%" }}>Compatibilità attive</th>
+                            <th style={{ width: "14%" }} align="right">Azioni</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -201,48 +209,67 @@ const AdminRolesManager = () => {
                                 </td>
                             </tr>
                         )}
-                        {roles.map((r) => {
-                            const compatibilities = compatMap[r.id] ?? [];
+                        {roles.map((role) => {
+                            const compatibilities = role.compatibilities ?? [];
+                            const roleUsage = Number(role.assigned_users_count ?? 0);
+                            const availableTargets = roles.filter(
+                                (candidate) =>
+                                    candidate.id !== role.id &&
+                                    !compatibilities.some((entry) => entry.compatible_role_id === candidate.id)
+                            );
 
                             return (
-                                <tr key={r.id}>
-                                    <td><span style={{ fontWeight: 600 }}>{r.name}</span></td>
+                                <tr key={role.id}>
+                                    <td>
+                                        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                                            <input
+                                                className="db-filter-select"
+                                                value={drafts[role.id] ?? role.name}
+                                                onChange={(e) => setDrafts((prev) => ({ ...prev, [role.id]: e.target.value }))}
+                                                disabled={loading}
+                                                aria-label={`Nome ruolo ${role.name}`}
+                                            />
+                                            <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>
+                                                Utenti assegnati: {roleUsage}
+                                            </span>
+                                        </div>
+                                    </td>
 
                                     <td>
-                                        <div style={{ display: "flex", gap: "6px" }}>
+                                        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
                                             <select
                                                 className="db-filter-select"
-                                                style={{ height: "30px", fontSize: "12px", padding: "0 8px", width: "160px" }}
-                                                value={selectedCompat[r.id] ?? ""}
-                                                onChange={(e) =>
-                                                    setSelectedCompat((prev) => ({
-                                                        ...prev,
-                                                        [r.id]: e.target.value,
-                                                    }))
-                                                }
+                                                style={{ height: "34px", fontSize: "12px", padding: "0 8px", width: "100%" }}
+                                                value={selectedCompat[role.id] ?? ""}
+                                                onChange={(e) => setSelectedCompat((prev) => ({ ...prev, [role.id]: e.target.value }))}
+                                                disabled={loading}
                                             >
-                                                <option value="">Seleziona ruolo</option>
-                                                {roles
-                                                    .filter((x) => x.id !== r.id && !compatibilities.find(c => c.compatible_role_id === x.id))
-                                                    .map((x) => (
-                                                        <option key={x.id} value={x.id}>
-                                                            {x.name}
-                                                        </option>
-                                                    ))}
+                                                <option value="">Seleziona ruolo compatibile</option>
+                                                {availableTargets.map((candidate) => (
+                                                    <option key={candidate.id} value={candidate.id}>
+                                                        {candidate.name}
+                                                    </option>
+                                                ))}
                                             </select>
-
-                                            <button className="db-btn db-btn-outline" style={{ padding: "4px 10px", fontSize: "12px" }} onClick={() => addCompatibility(r.id)} disabled={!selectedCompat[r.id]}>
-                                                Collega
+                                            <button
+                                                className="db-btn db-btn-outline"
+                                                style={{ padding: "6px 10px", fontSize: "12px", whiteSpace: "nowrap" }}
+                                                onClick={() => addCompatibility(role.id)}
+                                                disabled={loading || !(selectedCompat[role.id] ?? "").trim()}
+                                            >
+                                                Aggiungi
                                             </button>
                                         </div>
                                     </td>
 
                                     <td>
                                         <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-                                            {compatibilities.length === 0 && <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>Nessuna compatibilità impostata</span>}
-                                            {compatibilities.map((c) => (
+                                            {compatibilities.length === 0 && (
+                                                <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>Nessuna compatibilità</span>
+                                            )}
+                                            {compatibilities.map((compat) => (
                                                 <span
-                                                    key={c.id}
+                                                    key={`${role.id}-${compat.compatible_role_id}`}
                                                     style={{
                                                         padding: "4px 10px",
                                                         background: "#eff6ff",
@@ -256,11 +283,12 @@ const AdminRolesManager = () => {
                                                         gap: "6px",
                                                     }}
                                                 >
-                                                    {c.compatible_role_name}
+                                                    {compat.compatible_role_name}
                                                     <button
-                                                        onClick={() => deleteCompatibility(c.id)}
-                                                        style={{ border: "none", background: "transparent", cursor: "pointer", color: "#3b82f6", display: "flex", alignItems: "center", padding: 0 }}
+                                                        onClick={() => deleteCompatibility(role.id, compat.compatible_role_id)}
+                                                        style={{ border: "none", background: "transparent", cursor: "pointer", color: "#3b82f6", padding: 0 }}
                                                         title="Rimuovi compatibilità"
+                                                        disabled={loading}
                                                     >
                                                         ✕
                                                     </button>
@@ -270,9 +298,22 @@ const AdminRolesManager = () => {
                                     </td>
 
                                     <td align="right">
-                                        <button className="db-action-btn db-action-btn-delete" onClick={() => deleteRole(r.id)}>
-                                            Elimina
-                                        </button>
+                                        <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
+                                            <button
+                                                className="db-action-btn db-action-btn-edit"
+                                                onClick={() => updateRole(role.id)}
+                                                disabled={loading || !drafts[role.id]?.trim() || drafts[role.id]?.trim() === role.name}
+                                            >
+                                                Salva
+                                            </button>
+                                            <button
+                                                className="db-action-btn db-action-btn-delete"
+                                                onClick={() => deleteRole(role.id)}
+                                                disabled={loading}
+                                            >
+                                                Elimina
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             );
