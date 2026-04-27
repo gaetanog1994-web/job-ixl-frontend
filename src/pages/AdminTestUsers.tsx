@@ -9,7 +9,8 @@ type ConfigTab = "users" | "roles" | "departments" | "locations" | "responsabili
 
 type RoleOption = { id: string; name: string };
 type LocationOption = { id: string; name: string };
-type DepartmentOption = { id: string; name: string; assigned_users_count: number; parent_id?: string | null };
+type OrgUnitOption = { id: string; name: string; parent_id?: string | null; level?: number; assigned_users_count?: number };
+type DepartmentOption = OrgUnitOption;
 type ManagerRef = { id: string; name: string };
 
 type User = {
@@ -22,8 +23,8 @@ type User = {
   user_state?: "inactive" | "reserved" | "available" | null;
   role_id?: string | null;
   role_name?: string | null;
-  department_id?: string | null;
-  department_name?: string | null;
+  org_unit_id?: string | null;
+  org_unit_name?: string | null;
   location_id?: string | null;
   location_name?: string | null;
   fixed_location?: boolean | null;
@@ -46,6 +47,7 @@ type AssignedUser = {
   last_name: string | null;
   full_name: string | null;
   role_name?: string | null;
+  org_unit_name?: string | null;
   department_name?: string | null;
   location_name?: string | null;
 };
@@ -55,7 +57,7 @@ type AddUserForm = {
   lastName: string;
   email: string;
   roleId: string;
-  departmentId: string;
+  orgUnitId: string;
   locationId: string;
   fixedLocation: boolean;
   accessRole: "user" | "admin" | "admin_user";
@@ -66,7 +68,7 @@ type EditUserForm = {
   lastName: string;
   email: string;
   roleId: string;
-  departmentId: string;
+  orgUnitId: string;
   locationId: string;
   fixedLocation: boolean;
   accessRole: "user" | "admin" | "admin_user";
@@ -79,7 +81,7 @@ type EditUserForm = {
 type UserPickerFilters = {
   name: string;
   roleId: string;
-  departmentId: string;
+  orgUnitId: string;
   locationId: string;
 };
 
@@ -115,7 +117,7 @@ const EMPTY_ADD_FORM: AddUserForm = {
   lastName: "",
   email: "",
   roleId: "",
-  departmentId: "",
+  orgUnitId: "",
   locationId: "",
   fixedLocation: false,
   accessRole: "user",
@@ -189,7 +191,7 @@ function buildEditForm(user: User): EditUserForm {
     lastName: normalizeText(user.last_name),
     email: normalizeText(user.email),
     roleId: user.role_id ?? "",
-    departmentId: user.department_id ?? "",
+    orgUnitId: user.org_unit_id ?? "",
     locationId: user.location_id ?? "",
     fixedLocation: Boolean(user.fixed_location),
     accessRole: user.access_role ?? "user",
@@ -209,6 +211,87 @@ const SectionCard = ({ title, children, actions }: { title: string; children: Re
     <div style={{ padding: "16px 20px" }}>{children}</div>
   </div>
 );
+
+type OrgUnitTreeAdminProps = {
+  units: OrgUnitOption[];
+  expanded: Set<string>;
+  onToggleExpand: (id: string) => void;
+  onAddRoot: () => void;
+  onAddChild: (parentId: string) => void;
+  onEdit: (unit: OrgUnitOption) => void;
+  onDelete: (unit: OrgUnitOption) => void;
+};
+
+function buildOrgTree(units: OrgUnitOption[]): { roots: OrgUnitOption[]; childrenById: Map<string, OrgUnitOption[]> } {
+  const childrenById = new Map<string, OrgUnitOption[]>();
+  const roots: OrgUnitOption[] = [];
+  for (const unit of units) {
+    const parentId = unit.parent_id ?? null;
+    if (!parentId) {
+      roots.push(unit);
+    } else {
+      if (!childrenById.has(parentId)) childrenById.set(parentId, []);
+      childrenById.get(parentId)!.push(unit);
+    }
+  }
+  return { roots, childrenById };
+}
+
+const OrgUnitTreeAdmin = ({ units, expanded, onToggleExpand, onAddRoot, onAddChild, onEdit, onDelete }: OrgUnitTreeAdminProps) => {
+  const { roots, childrenById } = useMemo(() => buildOrgTree(units), [units]);
+
+  const renderNode = (unit: OrgUnitOption, depth: number): React.ReactNode => {
+    const children = childrenById.get(unit.id) ?? [];
+    const hasChildren = children.length > 0;
+    const isExpanded = expanded.has(unit.id);
+    return (
+      <div key={unit.id}>
+        <div style={{ display: "flex", alignItems: "center", gap: "6px", padding: "8px 10px", paddingLeft: `${16 + depth * 24}px`, borderBottom: "1px solid var(--border)", background: depth % 2 === 0 ? "#fff" : "#fafafa" }}>
+          <button
+            onClick={() => onToggleExpand(unit.id)}
+            style={{ width: "20px", height: "20px", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", cursor: hasChildren ? "pointer" : "default", color: hasChildren ? "var(--text-secondary)" : "transparent", fontSize: "11px" }}
+            disabled={!hasChildren}
+          >
+            {hasChildren ? (isExpanded ? "▼" : "▶") : ""}
+          </button>
+          <span style={{ flex: 1, fontSize: "14px", fontWeight: depth === 0 ? 600 : 400, color: "var(--text-primary)" }}>{unit.name}</span>
+          {typeof unit.assigned_users_count === "number" && unit.assigned_users_count > 0 && (
+            <span style={{ fontSize: "11px", fontWeight: 600, padding: "2px 7px", borderRadius: "999px", background: "rgba(232,81,26,0.08)", color: "var(--brand)", border: "1px solid rgba(232,81,26,0.2)", flexShrink: 0 }}>
+              {unit.assigned_users_count} utenti
+            </span>
+          )}
+          <div style={{ display: "flex", gap: "4px", flexShrink: 0 }}>
+            <button className="db-action-btn" style={{ fontSize: "11px", padding: "3px 8px" }} onClick={() => onAddChild(unit.id)}>+ Sotto-unità</button>
+            <button className="db-action-btn" style={{ fontSize: "11px", padding: "3px 8px" }} onClick={() => onEdit(unit)}>Rinomina</button>
+            <button className="db-action-btn db-action-btn-delete" style={{ fontSize: "11px", padding: "3px 8px" }} onClick={() => onDelete(unit)}>Elimina</button>
+          </div>
+        </div>
+        {hasChildren && isExpanded && children.map((child) => renderNode(child, depth + 1))}
+      </div>
+    );
+  };
+
+  return (
+    <SectionCard
+      title="Struttura Organizzativa"
+      actions={
+        <button className="db-btn" style={{ background: "var(--brand)", color: "white", border: "none" }} onClick={onAddRoot}>
+          + Aggiungi nodo radice
+        </button>
+      }
+    >
+      {units.length === 0 ? (
+        <div style={{ textAlign: "center", color: "var(--text-secondary)", padding: "24px 16px", fontSize: "14px" }}>
+          Nessuna unità organizzativa configurata. Aggiungi un nodo radice per iniziare.
+        </div>
+      ) : (
+        <div style={{ border: "1px solid var(--border)", borderRadius: "10px", overflow: "hidden" }}>
+          {roots.map((root) => renderNode(root, 0))}
+        </div>
+      )}
+    </SectionCard>
+  );
+};
 
 const ManagerTab = ({
   kind,
@@ -243,7 +326,7 @@ const ManagerTab = ({
   const [loadingAssignedUsers, setLoadingAssignedUsers] = useState(false);
 
   const [showPicker, setShowPicker] = useState(false);
-  const [pickerFilters, setPickerFilters] = useState<UserPickerFilters>({ name: "", roleId: "", departmentId: "", locationId: "" });
+  const [pickerFilters, setPickerFilters] = useState<UserPickerFilters>({ name: "", roleId: "", orgUnitId: "", locationId: "" });
   const [pickerSelection, setPickerSelection] = useState<Set<string>>(new Set());
   const [pickerSaving, setPickerSaving] = useState(false);
 
@@ -255,7 +338,7 @@ const ManagerTab = ({
       const fullName = `${normalizeText(user.first_name)} ${normalizeText(user.last_name)}`.trim().toLowerCase();
       const byName = !filterName || fullName.includes(filterName) || normalizeText(user.email).toLowerCase().includes(filterName);
       const byRole = !pickerFilters.roleId || (user.role_id ?? "") === pickerFilters.roleId;
-      const byDepartment = !pickerFilters.departmentId || (user.department_id ?? "") === pickerFilters.departmentId;
+      const byDepartment = !pickerFilters.orgUnitId || (user.org_unit_id ?? "") === pickerFilters.orgUnitId;
       const byLocation = !pickerFilters.locationId || (user.location_id ?? "") === pickerFilters.locationId;
       return byName && byRole && byDepartment && byLocation;
     });
@@ -381,7 +464,7 @@ const ManagerTab = ({
   };
 
   const openPicker = () => {
-    setPickerFilters({ name: "", roleId: "", departmentId: "", locationId: "" });
+    setPickerFilters({ name: "", roleId: "", orgUnitId: "", locationId: "" });
     setPickerSelection(new Set());
     setShowPicker(true);
   };
@@ -575,7 +658,7 @@ const ManagerTab = ({
                       <td>{user.first_name ?? "—"}</td>
                       <td>{user.last_name ?? "—"}</td>
                       <td>{user.role_name ?? "—"}</td>
-                      <td>{user.department_name ?? "—"}</td>
+                      <td>{user.org_unit_name ?? user.department_name ?? "—"}</td>
                       <td>{user.location_name ?? "—"}</td>
                       <td>
                         <button className="db-action-btn db-action-btn-delete" onClick={() => handleRemoveAssignedUser(user.id)}>Rimuovi</button>
@@ -620,7 +703,7 @@ const ManagerTab = ({
                       <option value="">Tutti i ruoli</option>
                       {roles.map((role) => <option key={role.id} value={role.id}>{role.name}</option>)}
                     </select>
-                    <select className="db-filter-select" style={INPUT_STYLE} value={pickerFilters.departmentId} onChange={(event) => setPickerFilters((prev) => ({ ...prev, departmentId: event.target.value }))}>
+                    <select className="db-filter-select" style={INPUT_STYLE} value={pickerFilters.orgUnitId} onChange={(event) => setPickerFilters((prev) => ({ ...prev, orgUnitId: event.target.value }))}>
                       <option value="">Tutti i reparti</option>
                       {departments.map((department) => <option key={department.id} value={department.id}>{department.name}</option>)}
                     </select>
@@ -672,7 +755,7 @@ const ManagerTab = ({
                               <td>{user.first_name ?? "—"}</td>
                               <td>{user.last_name ?? "—"}</td>
                               <td>{user.role_name ?? "—"}</td>
-                              <td>{user.department_name ?? "—"}</td>
+                              <td>{user.org_unit_name ?? "—"}</td>
                               <td>{user.location_name ?? "—"}</td>
                             </tr>
                           );
@@ -748,11 +831,14 @@ const AdminTestUsers = () => {
   const [filterDepartment, setFilterDepartment] = useState("");
   const [filterLocation, setFilterLocation] = useState("");
 
-  const [newDepartmentName, setNewDepartmentName] = useState("");
-  const [departmentSaving, setDepartmentSaving] = useState(false);
-  const [departmentError, setDepartmentError] = useState<string | null>(null);
-  const [editingDepartmentId, setEditingDepartmentId] = useState<string | null>(null);
-  const [editingDepartmentName, setEditingDepartmentName] = useState("");
+  // org unit tree state
+  const [orgUnitModalOpen, setOrgUnitModalOpen] = useState(false);
+  const [orgUnitModalParentId, setOrgUnitModalParentId] = useState<string | null>(null);
+  const [orgUnitModalEditId, setOrgUnitModalEditId] = useState<string | null>(null);
+  const [orgUnitModalName, setOrgUnitModalName] = useState("");
+  const [orgUnitSaving, setOrgUnitSaving] = useState(false);
+  const [orgUnitError, setOrgUnitError] = useState<string | null>(null);
+  const [orgUnitExpanded, setOrgUnitExpanded] = useState<Set<string>>(new Set());
 
   const loadUsers = async () => {
     const data = await appApi.adminGetUsers();
@@ -817,7 +903,7 @@ const AdminTestUsers = () => {
       const bySurname = !filterSurname.trim() || userSurname.includes(filterSurname.trim().toLowerCase());
       const byState = !filterStatus || userState === filterStatus.toLowerCase();
       const byRole = !filterRole || (user.role_id ?? "") === filterRole;
-      const byDepartment = !filterDepartment || (user.department_id ?? "") === filterDepartment;
+      const byDepartment = !filterDepartment || (user.org_unit_id ?? "") === filterDepartment;
       const byLocation = !filterLocation || (user.location_id ?? "") === filterLocation;
       return byName && bySurname && byState && byRole && byDepartment && byLocation;
     });
@@ -867,7 +953,7 @@ const AdminTestUsers = () => {
             last_name: lastName,
             email,
             role_id: addUserForm.roleId || null,
-            department_id: addUserForm.departmentId || null,
+            org_unit_id: addUserForm.orgUnitId || null,
             location_id: addUserForm.locationId || null,
             fixed_location: addUserForm.fixedLocation,
           }),
@@ -955,7 +1041,7 @@ const AdminTestUsers = () => {
         last_name: lastName,
         email,
         role_id: editUserForm.roleId || null,
-        department_id: editUserForm.departmentId || null,
+        org_unit_id: editUserForm.orgUnitId || null,
         location_id: editUserForm.locationId || null,
         fixed_location: editUserForm.fixedLocation,
       });
@@ -1007,62 +1093,57 @@ const AdminTestUsers = () => {
     }
   };
 
-  const handleCreateDepartment = async () => {
-    const name = newDepartmentName.trim();
-    if (!name) {
-      setDepartmentError("Il nome del reparto è obbligatorio.");
-      return;
-    }
 
-    setDepartmentSaving(true);
-    setDepartmentError(null);
+  const openOrgUnitModal = (opts: { parentId?: string | null; editUnit?: OrgUnitOption }) => {
+    setOrgUnitModalParentId(opts.parentId ?? null);
+    setOrgUnitModalEditId(opts.editUnit?.id ?? null);
+    setOrgUnitModalName(opts.editUnit?.name ?? "");
+    setOrgUnitError(null);
+    setOrgUnitModalOpen(true);
+  };
+
+  const closeOrgUnitModal = () => {
+    setOrgUnitModalOpen(false);
+    setOrgUnitModalName("");
+    setOrgUnitModalParentId(null);
+    setOrgUnitModalEditId(null);
+    setOrgUnitError(null);
+  };
+
+  const handleSaveOrgUnit = async () => {
+    const name = orgUnitModalName.trim();
+    if (!name) { setOrgUnitError("Il nome è obbligatorio."); return; }
+    setOrgUnitSaving(true);
+    setOrgUnitError(null);
     try {
-      await appApi.adminCreateDepartment({ name });
-      setNewDepartmentName("");
-      await Promise.all([loadDepartments(), loadUsers()]);
-    } catch (error: unknown) {
-      setDepartmentError(error instanceof Error ? error.message : "Errore durante creazione reparto.");
-    } finally {
-      setDepartmentSaving(false);
-    }
-  };
-
-  const startRenameDepartment = (department: DepartmentOption) => {
-    setEditingDepartmentId(department.id);
-    setEditingDepartmentName(department.name);
-  };
-
-  const cancelRenameDepartment = () => {
-    setEditingDepartmentId(null);
-    setEditingDepartmentName("");
-  };
-
-  const handleRenameDepartment = async (departmentId: string) => {
-    const name = editingDepartmentName.trim();
-    if (!name) {
-      alert("Il nome del reparto è obbligatorio.");
-      return;
-    }
-    try {
-      await appApi.adminRenameDepartment(departmentId, { name });
-      cancelRenameDepartment();
-      await Promise.all([loadDepartments(), loadUsers()]);
-    } catch (error: unknown) {
-      alert(error instanceof Error ? error.message : "Errore durante rinomina reparto.");
-    }
-  };
-
-  const handleDeleteDepartment = async (department: DepartmentOption) => {
-    if (!window.confirm(`Eliminare il reparto ${department.name}?`)) return;
-    try {
-      await appApi.adminDeleteDepartment(department.id);
-      await Promise.all([loadDepartments(), loadUsers()]);
-    } catch (error: unknown) {
-      if (error instanceof AppApiError && error.code === "DEPARTMENT_HAS_USERS") {
-        alert("Impossibile eliminare: ci sono utenti assegnati a questo reparto.");
-        return;
+      if (orgUnitModalEditId) {
+        await appApi.adminUpdateOrgUnit(orgUnitModalEditId, { name });
+      } else {
+        const created = await appApi.adminCreateOrgUnit({ name, parent_id: orgUnitModalParentId });
+        if (created?.id && orgUnitModalParentId) {
+          setOrgUnitExpanded(prev => new Set([...prev, orgUnitModalParentId!]));
+        }
       }
-      alert(error instanceof Error ? error.message : "Errore durante eliminazione reparto.");
+      closeOrgUnitModal();
+      await Promise.all([loadDepartments(), loadUsers()]);
+    } catch (error: unknown) {
+      setOrgUnitError(error instanceof Error ? error.message : "Errore durante salvataggio.");
+    } finally {
+      setOrgUnitSaving(false);
+    }
+  };
+
+  const handleDeleteOrgUnit = async (unit: OrgUnitOption) => {
+    if (!window.confirm(`Eliminare "${unit.name}"?`)) return;
+    try {
+      await appApi.adminDeleteOrgUnit(unit.id);
+      await Promise.all([loadDepartments(), loadUsers()]);
+    } catch (error: unknown) {
+      if (error instanceof AppApiError) {
+        if (error.code === "ORG_UNIT_HAS_USERS") { alert("Impossibile eliminare: ci sono utenti assegnati a questa unità."); return; }
+        if (error.code === "ORG_UNIT_HAS_CHILDREN") { alert("Impossibile eliminare: questa unità ha sotto-unità. Elimina prima le sotto-unità."); return; }
+      }
+      alert(error instanceof Error ? error.message : "Errore durante eliminazione.");
     }
   };
 
@@ -1226,7 +1307,7 @@ const AdminTestUsers = () => {
                       <td>{user.email ?? "—"}</td>
                       <td>{stateLabel(user)}</td>
                       <td>{user.role_name ?? "—"}</td>
-                      <td>{user.department_name ?? "—"}</td>
+                      <td>{user.org_unit_name ?? "—"}</td>
                       <td>{user.location_name ?? "—"}</td>
                       <td>{accessRoleLabel(user.access_role)}</td>
                       <td>
@@ -1252,88 +1333,55 @@ const AdminTestUsers = () => {
       {activeTab === "roles" && <AdminRolesManager />}
 
       {activeTab === "departments" && (
-        <SectionCard
-          title={`Reparti (${departments.length})`}
-          actions={
-            <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-              <input
-                className="db-filter-select"
-                style={{ ...INPUT_STYLE, width: "260px" }}
-                placeholder="Nome reparto"
-                value={newDepartmentName}
-                onChange={(event) => setNewDepartmentName(event.target.value)}
-              />
-              <button className="db-btn" style={{ background: "var(--brand)", color: "white", border: "none" }} onClick={handleCreateDepartment} disabled={departmentSaving}>
-                + Nuovo Reparto
+        <OrgUnitTreeAdmin
+          units={departments as OrgUnitOption[]}
+          expanded={orgUnitExpanded}
+          onToggleExpand={(id) => setOrgUnitExpanded(prev => {
+            const next = new Set(prev);
+            next.has(id) ? next.delete(id) : next.add(id);
+            return next;
+          })}
+          onAddRoot={() => openOrgUnitModal({})}
+          onAddChild={(parentId) => openOrgUnitModal({ parentId })}
+          onEdit={(unit) => openOrgUnitModal({ editUnit: unit })}
+          onDelete={handleDeleteOrgUnit}
+        />
+      )}
+
+      {/* Org unit modal */}
+      {orgUnitModalOpen && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 3000, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.35)" }}>
+          <div style={{ background: "#fff", borderRadius: "16px", padding: "28px", width: "400px", maxWidth: "92vw", boxShadow: "0 24px 64px rgba(0,0,0,0.18)" }}>
+            <h3 style={{ margin: "0 0 16px", fontSize: "16px", fontWeight: 700 }}>
+              {orgUnitModalEditId ? "Modifica unità" : orgUnitModalParentId ? "Aggiungi sotto-unità" : "Aggiungi unità radice"}
+            </h3>
+            {orgUnitError && (
+              <div style={{ marginBottom: "12px", padding: "8px 12px", border: "1px solid #fecaca", background: "#fef2f2", color: "#b91c1c", borderRadius: "8px", fontSize: "13px" }}>
+                {orgUnitError}
+              </div>
+            )}
+            {orgUnitModalParentId && !orgUnitModalEditId && (
+              <div style={{ marginBottom: "12px", padding: "8px 12px", background: "#fff7ed", border: "1px solid #fed7aa", borderRadius: "8px", fontSize: "12px", color: "#92400e" }}>
+                Nodo padre: <strong>{departments.find(d => d.id === orgUnitModalParentId)?.name ?? orgUnitModalParentId}</strong>
+              </div>
+            )}
+            <label style={{ fontSize: "13px", fontWeight: 600, display: "block", marginBottom: "6px" }}>Nome</label>
+            <input
+              style={{ ...INPUT_STYLE, width: "100%", boxSizing: "border-box", marginBottom: "20px" }}
+              placeholder="Nome unità organizzativa"
+              value={orgUnitModalName}
+              onChange={(e) => setOrgUnitModalName(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && void handleSaveOrgUnit()}
+              autoFocus
+            />
+            <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
+              <button className="db-action-btn" onClick={closeOrgUnitModal}>Annulla</button>
+              <button className="db-btn" style={{ background: "var(--brand)", color: "#fff", border: "none" }} onClick={() => void handleSaveOrgUnit()} disabled={orgUnitSaving}>
+                {orgUnitSaving ? "Salvataggio..." : "Salva"}
               </button>
             </div>
-          }
-        >
-          {departmentError && (
-            <div style={{ marginBottom: "12px", padding: "10px", border: "1px solid #fecaca", background: "#fef2f2", color: "#b91c1c", borderRadius: "8px" }}>
-              {departmentError}
-            </div>
-          )}
-
-          <div style={{ overflowX: "auto" }}>
-            <table className="db-apps-table" style={{ width: "100%", whiteSpace: "nowrap" }}>
-              <thead>
-                <tr>
-                  <th>Nome</th>
-                  <th>N. Utenti assegnati</th>
-                  <th>Azioni</th>
-                </tr>
-              </thead>
-              <tbody>
-                {departments.map((department) => (
-                  <tr key={department.id}>
-                    <td>
-                      {editingDepartmentId === department.id ? (
-                        <input
-                          className="db-filter-select"
-                          style={{ ...INPUT_STYLE, width: "260px" }}
-                          value={editingDepartmentName}
-                          onChange={(event) => setEditingDepartmentName(event.target.value)}
-                        />
-                      ) : (
-                        department.name
-                      )}
-                    </td>
-                    <td>{department.assigned_users_count}</td>
-                    <td>
-                      {editingDepartmentId === department.id ? (
-                        <div style={{ display: "flex", gap: "8px" }}>
-                          <button className="db-action-btn" onClick={() => handleRenameDepartment(department.id)}>Salva</button>
-                          <button className="db-action-btn" onClick={cancelRenameDepartment}>Annulla</button>
-                        </div>
-                      ) : (
-                        <div style={{ display: "flex", gap: "8px" }}>
-                          <button className="db-action-btn" onClick={() => startRenameDepartment(department)}>Modifica</button>
-                          <button
-                            className="db-action-btn db-action-btn-delete"
-                            onClick={() => handleDeleteDepartment(department)}
-                            disabled={department.assigned_users_count > 0}
-                            title={department.assigned_users_count > 0 ? "Impossibile eliminare: ci sono utenti assegnati a questo reparto." : undefined}
-                            style={department.assigned_users_count > 0 ? { opacity: 0.55, cursor: "not-allowed" } : undefined}
-                          >
-                            Elimina
-                          </button>
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-                {departments.length === 0 && (
-                  <tr>
-                    <td colSpan={3} style={{ textAlign: "center", color: "var(--text-secondary)", padding: "16px" }}>
-                      Nessun reparto configurato. Aggiungine uno per poterlo assegnare agli utenti.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
           </div>
-        </SectionCard>
+        </div>
       )}
 
       {activeTab === "locations" && <AdminLocationsManager />}
@@ -1383,7 +1431,7 @@ const AdminTestUsers = () => {
       {showAddUserModal && (() => {
         const addOrgNodes: OrgNode[] = departments.map((d) => ({ id: d.id, name: d.name, parent_id: d.parent_id ?? null }));
         const addSelectedRole = roles.find((r) => r.id === addUserForm.roleId);
-        const addSelectedDept = departments.find((d) => d.id === addUserForm.departmentId);
+        const addSelectedDept = departments.find((d) => d.id === addUserForm.orgUnitId);
         return (
         <div style={OVERLAY_STYLE} onClick={closeAddUserModal} role="dialog" aria-modal="true">
           <div style={{ ...MODAL_STYLE, maxWidth: "680px" }} onClick={(event) => event.stopPropagation()}>
@@ -1448,8 +1496,8 @@ const AdminTestUsers = () => {
                   <label style={LABEL_STYLE}>Unità organizzativa (Reparto)</label>
                   <OrgUnitTreeSelector
                     nodes={addOrgNodes}
-                    value={addUserForm.departmentId || null}
-                    onChange={(id) => setAddUserForm((prev) => ({ ...prev, departmentId: id ?? "" }))}
+                    value={addUserForm.orgUnitId || null}
+                    onChange={(id) => setAddUserForm((prev) => ({ ...prev, orgUnitId: id ?? "" }))}
                     placeholder="Seleziona reparto / unità org."
                     disabled={addUserSaving}
                   />
@@ -1488,7 +1536,7 @@ const AdminTestUsers = () => {
       {selectedUser && editUserForm && (() => {
         const orgNodes: OrgNode[] = departments.map((d) => ({ id: d.id, name: d.name, parent_id: d.parent_id ?? null }));
         const selectedRole = roles.find((r) => r.id === editUserForm.roleId);
-        const selectedDept = departments.find((d) => d.id === editUserForm.departmentId);
+        const selectedDept = departments.find((d) => d.id === editUserForm.orgUnitId);
         const selectedLoc = locations.find((l) => l.id === editUserForm.locationId);
         const positionComplete = !!selectedRole && !!selectedDept;
         const userInitials = `${(editUserForm.firstName || "?")[0]}${(editUserForm.lastName || "?")[0]}`.toUpperCase();
@@ -1631,8 +1679,8 @@ const AdminTestUsers = () => {
                     <label style={LABEL_STYLE}>Unità organizzativa (Reparto)</label>
                     <OrgUnitTreeSelector
                       nodes={orgNodes}
-                      value={editUserForm.departmentId || null}
-                      onChange={(id) => setEditUserForm((prev) => (prev ? { ...prev, departmentId: id ?? "" } : prev))}
+                      value={editUserForm.orgUnitId || null}
+                      onChange={(id) => setEditUserForm((prev) => (prev ? { ...prev, orgUnitId: id ?? "" } : prev))}
                       placeholder="Seleziona reparto / unità organizzativa"
                       disabled={editUserSaving}
                     />

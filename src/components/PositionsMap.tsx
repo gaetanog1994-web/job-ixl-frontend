@@ -77,8 +77,8 @@ type LocationRole = {
     group_key: string;
     role_id: string;
     role_name: string;
-    department_id?: string | null;
-    department_name?: string | null;
+    org_unit_id?: string | null;
+    org_unit_name?: string | null;
     users: LocationUser[];
     applied: boolean;
     priority?: number;
@@ -321,13 +321,13 @@ const PositionsMap = ({
 
     const roleMatchesFilters = (role: LocationRole) => {
         const roleOk = !filterRoleName || role.role_name.toLowerCase() === filterRoleName.toLowerCase();
-        const departmentOk = !filterDepartmentId || (role.department_id ?? "") === filterDepartmentId;
+        const departmentOk = !filterDepartmentId || (role.org_unit_id ?? "") === filterDepartmentId;
         return roleOk && departmentOk;
     };
 
     const formatRoleLabel = (role: LocationRole) => {
-        if (role.department_name) {
-            return `${role.role_name} — ${role.department_name}`;
+        if (role.org_unit_name) {
+            return `${role.role_name} — ${role.org_unit_name}`;
         }
         return role.role_name;
     };

@@ -13,8 +13,8 @@ type AdminCandidatureRow = {
   occupant_full_name: string | null;
   occupant_role_name: string | null;
   occupant_location_name: string | null;
-  target_department_id: string | null;
-  target_department_name: string | null;
+  target_org_unit_id: string | null;
+  target_org_unit_name: string | null;
   target_responsabili: Array<{ id: string; name: string }>;
   target_hr_managers: Array<{ id: string; name: string }>;
 };
@@ -70,7 +70,7 @@ const AdminCandidatures = () => {
           (a.occupant_full_name ?? "").toLowerCase().includes(q) ||
           (a.occupant_role_name ?? "").toLowerCase().includes(q) ||
           (a.occupant_location_name ?? "").toLowerCase().includes(q) ||
-          (a.target_department_name ?? "").toLowerCase().includes(q) ||
+          (a.target_org_unit_name ?? "").toLowerCase().includes(q) ||
           (a.target_responsabili ?? []).map((item) => item.name).join(", ").toLowerCase().includes(q) ||
           (a.target_hr_managers ?? []).map((item) => item.name).join(", ").toLowerCase().includes(q)
       );
@@ -494,7 +494,7 @@ const AdminCandidatures = () => {
                         {a.occupant_role_name ?? "—"}
                       </span>
                     </td>
-                    <td style={tdStyle}>{a.target_department_name ?? "—"}</td>
+                    <td style={tdStyle}>{a.target_org_unit_name ?? "—"}</td>
                     <td style={tdStyle}>{a.occupant_location_name ?? "—"}</td>
                     <td style={tdStyle} className="db-col-desktop-only">
                       {(a.target_responsabili ?? []).length > 0

@@ -22,8 +22,8 @@ type RawApplicationOccupant = {
   locations?: { name?: string } | { name?: string }[];
   roles?: { name?: string };
   fixed_location?: boolean;
-  department_id?: string | null;
-  department_name?: string | null;
+  org_unit_id?: string | null;
+  org_unit_name?: string | null;
   target_responsabili?: Array<{ id: string; name: string }>;
   target_hr_managers?: Array<{ id: string; name: string }>;
 };
@@ -32,10 +32,16 @@ type RawApplicationPosition = {
   users?: RawApplicationOccupant;
 };
 
-export type DepartmentOption = {
+export type OrgUnitOption = {
   id: string;
   name: string;
+  parent_id?: string | null;
+  level?: number;
+  assigned_users_count?: number;
 };
+
+/** @deprecated use OrgUnitOption */
+export type DepartmentOption = OrgUnitOption;
 
 export type AdminRoleCompatibility = {
     compatible_role_id: string;
@@ -54,8 +60,8 @@ export type RawApplication = {
   position_id: string;
   priority: number;
   created_at: string;
-  target_department_id?: string | null;
-  target_department_name?: string | null;
+  target_org_unit_id?: string | null;
+  target_org_unit_name?: string | null;
   target_responsabili?: Array<{ id: string; name: string }>;
   target_hr_managers?: Array<{ id: string; name: string }>;
   positions?: RawApplicationPosition | RawApplicationPosition[];
@@ -97,11 +103,11 @@ export type CampaignSnapshotApplication = {
     candidate_full_name: string | null;
     candidate_role_name: string | null;
     candidate_location_name: string | null;
-    candidate_department_name: string | null;
+    candidate_org_unit_name: string | null;
     target_full_name: string | null;
     target_role_name: string | null;
     target_location_name: string | null;
-    target_department_name: string | null;
+    target_org_unit_name: string | null;
 };
 
 export type CampaignDetail = {
@@ -901,34 +907,58 @@ export const appApi = {
         return json.roles ?? [];
     },
 
-    async adminGetDepartments() {
-        const json = await apiFetch(`/api/admin/departments`, { method: "GET" });
-        return json.departments ?? [];
+    // ─── org-units (organizational structure) ──────────────────────────────────
+
+    async adminGetOrgUnits(): Promise<OrgUnitOption[]> {
+        const json = await apiFetch(`/api/admin/org-units`, { method: "GET" });
+        return json.org_units ?? [];
     },
 
-    async publicGetDepartments(): Promise<DepartmentOption[]> {
-        const json = await apiFetch(`/api/public/departments`, { method: "GET" });
-        return json.departments ?? [];
+    async publicGetOrgUnits(): Promise<OrgUnitOption[]> {
+        const json = await apiFetch(`/api/public/org-units`, { method: "GET" });
+        return json.org_units ?? [];
     },
 
-    async adminCreateDepartment(params: { name: string }) {
-        const json = await apiFetch(`/api/admin/departments`, {
+    async adminCreateOrgUnit(params: { name: string; parent_id?: string | null }): Promise<OrgUnitOption | null> {
+        const json = await apiFetch(`/api/admin/org-units`, {
             method: "POST",
             body: JSON.stringify(params),
         });
-        return json.department ?? null;
+        return json.org_unit ?? null;
     },
 
-    async adminRenameDepartment(id: string, params: { name: string }) {
-        const json = await apiFetch(`/api/admin/departments/${id}`, {
+    async adminUpdateOrgUnit(id: string, params: { name?: string; parent_id?: string | null }): Promise<OrgUnitOption | null> {
+        const json = await apiFetch(`/api/admin/org-units/${id}`, {
             method: "PATCH",
             body: JSON.stringify(params),
         });
-        return json.department ?? null;
+        return json.org_unit ?? null;
+    },
+
+    async adminDeleteOrgUnit(id: string) {
+        return apiFetch(`/api/admin/org-units/${id}`, { method: "DELETE" });
+    },
+
+    // ─── backward compat aliases ─────────────────────────────────────────────
+
+    async adminGetDepartments(): Promise<OrgUnitOption[]> {
+        return this.adminGetOrgUnits();
+    },
+
+    async publicGetDepartments(): Promise<OrgUnitOption[]> {
+        return this.publicGetOrgUnits();
+    },
+
+    async adminCreateDepartment(params: { name: string; parent_id?: string | null }) {
+        return this.adminCreateOrgUnit(params);
+    },
+
+    async adminRenameDepartment(id: string, params: { name: string }) {
+        return this.adminUpdateOrgUnit(id, params);
     },
 
     async adminDeleteDepartment(id: string) {
-        return apiFetch(`/api/admin/departments/${id}`, { method: "DELETE" });
+        return this.adminDeleteOrgUnit(id);
     },
 
     async adminGetResponsabili() {

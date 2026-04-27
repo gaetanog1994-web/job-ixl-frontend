@@ -101,7 +101,7 @@ const MyApplicationsPanel: React.FC<MyApplicationsPanelProps> = ({
         : occupant?.locations;
 
       const roleName = occupant?.roles?.name ?? "—";
-      const departmentName = occupant?.department_name ?? app.target_department_name ?? null;
+      const departmentName = occupant?.org_unit_name ?? app.target_org_unit_name ?? null;
       const locationName = locObj?.name ?? "—";
       const key = `${locationName}__${roleName}__${departmentName ?? "null"}`;
       const responsabiliRaw = Array.isArray(occupant?.target_responsabili)
@@ -231,7 +231,7 @@ const MyApplicationsPanel: React.FC<MyApplicationsPanelProps> = ({
       const occupant = position?.users;
       const locObj = Array.isArray(occupant?.locations) ? occupant.locations?.[0] : occupant?.locations;
       const roleName = occupant?.roles?.name ?? "—";
-      const departmentName = occupant?.department_name ?? app.target_department_name ?? null;
+      const departmentName = occupant?.org_unit_name ?? app.target_org_unit_name ?? null;
       const locationName = locObj?.name ?? "—";
       const key = `${locationName}__${roleName}__${departmentName ?? "null"}`;
       const newP = groupPriority.get(key);

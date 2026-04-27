@@ -584,7 +584,7 @@ export default function AdminCampaigns() {
         [selectedApplications]
     );
     const targetDepartments = useMemo(
-        () => Array.from(new Set(selectedApplications.map((a) => a.target_department_name).filter(Boolean) as string[])).sort((a, b) => a.localeCompare(b, "it")),
+        () => Array.from(new Set(selectedApplications.map((a) => a.target_org_unit_name).filter(Boolean) as string[])).sort((a, b) => a.localeCompare(b, "it")),
         [selectedApplications]
     );
 
@@ -598,7 +598,7 @@ export default function AdminCampaigns() {
                 (a.candidate_location_name ?? "").toLowerCase().includes(q) ||
                 (a.target_full_name ?? "").toLowerCase().includes(q) ||
                 (a.target_role_name ?? "").toLowerCase().includes(q) ||
-                (a.target_department_name ?? "").toLowerCase().includes(q) ||
+                (a.target_org_unit_name ?? "").toLowerCase().includes(q) ||
                 (a.target_location_name ?? "").toLowerCase().includes(q) ||
                 (a.position_title ?? "").toLowerCase().includes(q)
             );
@@ -606,7 +606,7 @@ export default function AdminCampaigns() {
         if (filterCandidateRole) rows = rows.filter((a) => a.candidate_role_name === filterCandidateRole);
         if (filterCandidateLocation) rows = rows.filter((a) => a.candidate_location_name === filterCandidateLocation);
         if (filterTargetRole) rows = rows.filter((a) => a.target_role_name === filterTargetRole);
-        if (filterTargetDepartment) rows = rows.filter((a) => a.target_department_name === filterTargetDepartment);
+        if (filterTargetDepartment) rows = rows.filter((a) => a.target_org_unit_name === filterTargetDepartment);
 
         rows.sort((a, b) => {
             let va: string | number = "";
@@ -967,7 +967,7 @@ export default function AdminCampaigns() {
                                             <td style={tableTdStyle}>
                                                 <span style={targetPillStyle}>{row.target_role_name ?? "—"}</span>
                                             </td>
-                                            <td style={tableTdStyle}>{row.target_department_name ?? "—"}</td>
+                                            <td style={tableTdStyle}>{row.target_org_unit_name ?? "—"}</td>
                                             <td style={{ ...tableTdStyle, borderRight: "2px solid #e5e7eb" }}>
                                                 {row.target_location_name ?? "—"}
                                             </td>

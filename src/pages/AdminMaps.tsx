@@ -48,7 +48,7 @@ const AdminMaps = () => {
           positionId: user.position_id,
           userId: user.id,
           name: user.full_name ?? "—",
-          roleName: role.department_name ? `${role.role_name ?? "—"} — ${role.department_name}` : (role.role_name ?? "—"),
+          roleName: role.org_unit_name ? `${role.role_name ?? "—"} — ${role.org_unit_name}` : (role.role_name ?? "—"),
           locationName: loc.name ?? "—",
         }))
       )

@@ -126,7 +126,7 @@ const MobilityDashboard: React.FC = () => {
       const occupant = position?.users;
       const locObj = Array.isArray(occupant?.locations) ? occupant.locations?.[0] : occupant?.locations;
       const roleName = occupant?.roles?.name ?? "";
-      const departmentName = occupant?.department_name ?? "";
+      const departmentName = occupant?.org_unit_name ?? "";
       const locationName = locObj?.name ?? "";
       keys.add(`${locationName}__${roleName}__${departmentName}`);
     }
@@ -292,7 +292,7 @@ const MobilityDashboard: React.FC = () => {
               userState={userState}
               locationsCount={locationsCount}
               roleName={(userData?.role_name as string | null | undefined) ?? null}
-              departmentName={(userData?.department_name as string | null | undefined) ?? null}
+              departmentName={(userData?.org_unit_name as string | null | undefined) ?? null}
             />
           </div>
         </div>
