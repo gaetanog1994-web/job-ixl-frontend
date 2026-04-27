@@ -2,13 +2,14 @@ import { useEffect, useMemo, useState } from "react";
 import AdminLocationsManager from "./AdminLocationsManager";
 import AdminRolesManager from "./AdminRolesManager";
 import { AppApiError, appApi } from "../lib/appApi";
+import OrgUnitTreeSelector, { type OrgNode } from "../components/OrgUnitTreeSelector";
 import "../styles/dashboard.css";
 
 type ConfigTab = "users" | "roles" | "departments" | "locations" | "responsabili" | "hr";
 
 type RoleOption = { id: string; name: string };
 type LocationOption = { id: string; name: string };
-type DepartmentOption = { id: string; name: string; assigned_users_count: number };
+type DepartmentOption = { id: string; name: string; assigned_users_count: number; parent_id?: string | null };
 type ManagerRef = { id: string; name: string };
 
 type User = {
@@ -100,13 +101,13 @@ type ManagerTabProps = {
   removeAssignment: (id: string, userId: string) => Promise<void>;
 };
 
-const TAB_ORDER: { id: ConfigTab; label: string }[] = [
-  { id: "users", label: "Utenti" },
-  { id: "roles", label: "Ruoli" },
-  { id: "departments", label: "Reparti" },
-  { id: "locations", label: "Sedi" },
-  { id: "responsabili", label: "Responsabili" },
-  { id: "hr", label: "HR" },
+const TAB_ORDER: { id: ConfigTab; label: string; icon: string; description: string }[] = [
+  { id: "users", label: "Utenti", icon: "👤", description: "Gestisci anagrafica e posizioni" },
+  { id: "roles", label: "Ruoli", icon: "🏷️", description: "Ruoli e compatibilità" },
+  { id: "departments", label: "Struttura Org.", icon: "🌳", description: "Unità organizzative" },
+  { id: "locations", label: "Sedi", icon: "📍", description: "Sedi geografiche" },
+  { id: "responsabili", label: "Responsabili", icon: "👔", description: "Gestione responsabili" },
+  { id: "hr", label: "HR", icon: "💼", description: "HR Manager" },
 ];
 
 const EMPTY_ADD_FORM: AddUserForm = {
@@ -1084,40 +1085,76 @@ const AdminTestUsers = () => {
     return hrManagers.filter((item) => item.name.toLowerCase().includes(search) || normalizeText(item.email).toLowerCase().includes(search));
   }, [editUserForm?.hrSearch, hrManagers]);
 
+  const activeTabMeta = TAB_ORDER.find((t) => t.id === activeTab)!;
+
   return (
-    <div style={{ minHeight: "100vh", background: "var(--surface, #f1f5f9)", fontFamily: "var(--font, 'Inter', sans-serif)", padding: "24px" }}>
-      <div style={{ marginBottom: "14px" }}>
-        <h1 className="db-card-title" style={{ margin: 0, fontSize: "22px" }}>Configurazione</h1>
-      </div>
+    <div style={{ minHeight: "100vh", background: "var(--surface, #f1f5f9)", fontFamily: "var(--font, 'Inter', sans-serif)", paddingTop: "56px" }}>
 
-      <div className="db-card" style={{ padding: "10px", display: "flex", gap: "8px", flexWrap: "wrap" }}>
-        {TAB_ORDER.map((tab) => (
-          <button
-            key={tab.id}
-            className="db-btn"
-            onClick={() => switchTab(tab.id)}
-            style={{
-              border: "1px solid var(--border)",
-              background: activeTab === tab.id ? "var(--brand)" : "white",
-              color: activeTab === tab.id ? "white" : "var(--text-primary)",
-              fontWeight: activeTab === tab.id ? 700 : 500,
-              padding: "8px 12px",
-            }}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      {topError && (
-        <div style={{ marginTop: "12px", padding: "10px 12px", border: "1px solid #fecaca", background: "#fef2f2", borderRadius: "8px", color: "#b91c1c" }}>
-          {topError}
+      {/* Page header */}
+      <div style={{ background: "#fff", borderBottom: "1px solid var(--border)", padding: "16px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "16px" }}>
+        <div>
+          <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "2px" }}>
+            <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Admin</span>
+            <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>›</span>
+            <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--brand)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Configurazione</span>
+          </div>
+          <h1 style={{ margin: 0, fontSize: "20px", fontWeight: 700, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: "8px" }}>
+            <span>{activeTabMeta.icon}</span>
+            {activeTabMeta.label}
+            <span style={{ fontSize: "13px", fontWeight: 400, color: "var(--text-secondary)" }}>{activeTabMeta.description}</span>
+          </h1>
         </div>
-      )}
+        {loading && (
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--text-secondary)", fontSize: "13px" }}>
+            <div className="db-spinner" />
+            Caricamento...
+          </div>
+        )}
+      </div>
 
-      {loading && (
-        <div style={{ marginTop: "12px", color: "var(--text-secondary)", fontSize: "13px" }}>Caricamento dati...</div>
-      )}
+      {/* Tab navigation */}
+      <div style={{ background: "#fff", borderBottom: "1px solid var(--border)", padding: "0 24px", display: "flex", gap: "0", overflowX: "auto" }}>
+        {TAB_ORDER.map((tab) => {
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => switchTab(tab.id)}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                padding: "12px 16px",
+                border: "none",
+                borderBottom: isActive ? "2px solid var(--brand)" : "2px solid transparent",
+                background: "transparent",
+                color: isActive ? "var(--brand)" : "var(--text-secondary)",
+                fontWeight: isActive ? 700 : 500,
+                fontSize: "13px",
+                fontFamily: "var(--font)",
+                cursor: "pointer",
+                whiteSpace: "nowrap",
+                transition: "color 0.15s, border-color 0.15s",
+                marginBottom: "-1px",
+              }}
+              onMouseEnter={(e) => { if (!isActive) (e.currentTarget as HTMLButtonElement).style.color = "var(--text-primary)"; }}
+              onMouseLeave={(e) => { if (!isActive) (e.currentTarget as HTMLButtonElement).style.color = "var(--text-secondary)"; }}
+            >
+              <span style={{ fontSize: "14px" }}>{tab.icon}</span>
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Page content */}
+      <div style={{ padding: "20px 24px" }}>
+        {topError && (
+          <div style={{ marginBottom: "14px", padding: "12px 16px", border: "1px solid #fecaca", background: "#fef2f2", borderRadius: "10px", color: "#b91c1c", fontSize: "13px", display: "flex", alignItems: "center", gap: "8px" }}>
+            <span style={{ fontSize: "16px" }}>⚠️</span>
+            {topError}
+          </div>
+        )}
 
       {activeTab === "users" && (
         <>
@@ -1343,206 +1380,355 @@ const AdminTestUsers = () => {
         />
       )}
 
-      {showAddUserModal && (
+      {showAddUserModal && (() => {
+        const addOrgNodes: OrgNode[] = departments.map((d) => ({ id: d.id, name: d.name, parent_id: d.parent_id ?? null }));
+        const addSelectedRole = roles.find((r) => r.id === addUserForm.roleId);
+        const addSelectedDept = departments.find((d) => d.id === addUserForm.departmentId);
+        return (
         <div style={OVERLAY_STYLE} onClick={closeAddUserModal} role="dialog" aria-modal="true">
-          <div style={{ ...MODAL_STYLE, maxWidth: "520px" }} onClick={(event) => event.stopPropagation()}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-              <h3 style={{ margin: 0 }}>Aggiungi Utente</h3>
-              <button onClick={closeAddUserModal} style={{ background: "none", border: "none", fontSize: "20px", cursor: "pointer" }}>×</button>
+          <div style={{ ...MODAL_STYLE, maxWidth: "680px" }} onClick={(event) => event.stopPropagation()}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", paddingBottom: "14px", borderBottom: "1px solid var(--border)" }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: "16px", fontWeight: 700, color: "var(--text-primary)" }}>Aggiungi Utente</h3>
+                <p style={{ margin: "3px 0 0", fontSize: "12px", color: "var(--text-secondary)" }}>Invito via email + assegnazione posizione organizzativa</p>
+              </div>
+              <button onClick={closeAddUserModal} style={{ background: "none", border: "none", fontSize: "22px", cursor: "pointer", color: "var(--text-muted)" }}>×</button>
             </div>
 
-            <div style={{ display: "grid", gap: "12px" }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
-                <div>
-                  <label style={LABEL_STYLE}>Nome *</label>
-                  <input className="db-filter-select" style={INPUT_STYLE} value={addUserForm.firstName} onChange={(event) => setAddUserForm((prev) => ({ ...prev, firstName: event.target.value }))} />
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
+              {/* Left: anagrafica + accesso */}
+              <div style={{ display: "grid", gap: "12px", alignContent: "start" }}>
+                <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Anagrafica</div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                  <div>
+                    <label style={LABEL_STYLE}>Nome *</label>
+                    <input className="db-filter-select" style={INPUT_STYLE} value={addUserForm.firstName} onChange={(event) => setAddUserForm((prev) => ({ ...prev, firstName: event.target.value }))} />
+                  </div>
+                  <div>
+                    <label style={LABEL_STYLE}>Cognome *</label>
+                    <input className="db-filter-select" style={INPUT_STYLE} value={addUserForm.lastName} onChange={(event) => setAddUserForm((prev) => ({ ...prev, lastName: event.target.value }))} />
+                  </div>
                 </div>
                 <div>
-                  <label style={LABEL_STYLE}>Cognome *</label>
-                  <input className="db-filter-select" style={INPUT_STYLE} value={addUserForm.lastName} onChange={(event) => setAddUserForm((prev) => ({ ...prev, lastName: event.target.value }))} />
+                  <label style={LABEL_STYLE}>Email *</label>
+                  <input className="db-filter-select" style={INPUT_STYLE} type="email" value={addUserForm.email} onChange={(event) => setAddUserForm((prev) => ({ ...prev, email: event.target.value }))} />
+                </div>
+                <div>
+                  <label style={LABEL_STYLE}>Sede</label>
+                  <select className="db-filter-select" style={INPUT_STYLE} value={addUserForm.locationId} onChange={(event) => setAddUserForm((prev) => ({ ...prev, locationId: event.target.value }))}>
+                    <option value="">— Nessuna —</option>
+                    {locations.map((location) => <option key={location.id} value={location.id}>{location.name}</option>)}
+                  </select>
+                </div>
+                <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
+                  <input type="checkbox" checked={addUserForm.fixedLocation} onChange={(event) => setAddUserForm((prev) => ({ ...prev, fixedLocation: event.target.checked }))} />
+                  <span style={{ fontSize: "13px", color: "var(--text-primary)" }}>Sede vincolante</span>
+                </label>
+                <div>
+                  <label style={LABEL_STYLE}>Ruolo accesso</label>
+                  <select className="db-filter-select" style={INPUT_STYLE} value={addUserForm.accessRole} onChange={(event) => setAddUserForm((prev) => ({ ...prev, accessRole: event.target.value as AddUserForm["accessRole"] }))}>
+                    <option value="user">User</option>
+                    <option value="admin">Admin</option>
+                    <option value="admin_user">Admin + User</option>
+                  </select>
                 </div>
               </div>
 
-              <div>
-                <label style={LABEL_STYLE}>Email *</label>
-                <input className="db-filter-select" style={INPUT_STYLE} type="email" value={addUserForm.email} onChange={(event) => setAddUserForm((prev) => ({ ...prev, email: event.target.value }))} />
-              </div>
+              {/* Right: posizione organizzativa */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Posizione organizzativa</div>
+                <div>
+                  <label style={LABEL_STYLE}>Ruolo</label>
+                  <select className="db-filter-select" style={INPUT_STYLE} value={addUserForm.roleId} onChange={(event) => setAddUserForm((prev) => ({ ...prev, roleId: event.target.value }))}>
+                    <option value="">— Nessuno —</option>
+                    {roles.map((role) => <option key={role.id} value={role.id}>{role.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={LABEL_STYLE}>Unità organizzativa (Reparto)</label>
+                  <OrgUnitTreeSelector
+                    nodes={addOrgNodes}
+                    value={addUserForm.departmentId || null}
+                    onChange={(id) => setAddUserForm((prev) => ({ ...prev, departmentId: id ?? "" }))}
+                    placeholder="Seleziona reparto / unità org."
+                    disabled={addUserSaving}
+                  />
+                </div>
 
-              <div>
-                <label style={LABEL_STYLE}>Ruolo</label>
-                <select className="db-filter-select" style={INPUT_STYLE} value={addUserForm.roleId} onChange={(event) => setAddUserForm((prev) => ({ ...prev, roleId: event.target.value }))}>
-                  <option value="">— Nessuno —</option>
-                  {roles.map((role) => <option key={role.id} value={role.id}>{role.name}</option>)}
-                </select>
-              </div>
-
-              <div>
-                <label style={LABEL_STYLE}>Reparto</label>
-                <select className="db-filter-select" style={INPUT_STYLE} value={addUserForm.departmentId} onChange={(event) => setAddUserForm((prev) => ({ ...prev, departmentId: event.target.value }))}>
-                  <option value="">Nessun reparto</option>
-                  {departments.map((department) => <option key={department.id} value={department.id}>{department.name}</option>)}
-                </select>
-              </div>
-
-              <div>
-                <label style={LABEL_STYLE}>Sede</label>
-                <select className="db-filter-select" style={INPUT_STYLE} value={addUserForm.locationId} onChange={(event) => setAddUserForm((prev) => ({ ...prev, locationId: event.target.value }))}>
-                  <option value="">— Nessuna —</option>
-                  {locations.map((location) => <option key={location.id} value={location.id}>{location.name}</option>)}
-                </select>
-              </div>
-
-              <label style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <input type="checkbox" checked={addUserForm.fixedLocation} onChange={(event) => setAddUserForm((prev) => ({ ...prev, fixedLocation: event.target.checked }))} />
-                Sede vincolante
-              </label>
-
-              <div>
-                <label style={LABEL_STYLE}>Ruolo accesso</label>
-                <select className="db-filter-select" style={INPUT_STYLE} value={addUserForm.accessRole} onChange={(event) => setAddUserForm((prev) => ({ ...prev, accessRole: event.target.value as AddUserForm["accessRole"] }))}>
-                  <option value="user">User</option>
-                  <option value="admin">Admin</option>
-                  <option value="admin_user">Admin + User</option>
-                </select>
+                {/* Summary */}
+                <div style={{ marginTop: "auto", padding: "12px", borderRadius: "10px", border: `1px solid ${addSelectedRole && addSelectedDept ? "rgba(232,81,26,0.25)" : "var(--border)"}`, background: addSelectedRole && addSelectedDept ? "rgba(232,81,26,0.04)" : "#f8fafc" }}>
+                  <div style={{ fontSize: "11px", fontWeight: 700, color: addSelectedRole && addSelectedDept ? "var(--brand)" : "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "8px" }}>
+                    {addSelectedRole && addSelectedDept ? "✓ Posizione assegnata" : "Riepilogo posizione"}
+                  </div>
+                  <div style={{ fontSize: "13px", color: "var(--text-primary)", display: "flex", flexDirection: "column", gap: "4px" }}>
+                    <div><span style={{ color: "var(--text-muted)", fontSize: "11px" }}>Ruolo:</span> <strong>{addSelectedRole?.name ?? "—"}</strong></div>
+                    <div><span style={{ color: "var(--text-muted)", fontSize: "11px" }}>Unità:</span> <strong>{addSelectedDept?.name ?? "—"}</strong></div>
+                  </div>
+                </div>
               </div>
             </div>
 
             {addUserError && (
-              <div style={{ marginTop: "12px", padding: "10px", border: "1px solid #fecaca", background: "#fef2f2", color: "#b91c1c", borderRadius: "8px" }}>
-                {addUserError}
+              <div style={{ marginTop: "16px", padding: "12px 16px", border: "1px solid #fecaca", background: "#fef2f2", color: "#b91c1c", borderRadius: "10px", fontSize: "13px", display: "flex", gap: "8px", alignItems: "center" }}>
+                <span>⚠️</span>{addUserError}
               </div>
             )}
 
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "16px" }}>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "16px", paddingTop: "14px", borderTop: "1px solid var(--border)" }}>
               <button className="db-btn db-btn-outline" onClick={closeAddUserModal} disabled={addUserSaving}>Annulla</button>
               <button className="db-btn" style={{ background: "var(--brand)", color: "white", border: "none" }} onClick={handleAddUser} disabled={addUserSaving}>
-                {addUserSaving ? "Salvataggio..." : "Salva"}
+                {addUserSaving ? "Salvataggio..." : "Invita & Salva"}
               </button>
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
 
-      {selectedUser && editUserForm && (
+      {selectedUser && editUserForm && (() => {
+        const orgNodes: OrgNode[] = departments.map((d) => ({ id: d.id, name: d.name, parent_id: d.parent_id ?? null }));
+        const selectedRole = roles.find((r) => r.id === editUserForm.roleId);
+        const selectedDept = departments.find((d) => d.id === editUserForm.departmentId);
+        const selectedLoc = locations.find((l) => l.id === editUserForm.locationId);
+        const positionComplete = !!selectedRole && !!selectedDept;
+        const userInitials = `${(editUserForm.firstName || "?")[0]}${(editUserForm.lastName || "?")[0]}`.toUpperCase();
+
+        return (
         <div style={OVERLAY_STYLE} onClick={closeUserEditor} role="dialog" aria-modal="true">
-          <div style={{ ...MODAL_STYLE, maxWidth: "1080px" }} onClick={(event) => event.stopPropagation()}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
-              <h3 style={{ margin: 0 }}>Esplora Utente</h3>
-              <button onClick={closeUserEditor} style={{ background: "none", border: "none", fontSize: "20px", cursor: "pointer" }}>×</button>
+          <div style={{ ...MODAL_STYLE, maxWidth: "1100px" }} onClick={(event) => event.stopPropagation()}>
+
+            {/* Modal header */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", paddingBottom: "16px", borderBottom: "1px solid var(--border)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                <div style={{ width: "44px", height: "44px", borderRadius: "12px", background: "var(--brand)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px", fontWeight: 700, color: "white", flexShrink: 0, boxShadow: "0 2px 8px rgba(232,81,26,0.3)" }}>
+                  {userInitials}
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: "16px", fontWeight: 700, color: "var(--text-primary)" }}>
+                    {editUserForm.firstName} {editUserForm.lastName}
+                  </h3>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "3px" }}>
+                    <span style={{ fontSize: "12px", color: "var(--text-secondary)" }}>{selectedUser.email}</span>
+                    <span style={{ display: "inline-flex", alignItems: "center", padding: "2px 8px", borderRadius: "999px", fontSize: "11px", fontWeight: 600, background: selectedUser.user_state === "available" ? "#f0fdf4" : selectedUser.user_state === "reserved" ? "#fff7ed" : "#f8fafc", color: selectedUser.user_state === "available" ? "#16a34a" : selectedUser.user_state === "reserved" ? "#ea580c" : "#64748b", border: `1px solid ${selectedUser.user_state === "available" ? "#bbf7d0" : selectedUser.user_state === "reserved" ? "#fed7aa" : "#e2e8f0"}` }}>
+                      {stateLabel(selectedUser)}
+                    </span>
+                    {(selectedUser.application_count ?? 0) > 0 && (
+                      <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>{selectedUser.application_count} candidature</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <button onClick={closeUserEditor} style={{ background: "none", border: "none", fontSize: "22px", cursor: "pointer", color: "var(--text-muted)", lineHeight: 1, padding: "4px" }}>×</button>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", gap: "10px" }}>
-              <div>
-                <label style={LABEL_STYLE}>Nome *</label>
-                <input className="db-filter-select" style={INPUT_STYLE} value={editUserForm.firstName} onChange={(event) => setEditUserForm((prev) => (prev ? { ...prev, firstName: event.target.value } : prev))} disabled={editUserSaving} />
-              </div>
-              <div>
-                <label style={LABEL_STYLE}>Cognome *</label>
-                <input className="db-filter-select" style={INPUT_STYLE} value={editUserForm.lastName} onChange={(event) => setEditUserForm((prev) => (prev ? { ...prev, lastName: event.target.value } : prev))} disabled={editUserSaving} />
-              </div>
-              <div>
-                <label style={LABEL_STYLE}>Email *</label>
-                <input className="db-filter-select" style={INPUT_STYLE} value={editUserForm.email} onChange={(event) => setEditUserForm((prev) => (prev ? { ...prev, email: event.target.value } : prev))} disabled={editUserSaving} />
-              </div>
-              <div>
-                <label style={LABEL_STYLE}>Ruolo</label>
-                <select className="db-filter-select" style={INPUT_STYLE} value={editUserForm.roleId} onChange={(event) => setEditUserForm((prev) => (prev ? { ...prev, roleId: event.target.value } : prev))} disabled={editUserSaving}>
-                  <option value="">— Nessuno —</option>
-                  {roles.map((role) => <option key={role.id} value={role.id}>{role.name}</option>)}
-                </select>
-              </div>
-              <div>
-                <label style={LABEL_STYLE}>Reparto</label>
-                <select className="db-filter-select" style={INPUT_STYLE} value={editUserForm.departmentId} onChange={(event) => setEditUserForm((prev) => (prev ? { ...prev, departmentId: event.target.value } : prev))} disabled={editUserSaving}>
-                  <option value="">Nessun reparto</option>
-                  {departments.map((department) => <option key={department.id} value={department.id}>{department.name}</option>)}
-                </select>
-              </div>
-              <div>
-                <label style={LABEL_STYLE}>Sede</label>
-                <select className="db-filter-select" style={INPUT_STYLE} value={editUserForm.locationId} onChange={(event) => setEditUserForm((prev) => (prev ? { ...prev, locationId: event.target.value } : prev))} disabled={editUserSaving}>
-                  <option value="">— Nessuna —</option>
-                  {locations.map((location) => <option key={location.id} value={location.id}>{location.name}</option>)}
-                </select>
-              </div>
-              <div>
-                <label style={LABEL_STYLE}>Ruolo accesso</label>
-                <select className="db-filter-select" style={INPUT_STYLE} value={editUserForm.accessRole} onChange={(event) => setEditUserForm((prev) => (prev ? { ...prev, accessRole: event.target.value as EditUserForm["accessRole"] } : prev))} disabled={editUserSaving}>
-                  <option value="user">User</option>
-                  <option value="admin">Admin</option>
-                  <option value="admin_user">Admin + User</option>
-                </select>
-              </div>
-              <div>
-                <label style={LABEL_STYLE}>Stato</label>
-                <input className="db-filter-select" style={{ ...INPUT_STYLE, background: "#f8fafc" }} value={stateLabel(selectedUser)} readOnly />
-              </div>
-              <div>
-                <label style={LABEL_STYLE}>Candidature attive</label>
-                <input className="db-filter-select" style={{ ...INPUT_STYLE, background: "#f8fafc" }} value={String(selectedUser.application_count ?? 0)} readOnly />
-              </div>
-            </div>
+            {/* Two-column layout */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
 
-            <label style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "10px" }}>
-              <input type="checkbox" checked={editUserForm.fixedLocation} onChange={(event) => setEditUserForm((prev) => (prev ? { ...prev, fixedLocation: event.target.checked } : prev))} disabled={editUserSaving} />
-              Sede vincolante
-            </label>
+              {/* LEFT — Anagrafica + Accesso */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
 
-            <div style={{ marginTop: "12px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-              <div style={{ border: "1px solid var(--border)", borderRadius: "8px", padding: "10px" }}>
-                <h4 style={{ margin: "0 0 8px 0" }}>Responsabile</h4>
-                <input
-                  className="db-filter-select"
-                  style={{ ...INPUT_STYLE, marginBottom: "8px" }}
-                  placeholder="Cerca responsabile"
-                  value={editUserForm.responsabiliSearch}
-                  onChange={(event) => setEditUserForm((prev) => (prev ? { ...prev, responsabiliSearch: event.target.value } : prev))}
-                  disabled={editUserSaving}
-                />
-                <div style={{ maxHeight: "180px", overflowY: "auto", border: "1px solid var(--border)", borderRadius: "6px" }}>
-                  {filteredResponsabiliOptions.map((item) => (
-                    <label key={item.id} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px", borderBottom: "1px solid #f1f5f9" }}>
-                      <input type="checkbox" checked={editUserForm.responsabileIds.includes(item.id)} onChange={() => toggleManagerSelection("responsabileIds", item.id)} disabled={editUserSaving} />
-                      <span>{item.name}</span>
-                    </label>
-                  ))}
-                  {filteredResponsabiliOptions.length === 0 && (
-                    <div style={{ padding: "8px", color: "var(--text-secondary)", fontSize: "12px" }}>Nessun responsabile trovato.</div>
-                  )}
+                {/* Anagrafica section */}
+                <div style={{ background: "#f8fafc", borderRadius: "12px", padding: "16px", border: "1px solid var(--border)" }}>
+                  <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "12px" }}>Anagrafica</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                    <div>
+                      <label style={LABEL_STYLE}>Nome *</label>
+                      <input className="db-filter-select" style={INPUT_STYLE} value={editUserForm.firstName} onChange={(event) => setEditUserForm((prev) => (prev ? { ...prev, firstName: event.target.value } : prev))} disabled={editUserSaving} />
+                    </div>
+                    <div>
+                      <label style={LABEL_STYLE}>Cognome *</label>
+                      <input className="db-filter-select" style={INPUT_STYLE} value={editUserForm.lastName} onChange={(event) => setEditUserForm((prev) => (prev ? { ...prev, lastName: event.target.value } : prev))} disabled={editUserSaving} />
+                    </div>
+                    <div style={{ gridColumn: "1 / -1" }}>
+                      <label style={LABEL_STYLE}>Email *</label>
+                      <input className="db-filter-select" style={INPUT_STYLE} value={editUserForm.email} onChange={(event) => setEditUserForm((prev) => (prev ? { ...prev, email: event.target.value } : prev))} disabled={editUserSaving} />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Accesso section */}
+                <div style={{ background: "#f8fafc", borderRadius: "12px", padding: "16px", border: "1px solid var(--border)" }}>
+                  <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "12px" }}>Accesso piattaforma</div>
+                  <div>
+                    <label style={LABEL_STYLE}>Ruolo accesso</label>
+                    <select className="db-filter-select" style={INPUT_STYLE} value={editUserForm.accessRole} onChange={(event) => setEditUserForm((prev) => (prev ? { ...prev, accessRole: event.target.value as EditUserForm["accessRole"] } : prev))} disabled={editUserSaving}>
+                      <option value="user">User</option>
+                      <option value="admin">Admin</option>
+                      <option value="admin_user">Admin + User</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* People section */}
+                <div style={{ background: "#f8fafc", borderRadius: "12px", padding: "16px", border: "1px solid var(--border)", flex: 1 }}>
+                  <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "12px" }}>Responsabili & HR</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                    <div>
+                      <label style={LABEL_STYLE}>Responsabile</label>
+                      <input
+                        className="db-filter-select"
+                        style={{ ...INPUT_STYLE, marginBottom: "6px" }}
+                        placeholder="Cerca..."
+                        value={editUserForm.responsabiliSearch}
+                        onChange={(event) => setEditUserForm((prev) => (prev ? { ...prev, responsabiliSearch: event.target.value } : prev))}
+                        disabled={editUserSaving}
+                      />
+                      <div style={{ maxHeight: "140px", overflowY: "auto", border: "1px solid var(--border)", borderRadius: "8px", background: "#fff" }}>
+                        {filteredResponsabiliOptions.map((item) => (
+                          <label key={item.id} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "7px 10px", borderBottom: "1px solid #f1f5f9", cursor: "pointer" }}>
+                            <input type="checkbox" checked={editUserForm.responsabileIds.includes(item.id)} onChange={() => toggleManagerSelection("responsabileIds", item.id)} disabled={editUserSaving} />
+                            <span style={{ fontSize: "12px", color: "var(--text-primary)" }}>{item.name}</span>
+                          </label>
+                        ))}
+                        {filteredResponsabiliOptions.length === 0 && (
+                          <div style={{ padding: "10px", color: "var(--text-muted)", fontSize: "12px", textAlign: "center" }}>Nessun risultato.</div>
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <label style={LABEL_STYLE}>HR</label>
+                      <input
+                        className="db-filter-select"
+                        style={{ ...INPUT_STYLE, marginBottom: "6px" }}
+                        placeholder="Cerca..."
+                        value={editUserForm.hrSearch}
+                        onChange={(event) => setEditUserForm((prev) => (prev ? { ...prev, hrSearch: event.target.value } : prev))}
+                        disabled={editUserSaving}
+                      />
+                      <div style={{ maxHeight: "140px", overflowY: "auto", border: "1px solid var(--border)", borderRadius: "8px", background: "#fff" }}>
+                        {filteredHrOptions.map((item) => (
+                          <label key={item.id} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "7px 10px", borderBottom: "1px solid #f1f5f9", cursor: "pointer" }}>
+                            <input type="checkbox" checked={editUserForm.hrManagerIds.includes(item.id)} onChange={() => toggleManagerSelection("hrManagerIds", item.id)} disabled={editUserSaving} />
+                            <span style={{ fontSize: "12px", color: "var(--text-primary)" }}>{item.name}</span>
+                          </label>
+                        ))}
+                        {filteredHrOptions.length === 0 && (
+                          <div style={{ padding: "10px", color: "var(--text-muted)", fontSize: "12px", textAlign: "center" }}>Nessun risultato.</div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              <div style={{ border: "1px solid var(--border)", borderRadius: "8px", padding: "10px" }}>
-                <h4 style={{ margin: "0 0 8px 0" }}>HR</h4>
-                <input
-                  className="db-filter-select"
-                  style={{ ...INPUT_STYLE, marginBottom: "8px" }}
-                  placeholder="Cerca HR"
-                  value={editUserForm.hrSearch}
-                  onChange={(event) => setEditUserForm((prev) => (prev ? { ...prev, hrSearch: event.target.value } : prev))}
-                  disabled={editUserSaving}
-                />
-                <div style={{ maxHeight: "180px", overflowY: "auto", border: "1px solid var(--border)", borderRadius: "6px" }}>
-                  {filteredHrOptions.map((item) => (
-                    <label key={item.id} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px", borderBottom: "1px solid #f1f5f9" }}>
-                      <input type="checkbox" checked={editUserForm.hrManagerIds.includes(item.id)} onChange={() => toggleManagerSelection("hrManagerIds", item.id)} disabled={editUserSaving} />
-                      <span>{item.name}</span>
-                    </label>
-                  ))}
-                  {filteredHrOptions.length === 0 && (
-                    <div style={{ padding: "8px", color: "var(--text-secondary)", fontSize: "12px" }}>Nessun HR trovato.</div>
-                  )}
+              {/* RIGHT — Posizione organizzativa */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+
+                <div style={{ background: "#f8fafc", borderRadius: "12px", padding: "16px", border: "1px solid var(--border)" }}>
+                  <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "12px" }}>Posizione organizzativa</div>
+
+                  {/* Role dropdown */}
+                  <div style={{ marginBottom: "14px" }}>
+                    <label style={LABEL_STYLE}>Ruolo *</label>
+                    <select className="db-filter-select" style={INPUT_STYLE} value={editUserForm.roleId} onChange={(event) => setEditUserForm((prev) => (prev ? { ...prev, roleId: event.target.value } : prev))} disabled={editUserSaving}>
+                      <option value="">— Seleziona ruolo —</option>
+                      {roles.map((role) => <option key={role.id} value={role.id}>{role.name}</option>)}
+                    </select>
+                  </div>
+
+                  {/* Org unit tree */}
+                  <div style={{ marginBottom: "14px" }}>
+                    <label style={LABEL_STYLE}>Unità organizzativa (Reparto)</label>
+                    <OrgUnitTreeSelector
+                      nodes={orgNodes}
+                      value={editUserForm.departmentId || null}
+                      onChange={(id) => setEditUserForm((prev) => (prev ? { ...prev, departmentId: id ?? "" } : prev))}
+                      placeholder="Seleziona reparto / unità organizzativa"
+                      disabled={editUserSaving}
+                    />
+                  </div>
+
+                  {/* Location */}
+                  <div style={{ marginBottom: "10px" }}>
+                    <label style={LABEL_STYLE}>Sede</label>
+                    <select className="db-filter-select" style={INPUT_STYLE} value={editUserForm.locationId} onChange={(event) => setEditUserForm((prev) => (prev ? { ...prev, locationId: event.target.value } : prev))} disabled={editUserSaving}>
+                      <option value="">— Nessuna —</option>
+                      {locations.map((location) => <option key={location.id} value={location.id}>{location.name}</option>)}
+                    </select>
+                  </div>
+
+                  {/* Fixed location */}
+                  <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", padding: "8px 10px", borderRadius: "8px", border: "1px solid var(--border)", background: "#fff" }}>
+                    <input type="checkbox" checked={editUserForm.fixedLocation} onChange={(event) => setEditUserForm((prev) => (prev ? { ...prev, fixedLocation: event.target.checked } : prev))} disabled={editUserSaving} />
+                    <div>
+                      <div style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-primary)" }}>Sede vincolante</div>
+                      <div style={{ fontSize: "11px", color: "var(--text-muted)" }}>L'utente non può cambiare sede</div>
+                    </div>
+                  </label>
+                </div>
+
+                {/* Position Summary card */}
+                <div style={{
+                  borderRadius: "12px",
+                  padding: "16px",
+                  border: `1px solid ${positionComplete ? "rgba(232,81,26,0.25)" : "var(--border)"}`,
+                  background: positionComplete ? "rgba(232,81,26,0.04)" : "#f8fafc",
+                  transition: "border-color 0.2s, background 0.2s",
+                }}>
+                  <div style={{ fontSize: "11px", fontWeight: 700, color: positionComplete ? "var(--brand)" : "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "12px", display: "flex", alignItems: "center", gap: "6px" }}>
+                    <span>{positionComplete ? "✓" : "○"}</span>
+                    Riepilogo posizione
+                  </div>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                    <div style={{ display: "flex", alignItems: "flex-start", gap: "10px" }}>
+                      <span style={{ fontSize: "16px", flexShrink: 0, marginTop: "1px" }}>🏷️</span>
+                      <div>
+                        <div style={{ fontSize: "11px", fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "2px" }}>Ruolo</div>
+                        <div style={{ fontSize: "14px", fontWeight: 700, color: selectedRole ? "var(--text-primary)" : "var(--text-muted)" }}>
+                          {selectedRole?.name ?? "Non assegnato"}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={{ height: "1px", background: "var(--border)" }} />
+
+                    <div style={{ display: "flex", alignItems: "flex-start", gap: "10px" }}>
+                      <span style={{ fontSize: "16px", flexShrink: 0, marginTop: "1px" }}>🌳</span>
+                      <div>
+                        <div style={{ fontSize: "11px", fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "2px" }}>Unità organizzativa</div>
+                        <div style={{ fontSize: "14px", fontWeight: 700, color: selectedDept ? "var(--text-primary)" : "var(--text-muted)" }}>
+                          {selectedDept?.name ?? "Non assegnata"}
+                        </div>
+                      </div>
+                    </div>
+
+                    {selectedLoc && (
+                      <>
+                        <div style={{ height: "1px", background: "var(--border)" }} />
+                        <div style={{ display: "flex", alignItems: "flex-start", gap: "10px" }}>
+                          <span style={{ fontSize: "16px", flexShrink: 0, marginTop: "1px" }}>📍</span>
+                          <div>
+                            <div style={{ fontSize: "11px", fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "2px" }}>Sede</div>
+                            <div style={{ fontSize: "14px", fontWeight: 700, color: "var(--text-primary)" }}>{selectedLoc.name}</div>
+                          </div>
+                        </div>
+                      </>
+                    )}
+
+                    {positionComplete && (
+                      <div style={{ marginTop: "4px", padding: "8px 12px", borderRadius: "8px", background: "rgba(232,81,26,0.08)", border: "1px solid rgba(232,81,26,0.18)", fontSize: "12px", color: "var(--brand)", fontWeight: 600 }}>
+                        {selectedRole?.name} · {selectedDept?.name}{selectedLoc ? ` · ${selectedLoc.name}` : ""}
+                      </div>
+                    )}
+
+                    {!positionComplete && (
+                      <div style={{ padding: "8px 12px", borderRadius: "8px", background: "#f1f5f9", fontSize: "12px", color: "var(--text-muted)" }}>
+                        Seleziona ruolo e unità organizzativa per completare la posizione.
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
 
             {editUserError && (
-              <div style={{ marginTop: "12px", padding: "10px", border: "1px solid #fecaca", background: "#fef2f2", color: "#b91c1c", borderRadius: "8px" }}>
-                {editUserError}
+              <div style={{ marginTop: "16px", padding: "12px 16px", border: "1px solid #fecaca", background: "#fef2f2", color: "#b91c1c", borderRadius: "10px", fontSize: "13px", display: "flex", alignItems: "center", gap: "8px" }}>
+                <span>⚠️</span> {editUserError}
               </div>
             )}
 
-            <div style={{ marginTop: "14px", display: "flex", justifyContent: "space-between", gap: "8px" }}>
+            <div style={{ marginTop: "16px", paddingTop: "16px", borderTop: "1px solid var(--border)", display: "flex", justifyContent: "space-between", gap: "8px" }}>
               <button className="db-btn db-btn-danger" onClick={() => handleDeleteUser(selectedUser.id)} disabled={editUserSaving}>Elimina utente</button>
               <div style={{ display: "flex", gap: "8px" }}>
                 <button className="db-btn db-btn-outline" onClick={closeUserEditor} disabled={editUserSaving}>Annulla</button>
@@ -1553,7 +1739,9 @@ const AdminTestUsers = () => {
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
+      </div>{/* end page content */}
     </div>
   );
 };
