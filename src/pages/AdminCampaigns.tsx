@@ -1,8 +1,23 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { appApi, type CampaignDetail, type CampaignRecord, type CampaignLifecycleStatus } from "../lib/appApi";
+
+type SavedScenario = {
+    id: string;
+    campaign_id: string;
+    scenario_code: string;
+    generated_at: string;
+    strategy: string;
+    max_len: number;
+    total_chains: number;
+    unique_people: number;
+    coverage: number | null;
+    avg_length: number | null;
+    max_length: number | null;
+    avg_priority: number | null;
+};
 
 type LifecycleAction = "openReservations" | "closeReservations" | "openCampaign" | "closeCampaign";
 type CampaignTab = "lifecycle" | "candidatures" | "map";
@@ -99,80 +114,191 @@ function CampaignRow({
     isOpen,
     detail,
     loadingDetail,
+    scenarios,
+    loadingScenarios,
     onToggle,
+    onOpenInInterlocking,
 }: {
     campaign: CampaignRecord;
     campaignCode: string;
     isOpen: boolean;
     detail: CampaignDetail | null;
     loadingDetail: boolean;
+    scenarios: SavedScenario[];
+    loadingScenarios: boolean;
     onToggle: () => void;
+    onOpenInInterlocking: (campaignId: string) => void;
 }) {
+    const isClosed = campaign.status === "campaign_closed";
     return (
-        <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, overflow: "hidden", background: "#fff" }}>
+        <div style={{
+            border: "1px solid #E5E7EB",
+            borderRadius: 12,
+            overflow: "hidden",
+            background: "#fff",
+            boxShadow: isOpen ? "0 2px 8px rgba(0,0,0,0.06)" : "none",
+            transition: "box-shadow 0.15s",
+        }}>
             <button
                 type="button"
+                onClick={onToggle}
                 style={{
                     width: "100%",
                     display: "flex",
                     alignItems: "center",
                     gap: 12,
-                    padding: "12px 16px",
+                    padding: "14px 18px",
                     textAlign: "left",
                     border: "none",
-                    background: "transparent",
+                    background: isOpen ? "#F8FAFC" : "transparent",
                     cursor: "pointer",
+                    transition: "background 0.12s",
                 }}
-                onClick={onToggle}
             >
-                <span
-                    style={{
-                        fontSize: 12,
-                        fontWeight: 700,
-                        color: "#9a3412",
-                        background: "#fff7ed",
-                        border: "1px solid #fdba74",
-                        borderRadius: 999,
-                        padding: "2px 8px",
-                        minWidth: 44,
-                        textAlign: "center",
-                    }}
-                >
+                <span style={{
+                    fontSize: 11,
+                    fontWeight: 800,
+                    color: "#92400E",
+                    background: "#FEF3C7",
+                    border: "1px solid #FDE68A",
+                    borderRadius: 999,
+                    padding: "3px 10px",
+                    minWidth: 44,
+                    textAlign: "center",
+                    letterSpacing: "0.04em",
+                    flexShrink: 0,
+                }}>
                     {campaignCode}
                 </span>
-                <span style={{ fontSize: 13, color: "#6b7280", minWidth: 180 }}>{formatDate(campaign.created_at)}</span>
+
+                <span style={{ fontSize: 12, color: "#6B7280", flexShrink: 0 }}>
+                    {formatCampaignDate(campaign.campaign_opened_at ?? campaign.created_at)}
+                    {campaign.campaign_closed_at ? ` → ${formatCampaignDate(campaign.campaign_closed_at)}` : ""}
+                </span>
+
                 <StatusBadge status={campaign.status} />
-                <span style={{ fontSize: 12, color: "#374151", marginLeft: 8 }}>
-                    {campaign.reserved_users_count} prenotat{campaign.reserved_users_count === 1 ? "o" : "i"}
+
+                <span style={{ fontSize: 12, color: "#6B7280", display: "flex", gap: 10, marginLeft: 8 }}>
+                    <span><b style={{ color: "#111827" }}>{campaign.reserved_users_count}</b> prenotat{campaign.reserved_users_count === 1 ? "o" : "i"}</span>
+                    <span style={{ color: "#D1D5DB" }}>·</span>
+                    <span><b style={{ color: "#111827" }}>{campaign.total_applications_count}</b> candidature</span>
+                    {isClosed && (
+                        <>
+                            <span style={{ color: "#D1D5DB" }}>·</span>
+                            <span><b style={{ color: "#6366F1" }}>{loadingScenarios ? "…" : scenarios.length}</b> simulazion{scenarios.length === 1 ? "e" : "i"}</span>
+                        </>
+                    )}
                 </span>
-                <span style={{ fontSize: 12, color: "#374151" }}>
-                    · {campaign.total_applications_count} candidature
-                </span>
-                <span style={{ marginLeft: "auto", fontSize: 13, color: "#9ca3af" }}>{isOpen ? "▲" : "▼"}</span>
+
+                <span style={{
+                    marginLeft: "auto",
+                    color: "#9CA3AF",
+                    fontSize: 10,
+                    display: "inline-block",
+                    transform: isOpen ? "rotate(180deg)" : "none",
+                    transition: "transform 0.18s",
+                    flexShrink: 0,
+                }}>▼</span>
             </button>
 
             {isOpen && (
-                <div style={{ padding: "12px 16px", borderTop: "1px solid #e5e7eb", background: "#f9fafb", fontSize: 13, color: "#374151" }}>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 24px", marginBottom: 12 }}>
-                        <span>Prenotazioni aperte: <b>{formatDate(campaign.reservations_opened_at)}</b></span>
-                        <span>Prenotazioni chiuse: <b>{formatDate(campaign.reservations_closed_at)}</b></span>
-                        <span>Campagna aperta: <b>{formatDate(campaign.campaign_opened_at)}</b></span>
-                        <span>Campagna chiusa: <b>{formatDate(campaign.campaign_closed_at)}</b></span>
+                <div style={{ borderTop: "1px solid #E5E7EB", background: "#F9FAFB" }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 24px", padding: "14px 18px 12px", fontSize: 12, color: "#6B7280" }}>
+                        <span>Prenotazioni aperte: <b style={{ color: "#374151" }}>{formatDate(campaign.reservations_opened_at)}</b></span>
+                        <span>Prenotazioni chiuse: <b style={{ color: "#374151" }}>{formatDate(campaign.reservations_closed_at)}</b></span>
+                        <span>Campagna aperta: <b style={{ color: "#374151" }}>{formatDate(campaign.campaign_opened_at)}</b></span>
+                        <span>Campagna chiusa: <b style={{ color: "#374151" }}>{formatDate(campaign.campaign_closed_at)}</b></span>
                     </div>
 
-                    {campaign.status !== "campaign_closed" && (
-                        <div style={{ fontSize: 12, color: "#6b7280" }}>
-                            Dettaglio candidature storiche disponibile dopo chiusura campagna.
+                    {!isClosed && (
+                        <div style={{ padding: "0 18px 14px", fontSize: 12, color: "#9CA3AF" }}>
+                            Storico candidature e simulazioni disponibili dopo chiusura campagna.
                         </div>
                     )}
 
-                    {campaign.status === "campaign_closed" && loadingDetail && (
-                        <div style={{ fontSize: 12, color: "#6b7280" }}>Caricamento dettaglio campagna…</div>
+                    {isClosed && loadingDetail && (
+                        <div style={{ padding: "0 18px 12px", fontSize: 12, color: "#9CA3AF" }}>Caricamento candidature archiviate…</div>
                     )}
 
-                    {campaign.status === "campaign_closed" && !loadingDetail && detail && (
-                        <div style={{ fontSize: 12, color: "#374151" }}>
-                            Snapshot disponibile: <b>{detail.applications.length} candidature archiviate</b>
+                    {isClosed && !loadingDetail && detail && (
+                        <div style={{ padding: "0 18px", marginBottom: 12 }}>
+                            <span style={{ fontSize: 12, color: "#1D4ED8", background: "#EFF6FF", border: "1px solid #BFDBFE", borderRadius: 8, padding: "4px 10px", display: "inline-block" }}>
+                                Snapshot: <b>{detail.applications.length}</b> candidature archiviate
+                            </span>
+                        </div>
+                    )}
+
+                    {isClosed && (
+                        <div style={{ borderTop: "1px solid #E5E7EB", margin: "0 18px 16px" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8, paddingTop: 12, marginBottom: 10 }}>
+                                <span style={{ fontSize: 11, fontWeight: 700, color: "#374151", textTransform: "uppercase" as const, letterSpacing: "0.06em" }}>
+                                    Simulazioni Interlocking
+                                </span>
+                                {loadingScenarios && (
+                                    <span style={{ fontSize: 11, color: "#9CA3AF" }}>Caricamento…</span>
+                                )}
+                                {!loadingScenarios && scenarios.length > 0 && (
+                                    <span style={{ fontSize: 11, color: "#6B7280" }}>({scenarios.length})</span>
+                                )}
+                                <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); onOpenInInterlocking(campaign.id); }}
+                                    style={{
+                                        marginLeft: "auto",
+                                        borderRadius: 8,
+                                        border: "1px solid #C7D2FE",
+                                        background: "#EEF2FF",
+                                        color: "#4F46E5",
+                                        fontSize: 11,
+                                        fontWeight: 700,
+                                        padding: "5px 12px",
+                                        cursor: "pointer",
+                                    }}
+                                >
+                                    Vai a Interlocking →
+                                </button>
+                            </div>
+
+                            {!loadingScenarios && scenarios.length === 0 && (
+                                <div style={{ fontSize: 12, color: "#9CA3AF", padding: "4px 0 8px" }}>
+                                    Nessuna simulazione salvata per questa campagna.
+                                </div>
+                            )}
+
+                            {scenarios.length > 0 && (
+                                <div style={{ border: "1px solid #E5E7EB", borderRadius: 8, overflow: "hidden", background: "#fff" }}>
+                                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                                        <thead>
+                                            <tr style={{ background: "#F8FAFC" }}>
+                                                <th style={scenarioThStyle}>Codice</th>
+                                                <th style={scenarioThStyle}>Data</th>
+                                                <th style={scenarioThStyle}>Strategia</th>
+                                                <th style={scenarioThStyle}>Catene</th>
+                                                <th style={scenarioThStyle}>Persone</th>
+                                                <th style={scenarioThStyle}>Avg Prior.</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {scenarios.map((sc, idx) => (
+                                                <tr key={sc.id} style={{ background: idx % 2 === 0 ? "#fff" : "#FAFAFA" }}>
+                                                    <td style={scenarioTdStyle}>
+                                                        <span style={{ fontWeight: 700, color: "#6366F1", fontFamily: "monospace" }}>{sc.scenario_code}</span>
+                                                    </td>
+                                                    <td style={scenarioTdStyle}>{formatDate(sc.generated_at)}</td>
+                                                    <td style={scenarioTdStyle}>
+                                                        <span style={{ padding: "2px 7px", borderRadius: 6, background: "#F5F3FF", color: "#7C3AED", fontWeight: 600, fontSize: 11 }}>
+                                                            {sc.strategy ?? "NONE"}
+                                                        </span>
+                                                    </td>
+                                                    <td style={scenarioTdStyle}><b>{sc.total_chains}</b></td>
+                                                    <td style={scenarioTdStyle}><b>{sc.unique_people}</b></td>
+                                                    <td style={scenarioTdStyle}>{sc.avg_priority != null ? sc.avg_priority.toFixed(2) : "—"}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>
@@ -183,9 +309,12 @@ function CampaignRow({
 
 export default function AdminCampaigns() {
     const [searchParams, setSearchParams] = useSearchParams();
+    const navigate = useNavigate();
     const [lifecycle, setLifecycle] = useState<CampaignLifecycleStatus | null>(null);
     const [campaigns, setCampaigns] = useState<CampaignRecord[]>([]);
     const [campaignDetails, setCampaignDetails] = useState<Record<string, CampaignDetail>>({});
+    const [scenariosByCampaign, setScenariosByCampaign] = useState<Record<string, SavedScenario[]>>({});
+    const [loadingScenariosCampaignId, setLoadingScenariosCampaignId] = useState<string | null>(null);
     const [locations, setLocations] = useState<LocationRow[]>([]);
     const [openCampaignId, setOpenCampaignId] = useState<string | null>(null);
     const [loadingDetailId, setLoadingDetailId] = useState<string | null>(null);
@@ -287,6 +416,20 @@ export default function AdminCampaigns() {
         }
     }, [campaignDetails]);
 
+    const ensureScenariosByCampaignLoaded = useCallback(async (campaignId: string) => {
+        if (!campaignId || campaignId in scenariosByCampaign) return;
+        setLoadingScenariosCampaignId(campaignId);
+        try {
+            const result = await appApi.adminListInterlockingScenarios(campaignId);
+            const scenarios: SavedScenario[] = Array.isArray(result?.scenarios) ? result.scenarios : [];
+            setScenariosByCampaign((prev) => ({ ...prev, [campaignId]: scenarios }));
+        } catch {
+            setScenariosByCampaign((prev) => ({ ...prev, [campaignId]: [] }));
+        } finally {
+            setLoadingScenariosCampaignId(null);
+        }
+    }, [scenariosByCampaign]);
+
     useEffect(() => {
         if (!selectedDataCampaignId) return;
         void ensureCampaignDetailLoaded(selectedDataCampaignId);
@@ -303,9 +446,10 @@ export default function AdminCampaigns() {
         }
         if (targetCampaign.status === "campaign_closed") {
             void ensureCampaignDetailLoaded(targetCampaign.id);
+            void ensureScenariosByCampaignLoaded(targetCampaign.id);
         }
         lastRequestedCampaignIdRef.current = targetCampaign.id;
-    }, [searchParams, campaigns, openCampaignId, ensureCampaignDetailLoaded]);
+    }, [searchParams, campaigns, openCampaignId, ensureCampaignDetailLoaded, ensureScenariosByCampaignLoaded]);
 
     async function runAction(action: LifecycleAction) {
         if (actionLoading) return;
@@ -337,7 +481,10 @@ export default function AdminCampaigns() {
             setCampaignQuery(campaign.id, activeTab);
         }
         if (!willOpen || campaign.status !== "campaign_closed") return;
-        await ensureCampaignDetailLoaded(campaign.id);
+        await Promise.all([
+            ensureCampaignDetailLoaded(campaign.id),
+            ensureScenariosByCampaignLoaded(campaign.id),
+        ]);
     }
 
     const cs = lifecycle?.campaign_status ?? "closed";
@@ -670,7 +817,7 @@ export default function AdminCampaigns() {
     }
 
     return (
-        <div style={{ padding: "16px 40px 28px", fontFamily: "'Inter', sans-serif", maxWidth: 1400 }}>
+        <div style={{ padding: "16px 40px 28px", paddingTop: "72px", fontFamily: "'Inter', sans-serif", maxWidth: 1400 }}>
 
             {error && (
                 <div style={{ background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: 8, padding: "10px 14px", color: "#dc2626", fontSize: 13, marginBottom: 20 }}>
@@ -1145,9 +1292,19 @@ export default function AdminCampaigns() {
 
             {activeTabSafe === "lifecycle" && (
                 <section>
-                    <h3 style={{ fontSize: 15, fontWeight: 600, color: "#374151", marginBottom: 12 }}>
-                        Storico campagne del perimetro {campaigns.length > 0 ? `(${campaigns.length})` : ""}
-                    </h3>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+                        <h3 style={{ fontSize: 15, fontWeight: 700, color: "#111827", margin: 0 }}>
+                            Storico campagne
+                        </h3>
+                        {campaigns.length > 0 && (
+                            <span style={{ fontSize: 12, fontWeight: 600, color: "#6B7280", background: "#F3F4F6", border: "1px solid #E5E7EB", borderRadius: 999, padding: "2px 10px" }}>
+                                {campaigns.length}
+                            </span>
+                        )}
+                        <span style={{ fontSize: 12, color: "#9CA3AF", marginLeft: 4 }}>
+                            Espandi per vedere dettagli e simulazioni collegate
+                        </span>
+                    </div>
                     {campaigns.length === 0 ? (
                         <div style={{ color: "#9ca3af", fontSize: 13 }}>Nessuna campagna registrata.</div>
                     ) : (
@@ -1160,7 +1317,10 @@ export default function AdminCampaigns() {
                                     isOpen={openCampaignId === campaign.id}
                                     detail={campaignDetails[campaign.id] ?? null}
                                     loadingDetail={loadingDetailId === campaign.id}
+                                    scenarios={scenariosByCampaign[campaign.id] ?? []}
+                                    loadingScenarios={loadingScenariosCampaignId === campaign.id}
                                     onToggle={() => { void handleToggleCampaignDetail(campaign); }}
+                                    onOpenInInterlocking={(cid) => navigate(`/admin/interlocking?campaignId=${cid}`)}
                                 />
                             ))}
                         </div>
@@ -1294,4 +1454,23 @@ const priorityBadgeStyle: React.CSSProperties = {
     color: "#c2410c",
     fontSize: 12,
     fontWeight: 700,
+};
+
+const scenarioThStyle: React.CSSProperties = {
+    textAlign: "left",
+    padding: "7px 10px",
+    fontSize: 10.5,
+    fontWeight: 700,
+    color: "#6B7280",
+    textTransform: "uppercase",
+    letterSpacing: "0.05em",
+    borderBottom: "1px solid #E5E7EB",
+    whiteSpace: "nowrap",
+};
+
+const scenarioTdStyle: React.CSSProperties = {
+    padding: "7px 10px",
+    color: "#374151",
+    borderBottom: "1px solid #F1F5F9",
+    whiteSpace: "nowrap",
 };
