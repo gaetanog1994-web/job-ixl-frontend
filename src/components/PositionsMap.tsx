@@ -158,9 +158,10 @@ const PositionsMap = ({
 
     const [maxApplications, setMaxApplications] = useState<number | null>(null);
     const [usedPriorities, setUsedPriorities] = useState<number[]>([]);
-    const [selectedPriorities, setSelectedPriorities] = useState<Record<string, number>>(
-        {}
-    );
+    const [selectedPriorities, setSelectedPriorities] = useState<Record<string, number>>({});
+    const [applyLoadingKey, setApplyLoadingKey] = useState<string | null>(null);
+    const [applyError, setApplyError] = useState<string | null>(null);
+    const applyErrorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const locationMarkerRefs = useRef<Record<string, { openPopup?: () => void }>>({});
     const [highlightLocationId, setHighlightLocationId] = useState<string | null>(null);
@@ -258,11 +259,21 @@ const PositionsMap = ({
 
     /* ---------- APPLY / WITHDRAW (WRITE MODE ONLY) ---------- */
 
+    const showApplyError = (msg: string) => {
+        setApplyError(msg);
+        if (applyErrorTimerRef.current) clearTimeout(applyErrorTimerRef.current);
+        applyErrorTimerRef.current = setTimeout(() => setApplyError(null), 5000);
+    };
+
     const handleApplyToRole = async (role: LocationRole) => {
         if (!myUserId || myStatus !== "available") return;
 
         const priority = selectedPriorities[role.group_key];
         if (priority == null) return;
+
+        if (applyLoadingKey) return;
+        setApplyLoadingKey(role.group_key);
+        setApplyError(null);
 
         try {
             await appApi.applyToPositionsBulk({
@@ -271,10 +282,14 @@ const PositionsMap = ({
                 priority,
             });
         } catch (e: unknown) {
-            console.error("Apply role error:", e instanceof Error ? e.message : e);
+            const msg = e instanceof Error ? e.message : "Errore durante la candidatura";
+            console.error("[PositionsMap] apply error:", msg);
+            showApplyError(msg);
+            setApplyLoadingKey(null);
             return;
         }
 
+        setApplyLoadingKey(null);
         setSelectedPriorities((prev) => {
             const copy = { ...prev };
             delete copy[role.group_key];
@@ -287,8 +302,11 @@ const PositionsMap = ({
 
     const handleWithdrawFromRole = async (role: LocationRole) => {
         if (!myUserId || myStatus !== "available") return;
+        if (applyLoadingKey) return;
 
         const positionIds = role.users.map((u) => u.position_id);
+        setApplyLoadingKey(role.group_key);
+        setApplyError(null);
 
         try {
             await appApi.withdrawFromPositionsBulk({
@@ -296,10 +314,14 @@ const PositionsMap = ({
                 positionIds,
             });
         } catch (e: unknown) {
-            console.error("Withdraw role error:", e instanceof Error ? e.message : e);
+            const msg = e instanceof Error ? e.message : "Errore durante l'annullamento";
+            console.error("[PositionsMap] withdraw error:", msg);
+            showApplyError(msg);
+            setApplyLoadingKey(null);
             return;
         }
 
+        setApplyLoadingKey(null);
         boot();
         onApplicationUpdate?.();
     };
@@ -677,7 +699,7 @@ const PositionsMap = ({
                                                             <>
                                                                 <select
                                                                     value={selectedPriorities[r.group_key] ?? ""}
-                                                                    disabled={campaignStatus !== "open"}
+                                                                    disabled={campaignStatus !== "open" || applyLoadingKey === r.group_key}
                                                                     onChange={(e) =>
                                                                         setSelectedPriorities((prev) => ({
                                                                             ...prev,
@@ -698,10 +720,10 @@ const PositionsMap = ({
 
                                                                 <button
                                                                     onClick={() => handleApplyToRole(r)}
-                                                                    disabled={selectedPriorities[r.group_key] == null || campaignStatus !== "open"}
+                                                                    disabled={selectedPriorities[r.group_key] == null || campaignStatus !== "open" || !!applyLoadingKey}
                                                                     title={campaignStatus !== "open" ? "Campagna chiusa" : undefined}
                                                                 >
-                                                                    Candidati
+                                                                    {applyLoadingKey === r.group_key ? "…" : "Candidati"}
                                                                 </button>
                                                             </>
                                                         )}
@@ -712,7 +734,12 @@ const PositionsMap = ({
                                                                     Priorità: <b>{r.priority ?? "—"}</b>
                                                                 </span>
 
-                                                                <button onClick={() => handleWithdrawFromRole(r)}>Annulla</button>
+                                                                <button
+                                                                    onClick={() => handleWithdrawFromRole(r)}
+                                                                    disabled={!!applyLoadingKey}
+                                                                >
+                                                                    {applyLoadingKey === r.group_key ? "…" : "Annulla"}
+                                                                </button>
                                                             </div>
                                                         )}
                                                     </div>
@@ -720,6 +747,19 @@ const PositionsMap = ({
                                             );
                                         })}
                                     </ul>
+                                    {applyError && (
+                                        <div style={{
+                                            marginTop: "8px",
+                                            padding: "6px 10px",
+                                            background: "#FEF2F2",
+                                            border: "1px solid #FECACA",
+                                            borderRadius: "6px",
+                                            fontSize: "12px",
+                                            color: "#DC2626",
+                                        }}>
+                                            {applyError}
+                                        </div>
+                                    )}
                                 </Popup>
                             </Marker>
                         )}
