@@ -453,7 +453,7 @@ export default function AdminCampaigns() {
         const targetCampaign = campaigns.find((c) => c.id === requestedCampaignId);
         if (!targetCampaign) return;
         const requestedChanged = lastRequestedCampaignIdRef.current !== targetCampaign.id;
-        if (requestedChanged || openCampaignId === null) {
+        if (requestedChanged) {
             setOpenCampaignId(targetCampaign.id);
         }
         if (targetCampaign.status === "campaign_closed") {
@@ -461,7 +461,7 @@ export default function AdminCampaigns() {
             void ensureScenariosByCampaignLoaded(targetCampaign.id);
         }
         lastRequestedCampaignIdRef.current = targetCampaign.id;
-    }, [searchParams, campaigns, openCampaignId, ensureCampaignDetailLoaded, ensureScenariosByCampaignLoaded]);
+    }, [searchParams, campaigns, ensureCampaignDetailLoaded, ensureScenariosByCampaignLoaded]); // eslint-disable-line react-hooks/exhaustive-deps
 
     async function runAction(action: LifecycleAction) {
         if (actionLoading) return;
