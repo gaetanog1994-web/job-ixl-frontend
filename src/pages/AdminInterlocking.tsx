@@ -1882,7 +1882,7 @@ const AdminInterlocking = () => {
                                                 <div
                                                     style={{
                                                         display: "grid",
-                                                        gridTemplateColumns: "32px 1fr 1.2fr 1.4fr 0.65fr 0.65fr 0.65fr 0.7fr 0.65fr 0.9fr 0.95fr 56px 32px",
+                                                        gridTemplateColumns: "32px 1fr 1.2fr 1.4fr 0.65fr 0.65fr 0.65fr 0.7fr 0.65fr 0.9fr 0.95fr 56px 32px 32px",
                                                         gap: "6px", alignItems: "center",
                                                         padding: "11px 10px", fontSize: "12px", textAlign: "left",
                                                     }}
@@ -1929,6 +1929,35 @@ const AdminInterlocking = () => {
                                                             style={{ ...ghostButtonStyle, padding: "5px 8px", fontSize: "11px" }}>
                                                             {isExpSc ? "↓" : "→"}
                                                         </button>
+                                                    </div>
+                                                    <div>
+                                                        {!isRestrictedReadOnly && (
+                                                            <button
+                                                                onClick={async (e) => {
+                                                                    e.stopPropagation();
+                                                                    if (!window.confirm(`Eliminare lo scenario "${scenario.scenario_code}"?`)) return;
+                                                                    try {
+                                                                        setDeleting(true);
+                                                                        await appApi.adminDeleteInterlockingScenarios({ ids: [scenario.id], campaign_id: scenario.campaign_id });
+                                                                        if (activeScenarioId === scenario.id) {
+                                                                            setActiveScenarioId(null);
+                                                                            setFocusedPersonId(null);
+                                                                            setSelectedChainIndex(null);
+                                                                        }
+                                                                        await loadScenarios();
+                                                                    } catch (err: unknown) {
+                                                                        setError(err instanceof Error ? err.message : String(err));
+                                                                    } finally {
+                                                                        setDeleting(false);
+                                                                    }
+                                                                }}
+                                                                disabled={deleting}
+                                                                title="Elimina scenario"
+                                                                style={{ ...ghostButtonStyle, padding: "5px 8px", fontSize: "11px", color: "#EF4444" }}
+                                                            >
+                                                                🗑
+                                                            </button>
+                                                        )}
                                                     </div>
                                                 </div>
 
