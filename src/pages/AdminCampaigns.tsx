@@ -290,9 +290,9 @@ function CampaignRow({
                                                             {sc.strategy ?? "NONE"}
                                                         </span>
                                                     </td>
-                                                    <td style={scenarioTdStyle}><b>{sc.total_chains}</b></td>
-                                                    <td style={scenarioTdStyle}><b>{sc.unique_people}</b></td>
-                                                    <td style={scenarioTdStyle}>{sc.avg_priority != null ? sc.avg_priority.toFixed(2) : "—"}</td>
+                                                    <td style={scenarioTdStyle}><b>{Number(sc.total_chains)}</b></td>
+                                                    <td style={scenarioTdStyle}><b>{Number(sc.unique_people)}</b></td>
+                                                    <td style={scenarioTdStyle}>{sc.avg_priority != null ? Number(sc.avg_priority).toFixed(2) : "—"}</td>
                                                 </tr>
                                             ))}
                                         </tbody>
