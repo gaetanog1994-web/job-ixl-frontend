@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { solveOptimalChains } from "../lib/optimalChainsSolver";
 import type {
     ChainCandidate,
@@ -290,6 +290,9 @@ function formatCampaignDate(value: string | null | undefined) {
 
 const AdminInterlocking = () => {
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const initialCampaignIdParam = useRef(searchParams.get("campaignId"));
+    const pendingScenarioIdRef = useRef(searchParams.get("scenarioId"));
     const [loadingGraph, setLoadingGraph] = useState(false);
     const [loadingAnalyze, setLoadingAnalyze] = useState(false);
     const [loadingScenarios, setLoadingScenarios] = useState(false);
@@ -648,7 +651,14 @@ const AdminInterlocking = () => {
             setScenarios(normalizedScenarios);
 
             setActiveScenarioId((prev) => {
-                if (!prev) return prev;
+                if (!prev) {
+                    const pending = pendingScenarioIdRef.current;
+                    if (pending && normalizedScenarios.some((s) => s.id === pending)) {
+                        pendingScenarioIdRef.current = null;
+                        return pending;
+                    }
+                    return null;
+                }
                 const stillExists = normalizedScenarios.some((s) => s.id === prev);
                 return stillExists ? prev : null;
             });
@@ -665,12 +675,15 @@ const AdminInterlocking = () => {
             const list = await appApi.adminListCampaigns();
             const closed = list.filter((c) => c.status === "campaign_closed");
             setCampaigns(closed);
+            const urlCampaignId = initialCampaignIdParam.current;
             setSelectedCampaignId((prev) => {
                 if (prev && closed.some((c) => c.id === prev)) return prev;
+                if (urlCampaignId && closed.some((c) => c.id === urlCampaignId)) return urlCampaignId;
                 return closed[0]?.id ?? null;
             });
             setViewCampaignIds((prev) => {
                 if (prev.size > 0) return prev;
+                if (urlCampaignId && closed.some((c) => c.id === urlCampaignId)) return new Set([urlCampaignId]);
                 return closed[0]?.id ? new Set([closed[0].id]) : new Set();
             });
         } catch (err: unknown) {

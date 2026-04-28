@@ -127,7 +127,7 @@ function CampaignRow({
     scenarios: SavedScenario[];
     loadingScenarios: boolean;
     onToggle: () => void;
-    onOpenInInterlocking: (campaignId: string) => void;
+    onOpenInInterlocking: (campaignId: string, scenarioId?: string) => void;
 }) {
     const isClosed = campaign.status === "campaign_closed";
     return (
@@ -276,11 +276,22 @@ function CampaignRow({
                                                 <th style={scenarioThStyle}>Catene</th>
                                                 <th style={scenarioThStyle}>Persone</th>
                                                 <th style={scenarioThStyle}>Avg Prior.</th>
+                                                <th style={{ ...scenarioThStyle, width: 24 }}></th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {scenarios.map((sc, idx) => (
-                                                <tr key={sc.id} style={{ background: idx % 2 === 0 ? "#fff" : "#FAFAFA" }}>
+                                                <tr
+                                                    key={sc.id}
+                                                    onClick={() => onOpenInInterlocking(campaign.id, sc.id)}
+                                                    style={{
+                                                        background: idx % 2 === 0 ? "#fff" : "#FAFAFA",
+                                                        cursor: "pointer",
+                                                        transition: "background 0.1s",
+                                                    }}
+                                                    onMouseEnter={(e) => { e.currentTarget.style.background = "#EEF2FF"; }}
+                                                    onMouseLeave={(e) => { e.currentTarget.style.background = idx % 2 === 0 ? "#fff" : "#FAFAFA"; }}
+                                                >
                                                     <td style={scenarioTdStyle}>
                                                         <span style={{ fontWeight: 700, color: "#6366F1", fontFamily: "monospace" }}>{sc.scenario_code}</span>
                                                     </td>
@@ -293,6 +304,7 @@ function CampaignRow({
                                                     <td style={scenarioTdStyle}><b>{Number(sc.total_chains)}</b></td>
                                                     <td style={scenarioTdStyle}><b>{Number(sc.unique_people)}</b></td>
                                                     <td style={scenarioTdStyle}>{sc.avg_priority != null ? Number(sc.avg_priority).toFixed(2) : "—"}</td>
+                                                    <td style={{ ...scenarioTdStyle, color: "#6366F1", fontWeight: 700, textAlign: "right" as const }}>→</td>
                                                 </tr>
                                             ))}
                                         </tbody>
@@ -1320,7 +1332,10 @@ export default function AdminCampaigns() {
                                     scenarios={scenariosByCampaign[campaign.id] ?? []}
                                     loadingScenarios={loadingScenariosCampaignId === campaign.id}
                                     onToggle={() => { void handleToggleCampaignDetail(campaign); }}
-                                    onOpenInInterlocking={(cid) => navigate(`/admin/interlocking?campaignId=${cid}`)}
+                                    onOpenInInterlocking={(cid, sid) => {
+                                        const url = `/admin/interlocking?campaignId=${cid}${sid ? `&scenarioId=${sid}` : ""}`;
+                                        navigate(url);
+                                    }}
                                 />
                             ))}
                         </div>
