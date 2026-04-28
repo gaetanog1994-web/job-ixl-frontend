@@ -105,6 +105,7 @@ type AdminUserRow = {
     full_name: string;
     role_id: string | null;
     role_name: string | null;
+    org_unit_name: string | null;
     location_id: string | null;
     location_name: string | null;
     fixed_location: boolean | null;
@@ -301,6 +302,8 @@ const AdminInterlocking = () => {
     const [campaigns, setCampaigns] = useState<CampaignRecord[]>([]);
     const [loadingCampaigns, setLoadingCampaigns] = useState(false);
     const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(null);
+    const [viewCampaignIds, setViewCampaignIds] = useState<Set<string>>(new Set());
+    const [viewSelectorOpen, setViewSelectorOpen] = useState(false);
 
     const [buildResult, setBuildResult] = useState<BuildResult | null>(null);
     const [strategy, setStrategy] = useState<UiStrategy>("NONE");
@@ -573,6 +576,7 @@ const AdminInterlocking = () => {
                                     : typeof u.fixedLocation === "boolean"
                                         ? u.fixedLocation
                                         : null,
+                            org_unit_name: typeof u.org_unit_name === "string" ? u.org_unit_name : null,
                             responsible_name: (typeof u.responsible_name === "string" ? u.responsible_name : null)
                                 ?? (typeof u.manager_name === "string" ? u.manager_name : null)
                                 ?? (typeof u.responsabile === "string" ? u.responsabile : null)
@@ -591,7 +595,7 @@ const AdminInterlocking = () => {
     };
 
     const loadScenarios = async () => {
-        if (!selectedCampaignId) {
+        if (viewCampaignIds.size === 0) {
             setScenarios([]);
             setActiveScenarioId(null);
             return;
@@ -599,8 +603,10 @@ const AdminInterlocking = () => {
         try {
             setLoadingScenarios(true);
             setError(null);
-            const json = await appApi.adminListInterlockingScenarios(selectedCampaignId);
-            const raw = Array.isArray(json?.scenarios) ? json.scenarios : [];
+            const results = await Promise.all(
+                [...viewCampaignIds].map((id) => appApi.adminListInterlockingScenarios(id))
+            );
+            const raw = results.flatMap((json) => Array.isArray(json?.scenarios) ? json.scenarios : []);
 
             const normalizedScenarios: SavedScenario[] = raw.map((s: Record<string, unknown>) => ({
                 id: String(s.id),
@@ -663,6 +669,10 @@ const AdminInterlocking = () => {
                 if (prev && closed.some((c) => c.id === prev)) return prev;
                 return closed[0]?.id ?? null;
             });
+            setViewCampaignIds((prev) => {
+                if (prev.size > 0) return prev;
+                return closed[0]?.id ? new Set([closed[0].id]) : new Set();
+            });
         } catch (err: unknown) {
             setCampaigns([]);
             setSelectedCampaignId(null);
@@ -714,6 +724,7 @@ const AdminInterlocking = () => {
         void run();
     }, []);
 
+    const viewCampaignIdsKey = [...viewCampaignIds].sort().join(",");
     useEffect(() => {
         if (!canManageCampaign) return;
         setActiveScenarioId(null);
@@ -721,7 +732,7 @@ const AdminInterlocking = () => {
         setSelectedChainIndex(null);
         setBuildResult(null);
         void loadScenarios();
-    }, [canManageCampaign, selectedCampaignId]);
+    }, [canManageCampaign, viewCampaignIdsKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const usersById = useMemo(() => {
         return new Map(usersDirectory.map((u) => [u.id, u]));
@@ -743,6 +754,21 @@ const AdminInterlocking = () => {
     const activeScenario = useMemo(() => {
         return scenarios.find((s) => s.id === activeScenarioId) ?? null;
     }, [scenarios, activeScenarioId]);
+
+    const groupedScenarios = useMemo(() => {
+        const sortedCampaigns = [...campaigns].sort((a, b) => {
+            const ta = new Date(a.created_at ?? 0).getTime();
+            const tb = new Date(b.created_at ?? 0).getTime();
+            return ta - tb;
+        });
+        const groups: Array<{ campaign: CampaignRecord; scenarios: typeof scenarios }> = [];
+        for (const campaign of sortedCampaigns) {
+            if (!viewCampaignIds.has(campaign.id)) continue;
+            const group = scenarios.filter((s) => s.campaign_id === campaign.id);
+            groups.push({ campaign, scenarios: group });
+        }
+        return groups;
+    }, [campaigns, scenarios, viewCampaignIds]);
     const selectedCampaign = useMemo(
         () => campaigns.find((c) => c.id === selectedCampaignId) ?? null,
         [campaigns, selectedCampaignId]
@@ -1585,6 +1611,73 @@ const AdminInterlocking = () => {
                                 </div>
                             </div>
 
+                            {/* ── Selector 1: Campagne da visualizzare ── */}
+                            {campaigns.length > 0 && (
+                                <div style={{ marginBottom: "14px", display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }} onClick={(e) => e.stopPropagation()}>
+                                    <span style={{ fontSize: "12px", fontWeight: 600, color: "#4B5563" }}>Campagne da visualizzare:</span>
+                                    <div style={{ position: "relative" }}>
+                                        <button
+                                            onClick={() => setViewSelectorOpen((p) => !p)}
+                                            style={{
+                                                display: "flex", alignItems: "center", gap: "6px",
+                                                padding: "6px 12px", borderRadius: "8px",
+                                                border: "1px solid #D1D5DB", background: "#FFF",
+                                                color: "#111827", fontSize: "12px", cursor: "pointer",
+                                            }}
+                                        >
+                                            {viewCampaignIds.size === 0
+                                                ? "Nessuna"
+                                                : viewCampaignIds.size === campaigns.length
+                                                    ? "Tutte"
+                                                    : `${viewCampaignIds.size} selezionat${viewCampaignIds.size === 1 ? "a" : "e"}`}
+                                            <span style={{ fontSize: "10px" }}>{viewSelectorOpen ? "▲" : "▼"}</span>
+                                        </button>
+                                        {viewSelectorOpen && (
+                                            <div style={{
+                                                position: "absolute", top: "calc(100% + 4px)", left: 0, zIndex: 200,
+                                                background: "#FFF", border: "1px solid #E5E7EB", borderRadius: "10px",
+                                                boxShadow: "0 4px 16px rgba(0,0,0,0.12)", minWidth: "360px", padding: "8px 0",
+                                            }}>
+                                                <label
+                                                    style={{ display: "flex", alignItems: "center", gap: "8px", padding: "7px 14px", cursor: "pointer", fontSize: "12px", fontWeight: 700, borderBottom: "1px solid #F3F4F6" }}
+                                                    onClick={() => {
+                                                        setViewCampaignIds(viewCampaignIds.size === campaigns.length
+                                                            ? new Set()
+                                                            : new Set(campaigns.map((c) => c.id)));
+                                                    }}
+                                                >
+                                                    <input type="checkbox" readOnly checked={viewCampaignIds.size === campaigns.length} style={{ accentColor: "#6366F1" }} />
+                                                    Tutte le campagne
+                                                </label>
+                                                {campaigns.map((c) => {
+                                                    const label = campaignSelectionOptions.get(c.id) ?? c.id;
+                                                    const checked = viewCampaignIds.has(c.id);
+                                                    return (
+                                                        <label key={c.id} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "6px 14px", cursor: "pointer", fontSize: "12px" }}
+                                                            onClick={() => {
+                                                                setViewCampaignIds((prev) => {
+                                                                    const next = new Set(prev);
+                                                                    next.has(c.id) ? next.delete(c.id) : next.add(c.id);
+                                                                    return next;
+                                                                });
+                                                            }}
+                                                        >
+                                                            <input type="checkbox" readOnly checked={checked} style={{ accentColor: "#6366F1" }} />
+                                                            {label}
+                                                        </label>
+                                                    );
+                                                })}
+                                                <div style={{ padding: "6px 14px", borderTop: "1px solid #F3F4F6" }}>
+                                                    <button onClick={() => setViewSelectorOpen(false)} style={{ fontSize: "12px", color: "#6366F1", background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}>
+                                                        Chiudi
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
                             {/* ── Nuova simulazione panel ── */}
                             <div style={{ marginBottom: "14px" }}>
                                     <button
@@ -1612,8 +1705,8 @@ const AdminInterlocking = () => {
                                     >
                                         {/* Step 0: mandatory campaign selection */}
                                         <div style={{ display: "grid", gap: "6px", maxWidth: "640px" }}>
-                                            <label style={{ fontSize: "12px", color: "#4B5563" }}>
-                                                Campagna simulazione (obbligatoria)
+                                            <label style={{ fontSize: "12px", color: "#4B5563", fontWeight: 600 }}>
+                                                Campagna da simulare (obbligatoria)
                                             </label>
                                             <select
                                                 value={selectedCampaignId ?? ""}
@@ -1737,7 +1830,22 @@ const AdminInterlocking = () => {
                                 ) : scenarios.length === 0 ? (
                                     <div style={{ color: "#9CA3AF", fontSize: "13px" }}>Nessuno scenario disponibile.</div>
                                 ) : (
-                                    scenarios.map((scenario) => {
+                                    groupedScenarios.flatMap(({ campaign, scenarios: groupScenarios }) => {
+                                        const campaignLabel = campaignSelectionOptions.get(campaign.id) ?? campaign.id.slice(0, 8);
+                                        const groupHeader = (
+                                            <div key={`hdr-${campaign.id}`} style={{
+                                                padding: "6px 10px", borderRadius: "8px", marginBottom: "4px",
+                                                background: "linear-gradient(90deg, #EEF2FF 0%, #F5F3FF 100%)",
+                                                border: "1px solid #C7D2FE",
+                                                fontSize: "11px", fontWeight: 700, color: "#4338CA",
+                                                display: "flex", alignItems: "center", gap: "8px",
+                                            }}>
+                                                <span>📋</span>
+                                                <span>{campaignLabel}</span>
+                                                <span style={{ fontWeight: 400, color: "#6366F1" }}>({groupScenarios.length} scenari)</span>
+                                            </div>
+                                        );
+                                        const rows = groupScenarios.map((scenario) => {
                                         const isExpSc = expandedScenarioIds.includes(scenario.id);
                                         const isSelected = selectedScenarioIds.includes(scenario.id);
                                         const isActive = activeScenarioId === scenario.id;
@@ -1790,7 +1898,7 @@ const AdminInterlocking = () => {
                                                     <div style={{ color: "#374151", fontSize: "11px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                                         {formatScenarioCampaignLabel(scenario.campaign_id)}
                                                     </div>
-                                                    <div>{scenario.total_chains}</div>
+                                                    <div>{visibleChains.length || scenario.total_chains || 0}</div>
                                                     <div>{scenario.unique_people}</div>
                                                     <div>{formatNumber(scenario.coverage, 1)}%</div>
                                                     <div>{formatNumber(scenario.avg_length, 2)}</div>
@@ -1875,6 +1983,8 @@ const AdminInterlocking = () => {
                                                 )}
                                             </div>
                                         );
+                                        });
+                                        return groupScenarios.length > 0 ? [groupHeader, ...rows] : [];
                                     })
                                 )}
                             </div>
@@ -1983,19 +2093,34 @@ const AdminInterlocking = () => {
                                                         <React.Fragment key={marker.locationId}>
                                                             <CircleMarker center={[marker.latitude, marker.longitude]} radius={radius}
                                                                 pathOptions={{ color, fillColor, fillOpacity, weight }}>
-                                                                <Popup>
+                                                                <Popup minWidth={220}>
                                                                     <div>
-                                                                        <strong>{marker.locationName}</strong>
-                                                                        {activeScenario ? (
-                                                                            <>
-                                                                                <div>Persone coinvolte: {marker.peopleCount}</div>
-                                                                                {chainHighlightActive && inChain && (
-                                                                                    <div>Membri della catena in questa sede: {count}</div>
-                                                                                )}
-                                                                                <div style={{ marginTop: "6px", fontSize: "12px" }}>{marker.peopleNames.join(", ")}</div>
-                                                                            </>
-                                                                        ) : (
-                                                                            <div style={{ marginTop: "6px", fontSize: "12px" }}>Sede disponibile nel perimetro aziendale</div>
+                                                                        <div style={{ fontWeight: 700, marginBottom: "6px", fontSize: "13px" }}>{marker.locationName}</div>
+                                                                        {activeScenario ? (() => {
+                                                                            const peopleHere = activeScenarioPeople.filter((p) => p.locationId === marker.locationId);
+                                                                            return (
+                                                                                <>
+                                                                                    <div style={{ fontSize: "11px", color: "#6B7280", marginBottom: "6px" }}>
+                                                                                        {marker.peopleCount} person{marker.peopleCount === 1 ? "a" : "e"} coinvolt{marker.peopleCount === 1 ? "a" : "e"}
+                                                                                        {chainHighlightActive && inChain && ` · ${count} in catena`}
+                                                                                    </div>
+                                                                                    <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                                                                                        {peopleHere.map((person) => {
+                                                                                            const userDetail = usersById.get(person.id);
+                                                                                            const orgUnit = userDetail?.org_unit_name ?? null;
+                                                                                            return (
+                                                                                                <div key={person.id} style={{ borderTop: "1px solid #F3F4F6", paddingTop: "5px" }}>
+                                                                                                    <div style={{ fontWeight: 600, fontSize: "12px" }}>{person.name}</div>
+                                                                                                    <div style={{ fontSize: "11px", color: "#6B7280" }}>{person.role}</div>
+                                                                                                    {orgUnit && <div style={{ fontSize: "11px", color: "#6B7280" }}>{orgUnit}</div>}
+                                                                                                </div>
+                                                                                            );
+                                                                                        })}
+                                                                                    </div>
+                                                                                </>
+                                                                            );
+                                                                        })() : (
+                                                                            <div style={{ fontSize: "12px", color: "#6B7280" }}>Sede disponibile nel perimetro aziendale</div>
                                                                         )}
                                                                     </div>
                                                                 </Popup>
