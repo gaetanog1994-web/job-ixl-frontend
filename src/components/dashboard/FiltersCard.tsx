@@ -116,7 +116,7 @@ const FiltersCard: React.FC<FiltersCardProps> = ({
           <div
             style={{
               fontSize: "11px",
-              color: "#2563eb",
+              color: "var(--accent-purple)",
               marginTop: "4px",
               fontWeight: 500,
             }}
@@ -150,7 +150,7 @@ const FiltersCard: React.FC<FiltersCardProps> = ({
           <div
             style={{
               fontSize: "11px",
-              color: "#2563eb",
+              color: "var(--accent-purple)",
               marginTop: "4px",
               fontWeight: 500,
             }}

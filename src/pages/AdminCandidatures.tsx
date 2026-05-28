@@ -189,17 +189,17 @@ const AdminCandidatures = () => {
   const liveStateStyles =
     stats.campaign_status === "open"
       ? {
-        background: applications.length > 0 ? "#ecfdf5" : "#fff7ed",
-        color: applications.length > 0 ? "#166534" : "#9a3412",
-        border: applications.length > 0 ? "#86efac" : "#fed7aa",
+        background: applications.length > 0 ? "rgba(16,185,129,0.12)" : "rgba(245,158,11,0.12)",
+        color: applications.length > 0 ? "#6ee7b7" : "#fbbf24",
+        border: applications.length > 0 ? "rgba(16,185,129,0.4)" : "rgba(245,158,11,0.4)",
       }
-      : { background: "#f3f4f6", color: "#374151", border: "#d1d5db" };
+      : { background: "var(--bg-card-alt)", color: "var(--text-secondary)", border: "var(--border)" };
 
   /* ---------- render ---------- */
   return (
     <div style={{
       minHeight: "100vh",
-      background: "var(--surface, #f1f5f9)",
+      background: "var(--surface, var(--bg-base))",
       fontFamily: "var(--font, 'Inter', sans-serif)",
       padding: "24px",
     }}>
@@ -236,12 +236,12 @@ const AdminCandidatures = () => {
       </div>
 
       {loading && (
-        <div style={{ marginBottom: "16px", fontSize: "12px", color: "#64748b" }}>
+        <div style={{ marginBottom: "16px", fontSize: "12px", color: "var(--text-secondary)" }}>
           Caricamento candidature in corso…
         </div>
       )}
       {loadError && (
-        <div style={{ marginBottom: "16px", border: "1px solid #fca5a5", background: "#fef2f2", color: "#b91c1c", borderRadius: "10px", padding: "10px 12px", fontSize: "12px" }}>
+        <div style={{ marginBottom: "16px", border: "1px solid rgba(239,68,68,0.4)", background: "rgba(239,68,68,0.12)", color: "#fca5a5", borderRadius: "10px", padding: "10px 12px", fontSize: "12px" }}>
           {loadError}
         </div>
       )}
@@ -250,12 +250,12 @@ const AdminCandidatures = () => {
         <div
           style={{
             marginBottom: "16px",
-            border: "1px solid #d1d5db",
+            border: "1px solid var(--border)",
             borderRadius: "10px",
             padding: "10px 12px",
-            background: "#f8fafc",
+            background: "var(--bg-card-alt)",
             fontSize: "12px",
-            color: "#475569",
+            color: "var(--text-secondary)",
           }}
         >
           Campagna non aperta: la lista mostra solo candidature correnti e risulta vuota finché la campagna non è in stato aperto.
@@ -272,21 +272,21 @@ const AdminCandidatures = () => {
           gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
         }}
       >
-        <div style={{ border: "1px solid var(--border)", borderRadius: "10px", padding: "12px 14px", background: "#fff" }}>
+        <div style={{ border: "1px solid var(--border)", borderRadius: "10px", padding: "12px 14px", background: "var(--bg-card)" }}>
           <div style={{ fontSize: "12px", color: "var(--text-secondary)", fontWeight: 600 }}>Prenotati</div>
           <div style={{ marginTop: "4px", fontSize: "24px", lineHeight: 1.1, fontWeight: 700, color: "var(--text-primary)" }}>
             {stats.reserved_count}
           </div>
         </div>
 
-        <div style={{ border: "1px solid var(--border)", borderRadius: "10px", padding: "12px 14px", background: "#fff" }}>
+        <div style={{ border: "1px solid var(--border)", borderRadius: "10px", padding: "12px 14px", background: "var(--bg-card)" }}>
           <div style={{ fontSize: "12px", color: "var(--text-secondary)", fontWeight: 600 }}>Attività utenti</div>
           <div style={{ marginTop: "4px", fontSize: "24px", lineHeight: 1.1, fontWeight: 700, color: "var(--text-primary)" }}>
             {stats.active_users_count} ({formatPct(stats.active_users_pct)}%)
           </div>
         </div>
 
-        <div style={{ border: "1px solid var(--border)", borderRadius: "10px", padding: "12px 14px", background: "#fff" }}>
+        <div style={{ border: "1px solid var(--border)", borderRadius: "10px", padding: "12px 14px", background: "var(--bg-card)" }}>
           <div style={{ fontSize: "12px", color: "var(--text-secondary)", fontWeight: 600 }}>Media candidature</div>
           <div style={{ marginTop: "4px", fontSize: "24px", lineHeight: 1.1, fontWeight: 700, color: "var(--text-primary)" }}>
             {(Math.round(stats.avg_applications_per_reserved * 10) / 10).toFixed(1)}
@@ -403,7 +403,7 @@ const AdminCandidatures = () => {
                 <th colSpan={6} style={{
                   textAlign: "left", padding: "10px 14px 6px",
                   fontSize: "10px", fontWeight: 700,
-                  color: "#2563eb", textTransform: "uppercase", letterSpacing: "0.08em",
+                  color: "var(--accent-purple)", textTransform: "uppercase", letterSpacing: "0.08em",
                   borderBottom: "2px solid #bfdbfe",
                   background: "rgba(37,99,235,0.03)",
                   borderRight: "2px solid var(--border)",
@@ -415,12 +415,12 @@ const AdminCandidatures = () => {
                   fontSize: "10px", fontWeight: 700,
                   color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.08em",
                   borderBottom: "2px solid var(--border)",
-                  background: "#fafafa",
+                  background: "var(--bg-card-alt)",
                 }}>
                   Candidatura
                 </th>
               </tr>
-              <tr style={{ background: "#fafafa" }}>
+              <tr style={{ background: "var(--bg-card-alt)" }}>
                 <th style={thStyle} onClick={() => handleSort("candidate")}>
                   Nome{sortIcon("candidate")}
                 </th>
@@ -462,9 +462,9 @@ const AdminCandidatures = () => {
                 filtered.map((a, i) => (
                   <Fragment key={a.id}>
                     <tr
-                      style={{ background: i % 2 === 0 ? "#fff" : "#fafafa", transition: "background 0.1s" }}
-                      onMouseEnter={(e) => (e.currentTarget.style.background = "#f0f9ff")}
-                      onMouseLeave={(e) => (e.currentTarget.style.background = i % 2 === 0 ? "#fff" : "#fafafa")}
+                      style={{ background: i % 2 === 0 ? "var(--bg-card)" : "var(--bg-card-alt)", transition: "background 0.1s" }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(124,58,237,0.08)")}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = i % 2 === 0 ? "var(--bg-card)" : "var(--bg-card-alt)")}
                     >
                     <td style={tdStyle}>
                       <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>
@@ -488,8 +488,8 @@ const AdminCandidatures = () => {
                     <td style={tdStyle}>
                       <span style={{
                         display: "inline-flex", padding: "3px 8px",
-                        borderRadius: "6px", background: "#eff6ff",
-                        color: "#2563eb", fontSize: "11px", fontWeight: 600,
+                        borderRadius: "6px", background: "rgba(124,58,237,0.12)",
+                        color: "var(--accent-purple)", fontSize: "11px", fontWeight: 600,
                       }}>
                         {a.occupant_role_name ?? "—"}
                       </span>
@@ -533,7 +533,7 @@ const AdminCandidatures = () => {
                     </tr>
                     {expandedRowId === a.id && (
                       <tr className="db-mobile-only-row">
-                      <td colSpan={12} style={{ padding: "10px 14px", background: "#f8fafc", borderBottom: "1px solid var(--border)" }}>
+                      <td colSpan={12} style={{ padding: "10px 14px", background: "var(--bg-card-alt)", borderBottom: "1px solid var(--border)" }}>
                         <div style={{ fontSize: "12px", color: "var(--text-secondary)", display: "grid", gap: "6px" }}>
                           <div><strong>Responsabile:</strong> {(a.target_responsabili ?? []).length > 0 ? (a.target_responsabili ?? []).map((item) => item.name).join(", ") : "—"}</div>
                           <div><strong>HR:</strong> {(a.target_hr_managers ?? []).length > 0 ? (a.target_hr_managers ?? []).map((item) => item.name).join(", ") : "—"}</div>

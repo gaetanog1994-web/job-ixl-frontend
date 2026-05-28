@@ -53,10 +53,10 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 const STATUS_COLOR: Record<string, { bg: string; color: string; border: string; dot: string }> = {
-    reservations_open: { bg: "#eff6ff", color: "#1d4ed8", border: "#93c5fd", dot: "#3b82f6" },
-    reservations_closed: { bg: "#f3f4f6", color: "#374151", border: "#d1d5db", dot: "#6b7280" },
-    campaign_open: { bg: "#ecfdf5", color: "#059669", border: "#a7f3d0", dot: "#10b981" },
-    campaign_closed: { bg: "#f3f4f6", color: "#374151", border: "#d1d5db", dot: "#6b7280" },
+    reservations_open: { bg: "rgba(59,130,246,0.12)", color: "#93c5fd", border: "rgba(59,130,246,0.4)", dot: "#3b82f6" },
+    reservations_closed: { bg: "rgba(107,114,128,0.12)", color: "var(--text-muted)", border: "rgba(107,114,128,0.4)", dot: "var(--text-secondary)" },
+    campaign_open: { bg: "rgba(16,185,129,0.12)", color: "#6ee7b7", border: "rgba(16,185,129,0.4)", dot: "#10b981" },
+    campaign_closed: { bg: "rgba(107,114,128,0.12)", color: "var(--text-muted)", border: "rgba(107,114,128,0.4)", dot: "var(--text-secondary)" },
 };
 
 function StatusBadge({ status }: { status: string }) {
@@ -132,10 +132,10 @@ function CampaignRow({
     const isClosed = campaign.status === "campaign_closed";
     return (
         <div style={{
-            border: "1px solid #E5E7EB",
+            border: "1px solid var(--border)",
             borderRadius: 12,
             overflow: "hidden",
-            background: "#fff",
+            background: "var(--bg-card)",
             boxShadow: isOpen ? "0 2px 8px rgba(0,0,0,0.06)" : "none",
             transition: "box-shadow 0.15s",
         }}>
@@ -150,7 +150,7 @@ function CampaignRow({
                     padding: "14px 18px",
                     textAlign: "left",
                     border: "none",
-                    background: isOpen ? "#F8FAFC" : "transparent",
+                    background: isOpen ? "var(--bg-card-alt)" : "transparent",
                     cursor: "pointer",
                     transition: "background 0.12s",
                 }}
@@ -158,9 +158,9 @@ function CampaignRow({
                 <span style={{
                     fontSize: 11,
                     fontWeight: 800,
-                    color: "#92400E",
-                    background: "#FEF3C7",
-                    border: "1px solid #FDE68A",
+                    color: "#fbbf24",
+                    background: "rgba(245,158,11,0.12)",
+                    border: "1px solid rgba(245,158,11,0.4)",
                     borderRadius: 999,
                     padding: "3px 10px",
                     minWidth: 44,
@@ -171,28 +171,28 @@ function CampaignRow({
                     {campaignCode}
                 </span>
 
-                <span style={{ fontSize: 12, color: "#6B7280", flexShrink: 0 }}>
+                <span style={{ fontSize: 12, color: "var(--text-secondary)", flexShrink: 0 }}>
                     {formatCampaignDate(campaign.campaign_opened_at ?? campaign.created_at)}
                     {campaign.campaign_closed_at ? ` → ${formatCampaignDate(campaign.campaign_closed_at)}` : ""}
                 </span>
 
                 <StatusBadge status={campaign.status} />
 
-                <span style={{ fontSize: 12, color: "#6B7280", display: "flex", gap: 10, marginLeft: 8 }}>
-                    <span><b style={{ color: "#111827" }}>{campaign.reserved_users_count}</b> prenotat{campaign.reserved_users_count === 1 ? "o" : "i"}</span>
-                    <span style={{ color: "#D1D5DB" }}>·</span>
-                    <span><b style={{ color: "#111827" }}>{campaign.total_applications_count}</b> candidature</span>
+                <span style={{ fontSize: 12, color: "var(--text-secondary)", display: "flex", gap: 10, marginLeft: 8 }}>
+                    <span><b style={{ color: "var(--text-primary)" }}>{campaign.reserved_users_count}</b> prenotat{campaign.reserved_users_count === 1 ? "o" : "i"}</span>
+                    <span style={{ color: "var(--border)" }}>·</span>
+                    <span><b style={{ color: "var(--text-primary)" }}>{campaign.total_applications_count}</b> candidature</span>
                     {isClosed && (
                         <>
-                            <span style={{ color: "#D1D5DB" }}>·</span>
-                            <span><b style={{ color: "#6366F1" }}>{loadingScenarios ? "…" : scenarios.length}</b> simulazion{scenarios.length === 1 ? "e" : "i"}</span>
+                            <span style={{ color: "var(--border)" }}>·</span>
+                            <span><b style={{ color: "var(--accent-purple)" }}>{loadingScenarios ? "…" : scenarios.length}</b> simulazion{scenarios.length === 1 ? "e" : "i"}</span>
                         </>
                     )}
                 </span>
 
                 <span style={{
                     marginLeft: "auto",
-                    color: "#9CA3AF",
+                    color: "var(--text-muted)",
                     fontSize: 10,
                     display: "inline-block",
                     transform: isOpen ? "rotate(180deg)" : "none",
@@ -202,43 +202,43 @@ function CampaignRow({
             </button>
 
             {isOpen && (
-                <div style={{ borderTop: "1px solid #E5E7EB", background: "#F9FAFB" }}>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 24px", padding: "14px 18px 12px", fontSize: 12, color: "#6B7280" }}>
-                        <span>Prenotazioni aperte: <b style={{ color: "#374151" }}>{formatDate(campaign.reservations_opened_at)}</b></span>
-                        <span>Prenotazioni chiuse: <b style={{ color: "#374151" }}>{formatDate(campaign.reservations_closed_at)}</b></span>
-                        <span>Campagna aperta: <b style={{ color: "#374151" }}>{formatDate(campaign.campaign_opened_at)}</b></span>
-                        <span>Campagna chiusa: <b style={{ color: "#374151" }}>{formatDate(campaign.campaign_closed_at)}</b></span>
+                <div style={{ borderTop: "1px solid var(--border)", background: "var(--bg-card-alt)" }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 24px", padding: "14px 18px 12px", fontSize: 12, color: "var(--text-secondary)" }}>
+                        <span>Prenotazioni aperte: <b style={{ color: "var(--text-primary)" }}>{formatDate(campaign.reservations_opened_at)}</b></span>
+                        <span>Prenotazioni chiuse: <b style={{ color: "var(--text-primary)" }}>{formatDate(campaign.reservations_closed_at)}</b></span>
+                        <span>Campagna aperta: <b style={{ color: "var(--text-primary)" }}>{formatDate(campaign.campaign_opened_at)}</b></span>
+                        <span>Campagna chiusa: <b style={{ color: "var(--text-primary)" }}>{formatDate(campaign.campaign_closed_at)}</b></span>
                     </div>
 
                     {!isClosed && (
-                        <div style={{ padding: "0 18px 14px", fontSize: 12, color: "#9CA3AF" }}>
+                        <div style={{ padding: "0 18px 14px", fontSize: 12, color: "var(--text-muted)" }}>
                             Storico candidature e simulazioni disponibili dopo chiusura campagna.
                         </div>
                     )}
 
                     {isClosed && loadingDetail && (
-                        <div style={{ padding: "0 18px 12px", fontSize: 12, color: "#9CA3AF" }}>Caricamento candidature archiviate…</div>
+                        <div style={{ padding: "0 18px 12px", fontSize: 12, color: "var(--text-muted)" }}>Caricamento candidature archiviate…</div>
                     )}
 
                     {isClosed && !loadingDetail && detail && (
                         <div style={{ padding: "0 18px", marginBottom: 12 }}>
-                            <span style={{ fontSize: 12, color: "#1D4ED8", background: "#EFF6FF", border: "1px solid #BFDBFE", borderRadius: 8, padding: "4px 10px", display: "inline-block" }}>
+                            <span style={{ fontSize: 12, color: "#93c5fd", background: "rgba(59,130,246,0.12)", border: "1px solid rgba(59,130,246,0.4)", borderRadius: 8, padding: "4px 10px", display: "inline-block" }}>
                                 Snapshot: <b>{detail.applications.length}</b> candidature archiviate
                             </span>
                         </div>
                     )}
 
                     {isClosed && (
-                        <div style={{ borderTop: "1px solid #E5E7EB", margin: "0 18px 16px" }}>
+                        <div style={{ borderTop: "1px solid var(--border)", margin: "0 18px 16px" }}>
                             <div style={{ display: "flex", alignItems: "center", gap: 8, paddingTop: 12, marginBottom: 10 }}>
-                                <span style={{ fontSize: 11, fontWeight: 700, color: "#374151", textTransform: "uppercase" as const, letterSpacing: "0.06em" }}>
+                                <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-primary)", textTransform: "uppercase" as const, letterSpacing: "0.06em" }}>
                                     Simulazioni Interlocking
                                 </span>
                                 {loadingScenarios && (
-                                    <span style={{ fontSize: 11, color: "#9CA3AF" }}>Caricamento…</span>
+                                    <span style={{ fontSize: 11, color: "var(--text-muted)" }}>Caricamento…</span>
                                 )}
                                 {!loadingScenarios && scenarios.length > 0 && (
-                                    <span style={{ fontSize: 11, color: "#6B7280" }}>({scenarios.length})</span>
+                                    <span style={{ fontSize: 11, color: "var(--text-secondary)" }}>({scenarios.length})</span>
                                 )}
                                 <button
                                     type="button"
@@ -247,8 +247,8 @@ function CampaignRow({
                                         marginLeft: "auto",
                                         borderRadius: 8,
                                         border: "1px solid #C7D2FE",
-                                        background: "#EEF2FF",
-                                        color: "#4F46E5",
+                                        background: "rgba(99,102,241,0.12)",
+                                        color: "var(--accent-purple)",
                                         fontSize: 11,
                                         fontWeight: 700,
                                         padding: "5px 12px",
@@ -260,16 +260,16 @@ function CampaignRow({
                             </div>
 
                             {!loadingScenarios && scenarios.length === 0 && (
-                                <div style={{ fontSize: 12, color: "#9CA3AF", padding: "4px 0 8px" }}>
+                                <div style={{ fontSize: 12, color: "var(--text-muted)", padding: "4px 0 8px" }}>
                                     Nessuna simulazione salvata per questa campagna.
                                 </div>
                             )}
 
                             {scenarios.length > 0 && (
-                                <div style={{ border: "1px solid #E5E7EB", borderRadius: 8, overflow: "hidden", background: "#fff" }}>
+                                <div style={{ border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden", background: "var(--bg-card)" }}>
                                     <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                                         <thead>
-                                            <tr style={{ background: "#F8FAFC" }}>
+                                            <tr style={{ background: "var(--bg-card-alt)" }}>
                                                 <th style={scenarioThStyle}>Codice</th>
                                                 <th style={scenarioThStyle}>Data</th>
                                                 <th style={scenarioThStyle}>Strategia</th>
@@ -285,26 +285,26 @@ function CampaignRow({
                                                     key={sc.id}
                                                     onClick={() => onOpenInInterlocking(campaign.id, sc.id)}
                                                     style={{
-                                                        background: idx % 2 === 0 ? "#fff" : "#FAFAFA",
+                                                        background: idx % 2 === 0 ? "var(--bg-card)" : "var(--bg-card-alt)",
                                                         cursor: "pointer",
                                                         transition: "background 0.1s",
                                                     }}
-                                                    onMouseEnter={(e) => { e.currentTarget.style.background = "#EEF2FF"; }}
-                                                    onMouseLeave={(e) => { e.currentTarget.style.background = idx % 2 === 0 ? "#fff" : "#FAFAFA"; }}
+                                                    onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(99,102,241,0.12)"; }}
+                                                    onMouseLeave={(e) => { e.currentTarget.style.background = idx % 2 === 0 ? "var(--bg-card)" : "var(--bg-card-alt)"; }}
                                                 >
                                                     <td style={scenarioTdStyle}>
-                                                        <span style={{ fontWeight: 700, color: "#6366F1", fontFamily: "monospace" }}>{sc.scenario_code}</span>
+                                                        <span style={{ fontWeight: 700, color: "var(--accent-purple)", fontFamily: "monospace" }}>{sc.scenario_code}</span>
                                                     </td>
                                                     <td style={scenarioTdStyle}>{formatDate(sc.generated_at)}</td>
                                                     <td style={scenarioTdStyle}>
-                                                        <span style={{ padding: "2px 7px", borderRadius: 6, background: "#F5F3FF", color: "#7C3AED", fontWeight: 600, fontSize: 11 }}>
+                                                        <span style={{ padding: "2px 7px", borderRadius: 6, background: "rgba(124,58,237,0.15)", color: "#c4b5fd", fontWeight: 600, fontSize: 11 }}>
                                                             {sc.strategy ?? "NONE"}
                                                         </span>
                                                     </td>
                                                     <td style={scenarioTdStyle}><b>{Number(sc.total_chains)}</b></td>
                                                     <td style={scenarioTdStyle}><b>{Number(sc.unique_people)}</b></td>
                                                     <td style={scenarioTdStyle}>{sc.avg_priority != null ? Number(sc.avg_priority).toFixed(2) : "—"}</td>
-                                                    <td style={{ ...scenarioTdStyle, color: "#6366F1", fontWeight: 700, textAlign: "right" as const }}>→</td>
+                                                    <td style={{ ...scenarioTdStyle, color: "var(--accent-purple)", fontWeight: 700, textAlign: "right" as const }}>→</td>
                                                 </tr>
                                             ))}
                                         </tbody>
@@ -686,7 +686,7 @@ export default function AdminCampaigns() {
             });
         }
 
-        const relationStroke = mapDirection === "from" ? "#1d4ed8" : "#b91c1c";
+        const relationStroke = mapDirection === "from" ? "#3b82f6" : "#ef4444";
         const relationFill = mapDirection === "from" ? "#3b82f6" : "#ef4444";
 
         for (const person of related) {
@@ -825,20 +825,20 @@ export default function AdminCampaigns() {
         candidaturesSortField === field ? (candidaturesSortDir === "asc" ? " ↑" : " ↓") : " ⇅";
 
     if (loading) {
-        return <div style={{ padding: 40, color: "#64748b" }}>Caricamento campagne candidature…</div>;
+        return <div style={{ padding: 40, color: "var(--text-secondary)" }}>Caricamento campagne candidature…</div>;
     }
 
     return (
         <div style={{ padding: "16px 40px 28px", paddingTop: "72px", fontFamily: "'Inter', sans-serif", maxWidth: 1400 }}>
 
             {error && (
-                <div style={{ background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: 8, padding: "10px 14px", color: "#dc2626", fontSize: 13, marginBottom: 20 }}>
+                <div style={{ background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.4)", borderRadius: 8, padding: "10px 14px", color: "#fca5a5", fontSize: 13, marginBottom: 20 }}>
                     {error}
                 </div>
             )}
 
             <section style={{ marginBottom: 20 }}>
-                <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, padding: "12px 14px", background: "#f8fafc" }}>
+                <div style={{ border: "1px solid var(--border)", borderRadius: 10, padding: "12px 14px", background: "var(--bg-card-alt)" }}>
                     <div
                         style={{
                             display: "grid",
@@ -848,7 +848,7 @@ export default function AdminCampaigns() {
                             marginBottom: 8,
                         }}
                     >
-                        <div style={{ fontSize: 12, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
                             Stato campagna
                         </div>
                         <div
@@ -877,13 +877,13 @@ export default function AdminCampaigns() {
                                 onMouseLeave={() => setHoveredStep((prev) => (prev === step.key ? null : prev))}
                                 style={{
                                     borderRadius: 8,
-                                    border: `1px solid ${lifecyclePhase === step.key ? "#fb923c" : "#e5e7eb"}`,
-                                    background: lifecyclePhase === step.key ? "#fff7ed" : "#ffffff",
-                                    color: lifecyclePhase === step.key ? "#9a3412" : "#6b7280",
+                                    border: `1px solid ${lifecyclePhase === step.key ? "var(--accent-purple)" : "var(--border)"}`,
+                                    background: lifecyclePhase === step.key ? "rgba(124,58,237,0.15)" : "var(--bg-card)",
+                                    color: lifecyclePhase === step.key ? "#c4b5fd" : "var(--text-secondary)",
                                     boxShadow: lifecyclePhase === step.key
-                                        ? "0 0 0 1px rgba(251,146,60,0.35), 0 0 18px rgba(251,146,60,0.28)"
+                                        ? "0 0 0 1px rgba(124,58,237,0.35), 0 0 18px rgba(124,58,237,0.28)"
                                         : (stepActionByKey[step.key] && hoveredStep === step.key)
-                                            ? "0 0 0 1px rgba(251,146,60,0.28), 0 0 14px rgba(251,146,60,0.24)"
+                                            ? "0 0 0 1px rgba(124,58,237,0.28), 0 0 14px rgba(124,58,237,0.24)"
                                             : "none",
                                     fontSize: 12,
                                     fontWeight: 600,
@@ -898,12 +898,12 @@ export default function AdminCampaigns() {
                             </button>
                         ))}
                         </div>
-                        <div style={{ fontSize: 12, color: "#374151", fontWeight: 600, whiteSpace: "nowrap" }}>
+                        <div style={{ fontSize: 12, color: "var(--text-primary)", fontWeight: 600, whiteSpace: "nowrap" }}>
                             {activeCampaign ? `ID ${campaignCodeById.get(activeCampaign.id) ?? "—"}` : "Nessuna attiva"}
                         </div>
                     </div>
-                    <div style={{ fontSize: 12, color: "#64748b", lineHeight: 1.4 }}>
-                        Stato corrente: <b style={{ color: "#334155" }}>{STATUS_LABEL[lifecyclePhase]}</b>. {lifecycleHint}
+                    <div style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.4 }}>
+                        Stato corrente: <b style={{ color: "var(--text-primary)" }}>{STATUS_LABEL[lifecyclePhase]}</b>. {lifecycleHint}
                         {activeCampaign ? ` · ${reservedCount} prenotati, ${availableCount} disponibili.` : ""}
                     </div>
                 </div>
@@ -911,19 +911,19 @@ export default function AdminCampaigns() {
 
             <section style={{ marginBottom: 24 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
-                    <h3 style={{ fontSize: 15, fontWeight: 600, color: "#374151", margin: 0 }}>Dati campagna chiusa</h3>
+                    <h3 style={{ fontSize: 15, fontWeight: 600, color: "var(--text-primary)", margin: 0 }}>Dati campagna chiusa</h3>
                     <select
                         value={selectedDataCampaignId ?? ""}
                         onChange={(e) => setCampaignQuery(e.target.value || null, activeTabSafe)}
                         style={{
                             minWidth: 520,
                             maxWidth: "100%",
-                            border: "1px solid #d1d5db",
+                            border: "1px solid var(--border)",
                             borderRadius: 8,
                             padding: "8px 10px",
                             fontSize: 13,
-                            background: "#fff",
-                            color: "#111827",
+                            background: "var(--bg-card)",
+                            color: "var(--text-primary)",
                         }}
                     >
                         {closedCampaigns.length === 0 ? (
@@ -942,8 +942,8 @@ export default function AdminCampaigns() {
                             display: "flex",
                             gap: 8,
                             alignItems: "center",
-                            border: "1px solid #e5e7eb",
-                            background: "#f8fafc",
+                            border: "1px solid var(--border)",
+                            background: "var(--bg-card-alt)",
                             borderRadius: 12,
                             padding: "6px 8px",
                         }}
@@ -961,9 +961,9 @@ export default function AdminCampaigns() {
                                     onClick={() => setCampaignQuery(selectedDataCampaignId, tab.id as CampaignTab)}
                                     style={{
                                         borderRadius: 999,
-                                        border: `1px solid ${isActive ? "#fb923c" : "#d1d5db"}`,
-                                        background: isActive ? "#fff7ed" : "#fff",
-                                        color: isActive ? "#9a3412" : "#374151",
+                                        border: `1px solid ${isActive ? "var(--accent-purple)" : "var(--border)"}`,
+                                        background: isActive ? "rgba(124,58,237,0.15)" : "var(--bg-card)",
+                                        color: isActive ? "#c4b5fd" : "var(--text-primary)",
                                         fontSize: 12,
                                         fontWeight: 700,
                                         padding: "6px 12px",
@@ -1000,15 +1000,15 @@ export default function AdminCampaigns() {
                 )}
 
                 {loadingDetailId === selectedDataCampaignId && (
-                    <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 10 }}>Caricamento dettagli campagna…</div>
+                    <div style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 10 }}>Caricamento dettagli campagna…</div>
                 )}
 
                 {activeTabSafe === "candidatures" && (
-                    <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, overflow: "hidden", background: "#fff" }}>
+                    <div style={{ border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden", background: "var(--bg-card)" }}>
                         <div style={{ padding: "14px 16px 0", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
                             <div>
-                                <div style={{ fontSize: 15, fontWeight: 700, color: "#111827" }}>Lista candidature</div>
-                                <div style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }}>
+                                <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>Lista candidature</div>
+                                <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 2 }}>
                                     {filteredApplications.length} di {selectedApplications.length} candidature snapshot
                                 </div>
                             </div>
@@ -1018,9 +1018,9 @@ export default function AdminCampaigns() {
                                     onClick={resetCandidaturesFilters}
                                     style={{
                                         borderRadius: 999,
-                                        border: "1px solid #d1d5db",
-                                        background: "#fff",
-                                        color: "#374151",
+                                        border: "1px solid var(--border)",
+                                        background: "var(--bg-card)",
+                                        color: "var(--text-primary)",
                                         fontSize: 12,
                                         fontWeight: 700,
                                         padding: "6px 12px",
@@ -1032,7 +1032,7 @@ export default function AdminCampaigns() {
                             )}
                         </div>
 
-                        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", padding: "12px 16px 14px", borderBottom: "1px solid #e5e7eb", alignItems: "center" }}>
+                        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", padding: "12px 16px 14px", borderBottom: "1px solid var(--border)", alignItems: "center" }}>
                             <input
                                 type="text"
                                 value={candidaturesSearch}
@@ -1041,12 +1041,12 @@ export default function AdminCampaigns() {
                                 style={{
                                     flex: 1,
                                     minWidth: 210,
-                                    border: "1px solid #d1d5db",
+                                    border: "1px solid var(--border)",
                                     borderRadius: 10,
                                     padding: "8px 10px",
                                     fontSize: 13,
-                                    color: "#111827",
-                                    background: "#fff",
+                                    color: "var(--text-primary)",
+                                    background: "var(--bg-card)",
                                 }}
                             />
                             <select value={filterCandidateRole} onChange={(e) => setFilterCandidateRole(e.target.value)} style={tableFilterSelectStyle}>
@@ -1075,17 +1075,17 @@ export default function AdminCampaigns() {
                                         <th colSpan={4} style={targetGroupHeaderStyle}>Posizione target</th>
                                         <th colSpan={3} style={applicationGroupHeaderStyle}>Candidatura</th>
                                     </tr>
-                                    <tr style={{ background: "#fafafa" }}>
+                                    <tr style={{ background: "var(--bg-card-alt)" }}>
                                         <th style={tableThStyle} onClick={() => handleCandidaturesSort("candidate")}>
                                             Nome{sortIcon("candidate")}
                                         </th>
                                         <th style={tableThStyle}>Ruolo</th>
-                                        <th style={{ ...tableThStyle, borderRight: "2px solid #e5e7eb" }}>Sede</th>
+                                        <th style={{ ...tableThStyle, borderRight: "2px solid var(--border)" }}>Sede</th>
 
                                         <th style={tableThStyle}>Occupato da</th>
                                         <th style={tableThStyle}>Ruolo</th>
                                         <th style={tableThStyle}>Reparto</th>
-                                        <th style={{ ...tableThStyle, borderRight: "2px solid #e5e7eb" }}>Sede</th>
+                                        <th style={{ ...tableThStyle, borderRight: "2px solid var(--border)" }}>Sede</th>
 
                                         <th style={tableThStyle} onClick={() => handleCandidaturesSort("created_at")}>
                                             Data{sortIcon("created_at")}
@@ -1108,7 +1108,7 @@ export default function AdminCampaigns() {
                                     ) : filteredApplications.map((row, index) => (
                                         <tr
                                             key={row.id}
-                                            style={{ background: index % 2 === 0 ? "#ffffff" : "#fafafa" }}
+                                            style={{ background: index % 2 === 0 ? "var(--bg-card)" : "var(--bg-card-alt)" }}
                                         >
                                             <td style={tableTdStyle}>
                                                 {row.candidate_full_name ?? "—"}
@@ -1116,7 +1116,7 @@ export default function AdminCampaigns() {
                                             <td style={tableTdStyle}>
                                                 <span style={candidatePillStyle}>{row.candidate_role_name ?? "—"}</span>
                                             </td>
-                                            <td style={{ ...tableTdStyle, borderRight: "2px solid #e5e7eb" }}>
+                                            <td style={{ ...tableTdStyle, borderRight: "2px solid var(--border)" }}>
                                                 {row.candidate_location_name ?? "—"}
                                             </td>
 
@@ -1127,7 +1127,7 @@ export default function AdminCampaigns() {
                                                 <span style={targetPillStyle}>{row.target_role_name ?? "—"}</span>
                                             </td>
                                             <td style={tableTdStyle}>{row.target_org_unit_name ?? "—"}</td>
-                                            <td style={{ ...tableTdStyle, borderRight: "2px solid #e5e7eb" }}>
+                                            <td style={{ ...tableTdStyle, borderRight: "2px solid var(--border)" }}>
                                                 {row.target_location_name ?? "—"}
                                             </td>
 
@@ -1145,8 +1145,8 @@ export default function AdminCampaigns() {
                 )}
 
                 {activeTabSafe === "map" && (
-                    <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, overflow: "hidden", background: "#fff" }}>
-                        <div style={{ padding: "10px 12px", borderBottom: "1px solid #e5e7eb", fontSize: 13, color: "#6b7280" }}>
+                    <div style={{ border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden", background: "var(--bg-card)" }}>
+                        <div style={{ padding: "10px 12px", borderBottom: "1px solid var(--border)", fontSize: 13, color: "var(--text-secondary)" }}>
                             Mappa utenti attivi della campagna selezionata: vista completa iniziale, poi filtro DA/VERSO su persona selezionata.
                         </div>
                         <div style={{ height: 520, position: "relative", display: "grid", gridTemplateColumns: "1.75fr 0.55fr", minHeight: 0 }}>
@@ -1157,9 +1157,9 @@ export default function AdminCampaigns() {
                                     display: "flex",
                                     alignItems: "center",
                                     justifyContent: "center",
-                                    color: "#9ca3af",
+                                    color: "var(--text-muted)",
                                     fontSize: 14,
-                                    background: "#f8fafc",
+                                    background: "var(--bg-card-alt)",
                                 }}>
                                     Nessuna sede geolocalizzata disponibile per questa campagna.
                                 </div>
@@ -1202,18 +1202,18 @@ export default function AdminCampaigns() {
                                             ))}
                                         </MapContainer>
                                     </div>
-                                    <div style={{ borderLeft: "1px solid #e5e7eb", background: "#fff", minHeight: 0, display: "grid", gridTemplateRows: "auto 1fr" }}>
-                                        <div style={{ padding: "10px 12px", borderBottom: "1px solid #e5e7eb" }}>
-                                            <div style={{ fontSize: 13, fontWeight: 700, color: "#111827" }}>Persone coinvolte</div>
+                                    <div style={{ borderLeft: "1px solid var(--border)", background: "var(--bg-card)", minHeight: 0, display: "grid", gridTemplateRows: "auto 1fr" }}>
+                                        <div style={{ padding: "10px 12px", borderBottom: "1px solid var(--border)" }}>
+                                            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>Persone coinvolte</div>
                                             <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
                                                 <button
                                                     type="button"
                                                     onClick={() => setMapDirection("from")}
                                                     style={{
                                                         borderRadius: 999,
-                                                        border: `1px solid ${mapDirection === "from" ? "#1d4ed8" : "#d1d5db"}`,
-                                                        background: mapDirection === "from" ? "#eff6ff" : "#fff",
-                                                        color: mapDirection === "from" ? "#1d4ed8" : "#4b5563",
+                                                        border: `1px solid ${mapDirection === "from" ? "rgba(59,130,246,0.5)" : "var(--border)"}`,
+                                                        background: mapDirection === "from" ? "rgba(59,130,246,0.12)" : "var(--bg-card)",
+                                                        color: mapDirection === "from" ? "#93c5fd" : "var(--text-secondary)",
                                                         fontSize: 11,
                                                         fontWeight: 700,
                                                         padding: "4px 10px",
@@ -1227,9 +1227,9 @@ export default function AdminCampaigns() {
                                                     onClick={() => setMapDirection("to")}
                                                     style={{
                                                         borderRadius: 999,
-                                                        border: `1px solid ${mapDirection === "to" ? "#b91c1c" : "#d1d5db"}`,
-                                                        background: mapDirection === "to" ? "#fef2f2" : "#fff",
-                                                        color: mapDirection === "to" ? "#b91c1c" : "#4b5563",
+                                                        border: `1px solid ${mapDirection === "to" ? "rgba(239,68,68,0.5)" : "var(--border)"}`,
+                                                        background: mapDirection === "to" ? "rgba(239,68,68,0.12)" : "var(--bg-card)",
+                                                        color: mapDirection === "to" ? "#fca5a5" : "var(--text-secondary)",
                                                         fontSize: 11,
                                                         fontWeight: 700,
                                                         padding: "4px 10px",
@@ -1243,9 +1243,9 @@ export default function AdminCampaigns() {
                                                     onClick={() => setSelectedMapPersonKey(null)}
                                                     style={{
                                                         borderRadius: 999,
-                                                        border: "1px solid #d1d5db",
-                                                        background: "#fff",
-                                                        color: "#4b5563",
+                                                        border: "1px solid var(--border)",
+                                                        background: "var(--bg-card)",
+                                                        color: "var(--text-secondary)",
                                                         fontSize: 11,
                                                         fontWeight: 700,
                                                         padding: "4px 10px",
@@ -1256,7 +1256,7 @@ export default function AdminCampaigns() {
                                                     Reset
                                                 </button>
                                             </div>
-                                            <div style={{ fontSize: 11, color: "#6b7280", marginTop: 6 }}>
+                                            <div style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 6 }}>
                                                 {selectedMapPersonKey
                                                     ? mapDirection === "from"
                                                         ? "Blu: utenti verso cui il selezionato si è candidato"
@@ -1266,7 +1266,7 @@ export default function AdminCampaigns() {
                                         </div>
                                         <div style={{ overflowY: "auto", padding: "8px", display: "grid", gap: 7, alignContent: "start" }}>
                                             {mapPeople.length === 0 ? (
-                                                <div style={{ fontSize: 12, color: "#9ca3af" }}>Nessuna persona geolocalizzabile.</div>
+                                                <div style={{ fontSize: 12, color: "var(--text-muted)" }}>Nessuna persona geolocalizzabile.</div>
                                             ) : mapPeople.map((person) => {
                                                 const isActive = selectedMapPersonKey === person.key;
                                                 return (
@@ -1277,17 +1277,17 @@ export default function AdminCampaigns() {
                                                         style={{
                                                             textAlign: "left",
                                                             borderRadius: 10,
-                                                            border: isActive ? "1px solid #f59e0b" : "1px solid #e5e7eb",
-                                                            background: isActive ? "#fffbeb" : "#fff",
+                                                            border: isActive ? "1px solid var(--accent-orange)" : "1px solid var(--border)",
+                                                            background: isActive ? "rgba(245,158,11,0.12)" : "var(--bg-card)",
                                                             padding: "8px 9px",
                                                             cursor: "pointer",
                                                             opacity: person.latitude != null && person.longitude != null ? 1 : 0.72,
                                                         }}
                                                         title={person.latitude != null && person.longitude != null ? "Evidenzia sede sulla mappa" : "Sede non geolocalizzata"}
                                                     >
-                                                        <div style={{ fontWeight: 600, fontSize: 12, color: "#111827" }}>{person.fullName}</div>
-                                                        <div style={{ fontSize: 11, color: "#4b5563", marginTop: 2 }}>{person.roleName}</div>
-                                                        <div style={{ fontSize: 11, color: "#6b7280", marginTop: 1 }}>
+                                                        <div style={{ fontWeight: 600, fontSize: 12, color: "var(--text-primary)" }}>{person.fullName}</div>
+                                                        <div style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 2 }}>{person.roleName}</div>
+                                                        <div style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 1 }}>
                                                             {person.locationName}
                                                         </div>
                                                     </button>
@@ -1305,20 +1305,20 @@ export default function AdminCampaigns() {
             {activeTabSafe === "lifecycle" && (
                 <section>
                     <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-                        <h3 style={{ fontSize: 15, fontWeight: 700, color: "#111827", margin: 0 }}>
+                        <h3 style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>
                             Storico campagne
                         </h3>
                         {campaigns.length > 0 && (
-                            <span style={{ fontSize: 12, fontWeight: 600, color: "#6B7280", background: "#F3F4F6", border: "1px solid #E5E7EB", borderRadius: 999, padding: "2px 10px" }}>
+                            <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", background: "var(--bg-card-alt)", border: "1px solid var(--border)", borderRadius: 999, padding: "2px 10px" }}>
                                 {campaigns.length}
                             </span>
                         )}
-                        <span style={{ fontSize: 12, color: "#9CA3AF", marginLeft: 4 }}>
+                        <span style={{ fontSize: 12, color: "var(--text-muted)", marginLeft: 4 }}>
                             Espandi per vedere dettagli e simulazioni collegate
                         </span>
                     </div>
                     {campaigns.length === 0 ? (
-                        <div style={{ color: "#9ca3af", fontSize: 13 }}>Nessuna campagna registrata.</div>
+                        <div style={{ color: "var(--text-muted)", fontSize: 13 }}>Nessuna campagna registrata.</div>
                     ) : (
                         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                             {campaigns.map((campaign) => (
@@ -1349,8 +1349,8 @@ export default function AdminCampaigns() {
 const tableThStyle: React.CSSProperties = {
     textAlign: "left",
     fontWeight: 700,
-    color: "#374151",
-    borderBottom: "1px solid #e5e7eb",
+    color: "var(--text-primary)",
+    borderBottom: "1px solid var(--border)",
     padding: "8px 10px",
     fontSize: 11,
     letterSpacing: "0.05em",
@@ -1360,24 +1360,24 @@ const tableThStyle: React.CSSProperties = {
 };
 
 const tableTdStyle: React.CSSProperties = {
-    borderBottom: "1px solid #f1f5f9",
+    borderBottom: "1px solid var(--border)",
     padding: "8px 10px",
-    color: "#111827",
+    color: "var(--text-primary)",
     verticalAlign: "top",
     whiteSpace: "nowrap",
 };
 
 const metricBoxStyle: React.CSSProperties = {
-    border: "1px solid #e5e7eb",
+    border: "1px solid var(--border)",
     borderRadius: 8,
-    background: "#fff",
+    background: "var(--bg-card)",
     padding: "8px 10px",
     minWidth: 150,
 };
 
 const metricLabelStyle: React.CSSProperties = {
     fontSize: 11,
-    color: "#6b7280",
+    color: "var(--text-secondary)",
     fontWeight: 600,
     textTransform: "uppercase",
 };
@@ -1385,17 +1385,17 @@ const metricLabelStyle: React.CSSProperties = {
 const metricValueStyle: React.CSSProperties = {
     marginTop: 4,
     fontSize: 20,
-    color: "#111827",
+    color: "var(--text-primary)",
     fontWeight: 700,
 };
 
 const tableFilterSelectStyle: React.CSSProperties = {
     minWidth: 160,
     height: 36,
-    border: "1px solid #d1d5db",
+    border: "1px solid var(--border)",
     borderRadius: 10,
-    background: "#fff",
-    color: "#111827",
+    background: "var(--bg-card)",
+    color: "var(--text-primary)",
     fontSize: 13,
     padding: "0 10px",
 };
@@ -1405,12 +1405,12 @@ const candidateGroupHeaderStyle: React.CSSProperties = {
     padding: "10px 10px 6px",
     fontSize: 10.5,
     fontWeight: 700,
-    color: "#9a3412",
+    color: "#fbbf24",
     textTransform: "uppercase",
     letterSpacing: "0.08em",
-    borderBottom: "2px solid #fdba74",
-    background: "rgba(251,146,60,0.08)",
-    borderRight: "2px solid #e5e7eb",
+    borderBottom: "2px solid rgba(245,158,11,0.4)",
+    background: "rgba(245,158,11,0.08)",
+    borderRight: "2px solid var(--border)",
 };
 
 const targetGroupHeaderStyle: React.CSSProperties = {
@@ -1418,12 +1418,12 @@ const targetGroupHeaderStyle: React.CSSProperties = {
     padding: "10px 10px 6px",
     fontSize: 10.5,
     fontWeight: 700,
-    color: "#1d4ed8",
+    color: "#93c5fd",
     textTransform: "uppercase",
     letterSpacing: "0.08em",
-    borderBottom: "2px solid #93c5fd",
+    borderBottom: "2px solid rgba(59,130,246,0.4)",
     background: "rgba(59,130,246,0.07)",
-    borderRight: "2px solid #e5e7eb",
+    borderRight: "2px solid var(--border)",
 };
 
 const applicationGroupHeaderStyle: React.CSSProperties = {
@@ -1431,19 +1431,19 @@ const applicationGroupHeaderStyle: React.CSSProperties = {
     padding: "10px 10px 6px",
     fontSize: 10.5,
     fontWeight: 700,
-    color: "#475569",
+    color: "var(--text-secondary)",
     textTransform: "uppercase",
     letterSpacing: "0.08em",
-    borderBottom: "2px solid #cbd5e1",
-    background: "#f8fafc",
+    borderBottom: "2px solid var(--border)",
+    background: "var(--bg-card-alt)",
 };
 
 const candidatePillStyle: React.CSSProperties = {
     display: "inline-flex",
     padding: "3px 8px",
     borderRadius: 8,
-    background: "#fff7ed",
-    color: "#c2410c",
+    background: "rgba(245,158,11,0.12)",
+    color: "#fbbf24",
     fontSize: 11,
     fontWeight: 600,
 };
@@ -1452,8 +1452,8 @@ const targetPillStyle: React.CSSProperties = {
     display: "inline-flex",
     padding: "3px 8px",
     borderRadius: 8,
-    background: "#eff6ff",
-    color: "#1d4ed8",
+    background: "rgba(59,130,246,0.12)",
+    color: "#93c5fd",
     fontSize: 11,
     fontWeight: 600,
 };
@@ -1465,8 +1465,8 @@ const priorityBadgeStyle: React.CSSProperties = {
     borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
-    background: "#ffedd5",
-    color: "#c2410c",
+    background: "rgba(245,158,11,0.15)",
+    color: "#fbbf24",
     fontSize: 12,
     fontWeight: 700,
 };
@@ -1476,16 +1476,16 @@ const scenarioThStyle: React.CSSProperties = {
     padding: "7px 10px",
     fontSize: 10.5,
     fontWeight: 700,
-    color: "#6B7280",
+    color: "var(--text-secondary)",
     textTransform: "uppercase",
     letterSpacing: "0.05em",
-    borderBottom: "1px solid #E5E7EB",
+    borderBottom: "1px solid var(--border)",
     whiteSpace: "nowrap",
 };
 
 const scenarioTdStyle: React.CSSProperties = {
     padding: "7px 10px",
-    color: "#374151",
+    color: "var(--text-primary)",
     borderBottom: "1px solid #F1F5F9",
     whiteSpace: "nowrap",
 };

@@ -163,7 +163,7 @@ const MobilityDashboard: React.FC = () => {
     return (
       <div style={{
         display: "flex", height: "100vh", alignItems: "center",
-        justifyContent: "center", fontFamily: "'Inter', sans-serif", background: "#f1f5f9",
+        justifyContent: "center", fontFamily: "'Inter', sans-serif", background: "var(--bg-base)",
       }}>
         <div className="db-loading">
           <div className="db-spinner" />
@@ -183,10 +183,10 @@ const MobilityDashboard: React.FC = () => {
           <div className="db-card" style={{
             marginBottom: "16px",
             padding: "12px 16px",
-            background: "#eff6ff",
-            border: "1px solid #93c5fd",
+            background: "rgba(59,130,246,0.1)",
+            border: "1px solid rgba(59,130,246,0.4)",
             borderRadius: "10px",
-            color: "#1e3a8a",
+            color: "#93c5fd",
             fontSize: "13px",
             fontWeight: 600,
           }}>
@@ -198,10 +198,10 @@ const MobilityDashboard: React.FC = () => {
           <div className="db-card" style={{
             marginBottom: "16px",
             padding: "12px 16px",
-            background: "#ecfdf5",
-            border: "1px solid #6ee7b7",
+            background: "rgba(16,185,129,0.1)",
+            border: "1px solid rgba(16,185,129,0.4)",
             borderRadius: "10px",
-            color: "#065f46",
+            color: "#6ee7b7",
             fontSize: "13px",
             fontWeight: 600,
             display: "flex",
@@ -224,10 +224,10 @@ const MobilityDashboard: React.FC = () => {
           <div className="db-card" style={{
             marginBottom: "16px",
             padding: "12px 16px",
-            background: "#fffbeb",
-            border: "1px solid #fcd34d",
+            background: "rgba(245,158,11,0.1)",
+            border: "1px solid rgba(245,158,11,0.4)",
             borderRadius: "10px",
-            color: "#92400e",
+            color: "#fbbf24",
             fontSize: "13px",
             fontWeight: 600,
           }}>
@@ -239,10 +239,10 @@ const MobilityDashboard: React.FC = () => {
           <div className="db-card" style={{
             marginBottom: "16px",
             padding: "12px 16px",
-            background: "#fff7ed",
-            border: "1px solid #fdba74",
+            background: "rgba(245,158,11,0.1)",
+            border: "1px solid rgba(245,158,11,0.4)",
             borderRadius: "10px",
-            color: "#9a3412",
+            color: "#fbbf24",
             fontSize: "13px",
             fontWeight: 600,
           }}>
@@ -254,10 +254,10 @@ const MobilityDashboard: React.FC = () => {
           <div className="db-card" style={{
             marginBottom: "16px",
             padding: "12px 16px",
-            background: "#f8fafc",
-            border: "1px solid #cbd5e1",
+            background: "var(--bg-card-alt)",
+            border: "1px solid var(--border)",
             borderRadius: "10px",
-            color: "#0f172a",
+            color: "var(--text-primary)",
             fontSize: "13px",
             fontWeight: 600,
           }}>

@@ -136,10 +136,10 @@ const RegisterPage: React.FC = () => {
                 <div style={{ width: 48, height: 48, background: "#fff", borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 10px rgba(0,0,0,0.08)", overflow: "hidden" }}>
                     <img src="/jip-logo-icon.jpg" alt="JIP Logo" style={{ width: "75%", height: "75%", objectFit: "contain" }} />
                 </div>
-                <h2 style={{ fontSize: 32, fontWeight: 800, margin: 0, color: "#0f172a", letterSpacing: "0.01em" }}>JIP</h2>
+                <h2 style={{ fontSize: 32, fontWeight: 800, margin: 0, color: "var(--text-primary)", letterSpacing: "0.01em" }}>JIP</h2>
             </div>
 
-            <h3 style={{ fontSize: 18, color: "#334155", marginBottom: "24px", fontWeight: 600 }}>Crea il tuo account</h3>
+            <h3 style={{ fontSize: 18, color: "var(--text-secondary)", marginBottom: "24px", fontWeight: 600 }}>Crea il tuo account</h3>
 
             {error && <p style={{ color: "#ef4444", marginBottom: "16px", fontSize: 14 }}>{error}</p>}
 

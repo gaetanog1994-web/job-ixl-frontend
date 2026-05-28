@@ -258,7 +258,7 @@ const AdminScenariosManager = ({
                 )}
             </div>
 
-            {error && <div style={{ margin: "16px 20px", padding: "10px", background: "#fef2f2", color: "#b91c1c", border: "1px solid #fecaca", borderRadius: "8px", fontSize: "13px" }}>{error}</div>}
+            {error && <div style={{ margin: "16px 20px", padding: "10px", background: "rgba(239,68,68,0.12)", color: "#fca5a5", border: "1px solid rgba(239,68,68,0.4)", borderRadius: "8px", fontSize: "13px" }}>{error}</div>}
 
             {/* LISTA SCENARI */}
             {view === "list" && (
@@ -392,7 +392,7 @@ const AdminScenariosManager = ({
                                             </td>
                                             <td align="center">
                                                 <span style={{ 
-                                                    display: "inline-flex", width: 24, height: 24, borderRadius: "6px", alignItems: "center", justifyContent: "center", background: "#f1f5f9", fontWeight: 700, fontSize: "12px", color: "var(--text-primary)"
+                                                    display: "inline-flex", width: 24, height: 24, borderRadius: "6px", alignItems: "center", justifyContent: "center", background: "var(--bg-card-alt)", fontWeight: 700, fontSize: "12px", color: "var(--text-primary)"
                                                 }}>{a.priority}</span>
                                             </td>
                                             <td align="right">

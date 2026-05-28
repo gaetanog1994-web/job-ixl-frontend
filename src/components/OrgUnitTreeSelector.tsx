@@ -148,12 +148,12 @@ const OrgUnitTreeSelector = ({
             paddingLeft: `${10 + node.depth * 20}px`,
             borderRadius: "8px",
             cursor: isLeaf ? "pointer" : "pointer",
-            background: isSelected ? "rgba(232,81,26,0.08)" : "transparent",
+            background: isSelected ? "rgba(124,58,237,0.1)" : "transparent",
             transition: "background 0.12s",
             userSelect: "none",
           }}
           onMouseEnter={(e) => {
-            if (!isSelected) (e.currentTarget as HTMLDivElement).style.background = "#f8fafc";
+            if (!isSelected) (e.currentTarget as HTMLDivElement).style.background = "var(--bg-card-alt)";
           }}
           onMouseLeave={(e) => {
             if (!isSelected) (e.currentTarget as HTMLDivElement).style.background = "transparent";
@@ -171,12 +171,12 @@ const OrgUnitTreeSelector = ({
                 alignItems: "center",
                 justifyContent: "center",
                 fontSize: "10px",
-                color: "#64748b",
+                color: "var(--text-secondary)",
                 flexShrink: 0,
                 transition: "transform 0.15s, background 0.12s, border-color 0.12s",
                 transform: isExpanded ? "rotate(90deg)" : "none",
-                background: isExpanded ? "#fff7ed" : "#fff",
-                borderColor: isExpanded ? "#fed7aa" : "#e2e8f0",
+                background: isExpanded ? "rgba(124,58,237,0.1)" : "var(--bg-card)",
+                borderColor: isExpanded ? "var(--accent-purple)" : "var(--border)",
               }}
             >
               ›
@@ -190,7 +190,7 @@ const OrgUnitTreeSelector = ({
                 alignItems: "center",
                 justifyContent: "center",
                 fontSize: "9px",
-                color: isSelected ? "#e8511a" : "#cbd5e1",
+                color: isSelected ? "var(--accent-purple)" : "var(--text-muted)",
                 flexShrink: 0,
                 transition: "color 0.12s",
               }}
@@ -203,7 +203,7 @@ const OrgUnitTreeSelector = ({
             style={{
               fontSize: "13px",
               fontWeight: isLeaf ? (isSelected ? 700 : 500) : 600,
-              color: isSelected ? "#e8511a" : isLeaf ? "#0f172a" : "#475569",
+              color: isSelected ? "var(--accent-purple)" : isLeaf ? "var(--text-primary)" : "var(--text-secondary)",
               flex: 1,
               lineHeight: 1.3,
             }}
@@ -212,7 +212,7 @@ const OrgUnitTreeSelector = ({
           </span>
 
           {!isLeaf && (
-            <span style={{ fontSize: "11px", color: "#94a3b8", flexShrink: 0 }}>
+            <span style={{ fontSize: "11px", color: "var(--text-muted)", flexShrink: 0 }}>
               {node.children.length}
             </span>
           )}
@@ -246,9 +246,9 @@ const OrgUnitTreeSelector = ({
           boxSizing: "border-box",
           padding: "8px 10px",
           borderRadius: "9px",
-          border: `1px solid ${isOpen ? "#e8511a" : "#e2e8f0"}`,
-          background: disabled ? "#f8fafc" : "#f1f5f9",
-          color: selectedNode ? "#0f172a" : "#94a3b8",
+          border: `1px solid ${isOpen ? "var(--accent-purple)" : "var(--border)"}`,
+          background: disabled ? "var(--bg-card-alt)" : "var(--bg-card-alt)",
+          color: selectedNode ? "var(--text-primary)" : "var(--text-muted)",
           fontSize: "13px",
           fontFamily: "inherit",
           display: "flex",
@@ -272,14 +272,14 @@ const OrgUnitTreeSelector = ({
               style={{
                 fontSize: "16px",
                 lineHeight: 1,
-                color: "#94a3b8",
+                color: "var(--text-muted)",
                 cursor: "pointer",
                 padding: "0 2px",
                 borderRadius: "3px",
                 transition: "color 0.12s",
               }}
               onMouseEnter={(e) => ((e.target as HTMLElement).style.color = "#ef4444")}
-              onMouseLeave={(e) => ((e.target as HTMLElement).style.color = "#94a3b8")}
+              onMouseLeave={(e) => ((e.target as HTMLElement).style.color = "var(--text-muted)")}
             >
               ×
             </span>
@@ -287,7 +287,7 @@ const OrgUnitTreeSelector = ({
           <span
             style={{
               fontSize: "10px",
-              color: "#94a3b8",
+              color: "var(--text-muted)",
               transition: "transform 0.15s",
               transform: isOpen ? "rotate(180deg)" : "none",
               display: "inline-block",
@@ -304,7 +304,7 @@ const OrgUnitTreeSelector = ({
           style={{
             marginTop: "5px",
             fontSize: "11px",
-            color: "#64748b",
+            color: "var(--text-secondary)",
             display: "flex",
             alignItems: "center",
             gap: "3px",
@@ -313,11 +313,11 @@ const OrgUnitTreeSelector = ({
         >
           {selectedNode.pathNames.map((name, i) => (
             <span key={i} style={{ display: "flex", alignItems: "center", gap: "3px" }}>
-              {i > 0 && <span style={{ color: "#cbd5e1" }}>›</span>}
+              {i > 0 && <span style={{ color: "var(--text-muted)" }}>›</span>}
               <span
                 style={{
                   fontWeight: i === selectedNode.pathNames.length - 1 ? 700 : 400,
-                  color: i === selectedNode.pathNames.length - 1 ? "#0f172a" : "#94a3b8",
+                  color: i === selectedNode.pathNames.length - 1 ? "var(--text-primary)" : "var(--text-muted)",
                 }}
               >
                 {name}
@@ -344,7 +344,7 @@ const OrgUnitTreeSelector = ({
               maxHeight: "300px",
               display: "flex",
               flexDirection: "column",
-              background: "#ffffff",
+              background: "var(--bg-card)",
               border: "1px solid #e2e8f0",
               borderRadius: "12px",
               boxShadow: "0 16px 32px rgba(15,23,42,0.14), 0 2px 8px rgba(15,23,42,0.06)",
@@ -356,7 +356,7 @@ const OrgUnitTreeSelector = ({
             <div
               style={{
                 padding: "10px 10px 8px",
-                borderBottom: "1px solid #f1f5f9",
+                borderBottom: "1px solid var(--border)",
                 flexShrink: 0,
               }}
             >
@@ -365,13 +365,13 @@ const OrgUnitTreeSelector = ({
                   display: "flex",
                   alignItems: "center",
                   gap: "7px",
-                  background: "#f8fafc",
+                  background: "var(--bg-card-alt)",
                   border: "1px solid #e2e8f0",
                   borderRadius: "8px",
                   padding: "0 10px",
                 }}
               >
-                <span style={{ fontSize: "13px", color: "#94a3b8", flexShrink: 0 }}>⌕</span>
+                <span style={{ fontSize: "13px", color: "var(--text-muted)", flexShrink: 0 }}>⌕</span>
                 <input
                   ref={searchRef}
                   placeholder="Cerca unità..."
@@ -384,7 +384,7 @@ const OrgUnitTreeSelector = ({
                     outline: "none",
                     fontSize: "13px",
                     fontFamily: "inherit",
-                    color: "#0f172a",
+                    color: "var(--text-primary)",
                     padding: "7px 0",
                   }}
                 />
@@ -401,7 +401,7 @@ const OrgUnitTreeSelector = ({
                   style={{
                     padding: "20px",
                     textAlign: "center",
-                    color: "#94a3b8",
+                    color: "var(--text-muted)",
                     fontSize: "13px",
                   }}
                 >
@@ -412,7 +412,7 @@ const OrgUnitTreeSelector = ({
                   style={{
                     padding: "20px",
                     textAlign: "center",
-                    color: "#94a3b8",
+                    color: "var(--text-muted)",
                     fontSize: "13px",
                   }}
                 >
@@ -428,9 +428,9 @@ const OrgUnitTreeSelector = ({
               <div
                 style={{
                   padding: "6px 10px",
-                  borderTop: "1px solid #f1f5f9",
+                  borderTop: "1px solid var(--border)",
                   fontSize: "11px",
-                  color: "#94a3b8",
+                  color: "var(--text-muted)",
                   flexShrink: 0,
                 }}
               >

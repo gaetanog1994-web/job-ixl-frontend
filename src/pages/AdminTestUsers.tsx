@@ -134,7 +134,7 @@ const OVERLAY_STYLE: React.CSSProperties = {
 };
 
 const MODAL_STYLE: React.CSSProperties = {
-  background: "#fff",
+  background: "var(--bg-card)",
   borderRadius: "14px",
   padding: "24px",
   maxWidth: "980px",
@@ -246,7 +246,7 @@ const OrgUnitTreeAdmin = ({ units, expanded, onToggleExpand, onAddRoot, onAddChi
     const isExpanded = expanded.has(unit.id);
     return (
       <div key={unit.id}>
-        <div style={{ display: "flex", alignItems: "center", gap: "6px", padding: "8px 10px", paddingLeft: `${16 + depth * 24}px`, borderBottom: "1px solid var(--border)", background: depth % 2 === 0 ? "#fff" : "#fafafa" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "6px", padding: "8px 10px", paddingLeft: `${16 + depth * 24}px`, borderBottom: "1px solid var(--border)", background: depth % 2 === 0 ? "var(--bg-card)" : "var(--bg-card-alt)" }}>
           <button
             onClick={() => onToggleExpand(unit.id)}
             style={{ width: "20px", height: "20px", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", cursor: hasChildren ? "pointer" : "default", color: hasChildren ? "var(--text-secondary)" : "transparent", fontSize: "11px" }}
@@ -256,7 +256,7 @@ const OrgUnitTreeAdmin = ({ units, expanded, onToggleExpand, onAddRoot, onAddChi
           </button>
           <span style={{ flex: 1, fontSize: "14px", fontWeight: depth === 0 ? 600 : 400, color: "var(--text-primary)" }}>{unit.name}</span>
           {typeof unit.assigned_users_count === "number" && unit.assigned_users_count > 0 && (
-            <span style={{ fontSize: "11px", fontWeight: 600, padding: "2px 7px", borderRadius: "999px", background: "rgba(232,81,26,0.08)", color: "var(--brand)", border: "1px solid rgba(232,81,26,0.2)", flexShrink: 0 }}>
+            <span style={{ fontSize: "11px", fontWeight: 600, padding: "2px 7px", borderRadius: "999px", background: "rgba(124,58,237,0.08)", color: "var(--brand)", border: "1px solid rgba(124,58,237,0.25)", flexShrink: 0 }}>
               {unit.assigned_users_count} utenti
             </span>
           )}
@@ -584,7 +584,7 @@ const ManagerTab = ({
               </div>
             </div>
             {createError && (
-              <div style={{ marginTop: "12px", padding: "10px", border: "1px solid #fecaca", background: "#fef2f2", color: "#b91c1c", borderRadius: "8px" }}>
+              <div style={{ marginTop: "12px", padding: "10px", border: "1px solid rgba(239,68,68,0.4)", background: "rgba(239,68,68,0.12)", color: "#fca5a5", borderRadius: "8px" }}>
                 {createError}
               </div>
             )}
@@ -618,7 +618,7 @@ const ManagerTab = ({
             </div>
 
             {detailError && (
-              <div style={{ marginBottom: "12px", padding: "10px", border: "1px solid #fecaca", background: "#fef2f2", color: "#b91c1c", borderRadius: "8px" }}>
+              <div style={{ marginBottom: "12px", padding: "10px", border: "1px solid rgba(239,68,68,0.4)", background: "rgba(239,68,68,0.12)", color: "#fca5a5", borderRadius: "8px" }}>
                 {detailError}
               </div>
             )}
@@ -743,7 +743,7 @@ const ManagerTab = ({
                         {filteredPickerUsers.map((user) => {
                           const alreadyAssigned = assignedUserIds.has(user.id);
                           return (
-                            <tr key={user.id} style={alreadyAssigned ? { background: "#f8fafc" } : undefined}>
+                            <tr key={user.id} style={alreadyAssigned ? { background: "var(--bg-card-alt)" } : undefined}>
                               <td style={{ textAlign: "center" }}>
                                 <input
                                   type="checkbox"
@@ -1169,10 +1169,10 @@ const AdminTestUsers = () => {
   const activeTabMeta = TAB_ORDER.find((t) => t.id === activeTab)!;
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--surface, #f1f5f9)", fontFamily: "var(--font, 'Inter', sans-serif)", paddingTop: "56px" }}>
+    <div style={{ minHeight: "100vh", background: "var(--surface, var(--bg-base))", fontFamily: "var(--font, 'Inter', sans-serif)", paddingTop: "56px" }}>
 
       {/* Page header */}
-      <div style={{ background: "#fff", borderBottom: "1px solid var(--border)", padding: "16px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "16px" }}>
+      <div style={{ background: "var(--bg-card)", borderBottom: "1px solid var(--border)", padding: "16px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "16px" }}>
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "2px" }}>
             <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Admin</span>
@@ -1194,7 +1194,7 @@ const AdminTestUsers = () => {
       </div>
 
       {/* Tab navigation */}
-      <div style={{ background: "#fff", borderBottom: "1px solid var(--border)", padding: "0 24px", display: "flex", gap: "0", overflowX: "auto" }}>
+      <div style={{ background: "var(--bg-card)", borderBottom: "1px solid var(--border)", padding: "0 24px", display: "flex", gap: "0", overflowX: "auto" }}>
         {TAB_ORDER.map((tab) => {
           const isActive = activeTab === tab.id;
           return (
@@ -1231,7 +1231,7 @@ const AdminTestUsers = () => {
       {/* Page content */}
       <div style={{ padding: "20px 24px" }}>
         {topError && (
-          <div style={{ marginBottom: "14px", padding: "12px 16px", border: "1px solid #fecaca", background: "#fef2f2", borderRadius: "10px", color: "#b91c1c", fontSize: "13px", display: "flex", alignItems: "center", gap: "8px" }}>
+          <div style={{ marginBottom: "14px", padding: "12px 16px", border: "1px solid rgba(239,68,68,0.4)", background: "rgba(239,68,68,0.12)", borderRadius: "10px", color: "#fca5a5", fontSize: "13px", display: "flex", alignItems: "center", gap: "8px" }}>
             <span style={{ fontSize: "16px" }}>⚠️</span>
             {topError}
           </div>
@@ -1351,17 +1351,17 @@ const AdminTestUsers = () => {
       {/* Org unit modal */}
       {orgUnitModalOpen && (
         <div style={{ position: "fixed", inset: 0, zIndex: 3000, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.35)" }}>
-          <div style={{ background: "#fff", borderRadius: "16px", padding: "28px", width: "400px", maxWidth: "92vw", boxShadow: "0 24px 64px rgba(0,0,0,0.18)" }}>
+          <div style={{ background: "var(--bg-card)", borderRadius: "16px", padding: "28px", width: "400px", maxWidth: "92vw", boxShadow: "0 24px 64px rgba(0,0,0,0.18)" }}>
             <h3 style={{ margin: "0 0 16px", fontSize: "16px", fontWeight: 700 }}>
               {orgUnitModalEditId ? "Modifica unità" : orgUnitModalParentId ? "Aggiungi sotto-unità" : "Aggiungi unità radice"}
             </h3>
             {orgUnitError && (
-              <div style={{ marginBottom: "12px", padding: "8px 12px", border: "1px solid #fecaca", background: "#fef2f2", color: "#b91c1c", borderRadius: "8px", fontSize: "13px" }}>
+              <div style={{ marginBottom: "12px", padding: "8px 12px", border: "1px solid rgba(239,68,68,0.4)", background: "rgba(239,68,68,0.12)", color: "#fca5a5", borderRadius: "8px", fontSize: "13px" }}>
                 {orgUnitError}
               </div>
             )}
             {orgUnitModalParentId && !orgUnitModalEditId && (
-              <div style={{ marginBottom: "12px", padding: "8px 12px", background: "#fff7ed", border: "1px solid #fed7aa", borderRadius: "8px", fontSize: "12px", color: "#92400e" }}>
+              <div style={{ marginBottom: "12px", padding: "8px 12px", background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.4)", borderRadius: "8px", fontSize: "12px", color: "#fbbf24" }}>
                 Nodo padre: <strong>{departments.find(d => d.id === orgUnitModalParentId)?.name ?? orgUnitModalParentId}</strong>
               </div>
             )}
@@ -1376,7 +1376,7 @@ const AdminTestUsers = () => {
             />
             <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
               <button className="db-action-btn" onClick={closeOrgUnitModal}>Annulla</button>
-              <button className="db-btn" style={{ background: "var(--brand)", color: "#fff", border: "none" }} onClick={() => void handleSaveOrgUnit()} disabled={orgUnitSaving}>
+              <button className="db-btn" style={{ background: "var(--brand)", color: "var(--bg-card)", border: "none" }} onClick={() => void handleSaveOrgUnit()} disabled={orgUnitSaving}>
                 {orgUnitSaving ? "Salvataggio..." : "Salva"}
               </button>
             </div>
@@ -1504,7 +1504,7 @@ const AdminTestUsers = () => {
                 </div>
 
                 {/* Summary */}
-                <div style={{ marginTop: "auto", padding: "12px", borderRadius: "10px", border: `1px solid ${addSelectedRole && addSelectedDept ? "rgba(232,81,26,0.25)" : "var(--border)"}`, background: addSelectedRole && addSelectedDept ? "rgba(232,81,26,0.04)" : "#f8fafc" }}>
+                <div style={{ marginTop: "auto", padding: "12px", borderRadius: "10px", border: `1px solid ${addSelectedRole && addSelectedDept ? "rgba(124,58,237,0.3)" : "var(--border)"}`, background: addSelectedRole && addSelectedDept ? "rgba(124,58,237,0.06)" : "var(--bg-card-alt)" }}>
                   <div style={{ fontSize: "11px", fontWeight: 700, color: addSelectedRole && addSelectedDept ? "var(--brand)" : "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "8px" }}>
                     {addSelectedRole && addSelectedDept ? "✓ Posizione assegnata" : "Riepilogo posizione"}
                   </div>
@@ -1517,7 +1517,7 @@ const AdminTestUsers = () => {
             </div>
 
             {addUserError && (
-              <div style={{ marginTop: "16px", padding: "12px 16px", border: "1px solid #fecaca", background: "#fef2f2", color: "#b91c1c", borderRadius: "10px", fontSize: "13px", display: "flex", gap: "8px", alignItems: "center" }}>
+              <div style={{ marginTop: "16px", padding: "12px 16px", border: "1px solid rgba(239,68,68,0.4)", background: "rgba(239,68,68,0.12)", color: "#fca5a5", borderRadius: "10px", fontSize: "13px", display: "flex", gap: "8px", alignItems: "center" }}>
                 <span>⚠️</span>{addUserError}
               </div>
             )}
@@ -1548,7 +1548,7 @@ const AdminTestUsers = () => {
             {/* Modal header */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", paddingBottom: "16px", borderBottom: "1px solid var(--border)" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                <div style={{ width: "44px", height: "44px", borderRadius: "12px", background: "var(--brand)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px", fontWeight: 700, color: "white", flexShrink: 0, boxShadow: "0 2px 8px rgba(232,81,26,0.3)" }}>
+                <div style={{ width: "44px", height: "44px", borderRadius: "12px", background: "var(--brand)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px", fontWeight: 700, color: "white", flexShrink: 0, boxShadow: "0 2px 8px rgba(124,58,237,0.3)" }}>
                   {userInitials}
                 </div>
                 <div>
@@ -1557,7 +1557,7 @@ const AdminTestUsers = () => {
                   </h3>
                   <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "3px" }}>
                     <span style={{ fontSize: "12px", color: "var(--text-secondary)" }}>{selectedUser.email}</span>
-                    <span style={{ display: "inline-flex", alignItems: "center", padding: "2px 8px", borderRadius: "999px", fontSize: "11px", fontWeight: 600, background: selectedUser.user_state === "available" ? "#f0fdf4" : selectedUser.user_state === "reserved" ? "#fff7ed" : "#f8fafc", color: selectedUser.user_state === "available" ? "#16a34a" : selectedUser.user_state === "reserved" ? "#ea580c" : "#64748b", border: `1px solid ${selectedUser.user_state === "available" ? "#bbf7d0" : selectedUser.user_state === "reserved" ? "#fed7aa" : "#e2e8f0"}` }}>
+                    <span style={{ display: "inline-flex", alignItems: "center", padding: "2px 8px", borderRadius: "999px", fontSize: "11px", fontWeight: 600, background: selectedUser.user_state === "available" ? "rgba(16,185,129,0.12)" : selectedUser.user_state === "reserved" ? "rgba(245,158,11,0.12)" : "var(--bg-card-alt)", color: selectedUser.user_state === "available" ? "#6ee7b7" : selectedUser.user_state === "reserved" ? "#fbbf24" : "var(--text-muted)", border: `1px solid ${selectedUser.user_state === "available" ? "rgba(16,185,129,0.4)" : selectedUser.user_state === "reserved" ? "rgba(245,158,11,0.4)" : "var(--border)"}` }}>
                       {stateLabel(selectedUser)}
                     </span>
                     {(selectedUser.application_count ?? 0) > 0 && (
@@ -1576,7 +1576,7 @@ const AdminTestUsers = () => {
               <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
 
                 {/* Anagrafica section */}
-                <div style={{ background: "#f8fafc", borderRadius: "12px", padding: "16px", border: "1px solid var(--border)" }}>
+                <div style={{ background: "var(--bg-card-alt)", borderRadius: "12px", padding: "16px", border: "1px solid var(--border)" }}>
                   <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "12px" }}>Anagrafica</div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
                     <div>
@@ -1595,7 +1595,7 @@ const AdminTestUsers = () => {
                 </div>
 
                 {/* Accesso section */}
-                <div style={{ background: "#f8fafc", borderRadius: "12px", padding: "16px", border: "1px solid var(--border)" }}>
+                <div style={{ background: "var(--bg-card-alt)", borderRadius: "12px", padding: "16px", border: "1px solid var(--border)" }}>
                   <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "12px" }}>Accesso piattaforma</div>
                   <div>
                     <label style={LABEL_STYLE}>Ruolo accesso</label>
@@ -1608,7 +1608,7 @@ const AdminTestUsers = () => {
                 </div>
 
                 {/* People section */}
-                <div style={{ background: "#f8fafc", borderRadius: "12px", padding: "16px", border: "1px solid var(--border)", flex: 1 }}>
+                <div style={{ background: "var(--bg-card-alt)", borderRadius: "12px", padding: "16px", border: "1px solid var(--border)", flex: 1 }}>
                   <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "12px" }}>Responsabili & HR</div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
                     <div>
@@ -1621,9 +1621,9 @@ const AdminTestUsers = () => {
                         onChange={(event) => setEditUserForm((prev) => (prev ? { ...prev, responsabiliSearch: event.target.value } : prev))}
                         disabled={editUserSaving}
                       />
-                      <div style={{ maxHeight: "140px", overflowY: "auto", border: "1px solid var(--border)", borderRadius: "8px", background: "#fff" }}>
+                      <div style={{ maxHeight: "140px", overflowY: "auto", border: "1px solid var(--border)", borderRadius: "8px", background: "var(--bg-card)" }}>
                         {filteredResponsabiliOptions.map((item) => (
-                          <label key={item.id} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "7px 10px", borderBottom: "1px solid #f1f5f9", cursor: "pointer" }}>
+                          <label key={item.id} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "7px 10px", borderBottom: "1px solid var(--border)", cursor: "pointer" }}>
                             <input type="checkbox" checked={editUserForm.responsabileIds.includes(item.id)} onChange={() => toggleManagerSelection("responsabileIds", item.id)} disabled={editUserSaving} />
                             <span style={{ fontSize: "12px", color: "var(--text-primary)" }}>{item.name}</span>
                           </label>
@@ -1643,9 +1643,9 @@ const AdminTestUsers = () => {
                         onChange={(event) => setEditUserForm((prev) => (prev ? { ...prev, hrSearch: event.target.value } : prev))}
                         disabled={editUserSaving}
                       />
-                      <div style={{ maxHeight: "140px", overflowY: "auto", border: "1px solid var(--border)", borderRadius: "8px", background: "#fff" }}>
+                      <div style={{ maxHeight: "140px", overflowY: "auto", border: "1px solid var(--border)", borderRadius: "8px", background: "var(--bg-card)" }}>
                         {filteredHrOptions.map((item) => (
-                          <label key={item.id} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "7px 10px", borderBottom: "1px solid #f1f5f9", cursor: "pointer" }}>
+                          <label key={item.id} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "7px 10px", borderBottom: "1px solid var(--border)", cursor: "pointer" }}>
                             <input type="checkbox" checked={editUserForm.hrManagerIds.includes(item.id)} onChange={() => toggleManagerSelection("hrManagerIds", item.id)} disabled={editUserSaving} />
                             <span style={{ fontSize: "12px", color: "var(--text-primary)" }}>{item.name}</span>
                           </label>
@@ -1662,7 +1662,7 @@ const AdminTestUsers = () => {
               {/* RIGHT — Posizione organizzativa */}
               <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
 
-                <div style={{ background: "#f8fafc", borderRadius: "12px", padding: "16px", border: "1px solid var(--border)" }}>
+                <div style={{ background: "var(--bg-card-alt)", borderRadius: "12px", padding: "16px", border: "1px solid var(--border)" }}>
                   <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "12px" }}>Posizione organizzativa</div>
 
                   {/* Role dropdown */}
@@ -1696,7 +1696,7 @@ const AdminTestUsers = () => {
                   </div>
 
                   {/* Fixed location */}
-                  <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", padding: "8px 10px", borderRadius: "8px", border: "1px solid var(--border)", background: "#fff" }}>
+                  <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", padding: "8px 10px", borderRadius: "8px", border: "1px solid var(--border)", background: "var(--bg-card)" }}>
                     <input type="checkbox" checked={editUserForm.fixedLocation} onChange={(event) => setEditUserForm((prev) => (prev ? { ...prev, fixedLocation: event.target.checked } : prev))} disabled={editUserSaving} />
                     <div>
                       <div style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-primary)" }}>Sede vincolante</div>
@@ -1709,8 +1709,8 @@ const AdminTestUsers = () => {
                 <div style={{
                   borderRadius: "12px",
                   padding: "16px",
-                  border: `1px solid ${positionComplete ? "rgba(232,81,26,0.25)" : "var(--border)"}`,
-                  background: positionComplete ? "rgba(232,81,26,0.04)" : "#f8fafc",
+                  border: `1px solid ${positionComplete ? "rgba(124,58,237,0.3)" : "var(--border)"}`,
+                  background: positionComplete ? "rgba(124,58,237,0.06)" : "var(--bg-card-alt)",
                   transition: "border-color 0.2s, background 0.2s",
                 }}>
                   <div style={{ fontSize: "11px", fontWeight: 700, color: positionComplete ? "var(--brand)" : "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "12px", display: "flex", alignItems: "center", gap: "6px" }}>
@@ -1755,13 +1755,13 @@ const AdminTestUsers = () => {
                     )}
 
                     {positionComplete && (
-                      <div style={{ marginTop: "4px", padding: "8px 12px", borderRadius: "8px", background: "rgba(232,81,26,0.08)", border: "1px solid rgba(232,81,26,0.18)", fontSize: "12px", color: "var(--brand)", fontWeight: 600 }}>
+                      <div style={{ marginTop: "4px", padding: "8px 12px", borderRadius: "8px", background: "rgba(124,58,237,0.08)", border: "1px solid rgba(124,58,237,0.2)", fontSize: "12px", color: "var(--brand)", fontWeight: 600 }}>
                         {selectedRole?.name} · {selectedDept?.name}{selectedLoc ? ` · ${selectedLoc.name}` : ""}
                       </div>
                     )}
 
                     {!positionComplete && (
-                      <div style={{ padding: "8px 12px", borderRadius: "8px", background: "#f1f5f9", fontSize: "12px", color: "var(--text-muted)" }}>
+                      <div style={{ padding: "8px 12px", borderRadius: "8px", background: "var(--bg-card-alt)", fontSize: "12px", color: "var(--text-muted)" }}>
                         Seleziona ruolo e unità organizzativa per completare la posizione.
                       </div>
                     )}
@@ -1771,7 +1771,7 @@ const AdminTestUsers = () => {
             </div>
 
             {editUserError && (
-              <div style={{ marginTop: "16px", padding: "12px 16px", border: "1px solid #fecaca", background: "#fef2f2", color: "#b91c1c", borderRadius: "10px", fontSize: "13px", display: "flex", alignItems: "center", gap: "8px" }}>
+              <div style={{ marginTop: "16px", padding: "12px 16px", border: "1px solid rgba(239,68,68,0.4)", background: "rgba(239,68,68,0.12)", color: "#fca5a5", borderRadius: "10px", fontSize: "13px", display: "flex", alignItems: "center", gap: "8px" }}>
                 <span>⚠️</span> {editUserError}
               </div>
             )}

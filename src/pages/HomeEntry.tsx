@@ -12,7 +12,7 @@ const HomeEntry: React.FC = () => {
 
   if (isBootstrappingContext) {
     return (
-      <div style={{ padding: "24px", fontFamily: "'Inter', sans-serif", color: "#64748b" }}>
+      <div style={{ padding: "24px", fontFamily: "'Inter', sans-serif", color: "var(--text-secondary)" }}>
         Caricamento contesto...
       </div>
     );
@@ -20,7 +20,7 @@ const HomeEntry: React.FC = () => {
 
   if (!isContextResolved || !activeSelection) {
     return (
-      <div style={{ padding: "24px", fontFamily: "'Inter', sans-serif", color: "#991b1b" }}>
+      <div style={{ padding: "24px", fontFamily: "'Inter', sans-serif", color: "#fca5a5" }}>
         {contextError ?? "Nessun contesto tenant disponibile per questo account."}
       </div>
     );

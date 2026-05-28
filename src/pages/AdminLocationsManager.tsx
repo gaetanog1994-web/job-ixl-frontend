@@ -82,7 +82,7 @@ const AdminLocationsManager = () => {
                 </h2>
             </div>
 
-            {error && <div style={{ margin: "16px 20px", padding: "10px", background: "#fef2f2", color: "#b91c1c", border: "1px solid #fecaca", borderRadius: "8px", fontSize: "13px" }}>{error}</div>}
+            {error && <div style={{ margin: "16px 20px", padding: "10px", background: "rgba(239,68,68,0.12)", color: "#fca5a5", border: "1px solid rgba(239,68,68,0.4)", borderRadius: "8px", fontSize: "13px" }}>{error}</div>}
 
             <div style={{ padding: "16px 20px", background: "var(--surface)", borderBottom: "1px solid var(--border)", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: "10px", alignItems: "center" }}>
                 <input className="db-filter-select" placeholder="Nome sede*" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />

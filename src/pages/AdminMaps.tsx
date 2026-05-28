@@ -71,7 +71,7 @@ const AdminMaps = () => {
   return (
     <div style={{
       minHeight: "100vh",
-      background: "var(--surface, #f1f5f9)",
+      background: "var(--surface, var(--bg-base))",
       fontFamily: "var(--font, 'Inter', sans-serif)",
       padding: "24px",
     }}>
@@ -215,7 +215,7 @@ const AdminMaps = () => {
                     />
                   </div>
 
-                  <div style={{ borderLeft: "1px solid var(--border)", background: "#fff", minHeight: 0, display: "grid", gridTemplateRows: "auto 1fr" }}>
+                  <div style={{ borderLeft: "1px solid var(--border)", background: "var(--bg-card)", minHeight: 0, display: "grid", gridTemplateRows: "auto 1fr" }}>
                     <div style={{ padding: "12px 12px", borderBottom: "1px solid var(--border)" }}>
                       <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--text-primary)" }}>
                         Persone collegate
@@ -268,7 +268,7 @@ const AdminMaps = () => {
                   gridColumn: "1 / -1",
                   position: "relative", inset: 0,
                   display: "flex", flexDirection: "column",
-                  alignItems: "center", justifyContent: "center", background: "#f8fafc",
+                  alignItems: "center", justifyContent: "center", background: "var(--bg-card-alt)",
                   color: "var(--text-muted)", fontSize: "14px", gap: "12px",
                 }}>
                   <span style={{ fontSize: "32px", opacity: 0.5 }}>🗺️</span>

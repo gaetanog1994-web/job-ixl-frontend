@@ -255,7 +255,7 @@ const AccountPage: React.FC = () => {
                             fontFamily: "var(--font)",
                             cursor: passwordSaving ? "not-allowed" : "pointer",
                             transition: "background 0.15s",
-                            boxShadow: passwordSaving ? "none" : "0 2px 8px rgba(232,81,26,0.25)",
+                            boxShadow: passwordSaving ? "none" : "0 2px 8px rgba(124,58,237,0.3)",
                         }}
                     >
                         {passwordSaving ? "Salvataggio…" : "Aggiorna password"}

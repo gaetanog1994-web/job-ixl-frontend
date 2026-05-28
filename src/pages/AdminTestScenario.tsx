@@ -183,29 +183,29 @@ export default function AdminTestScenario() {
 
   return (
     <div style={{ padding: "32px 40px", fontFamily: "'Inter', sans-serif", maxWidth: 1100 }}>
-      <h2 style={{ fontSize: 22, fontWeight: 700, color: "#111827", marginBottom: 8 }}>Test Scenario</h2>
-      <p style={{ fontSize: 14, color: "#6b7280", marginBottom: 24 }}>
+      <h2 style={{ fontSize: 22, fontWeight: 700, color: "var(--text-primary)", marginBottom: 8 }}>Test Scenario</h2>
+      <p style={{ fontSize: 14, color: "var(--text-secondary)", marginBottom: 24 }}>
         Configura e inizializza scenari di test nel perimetro corrente.
       </p>
 
       {error && (
-        <div style={{ background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: 8, padding: "10px 14px", color: "#dc2626", fontSize: 13, marginBottom: 16 }}>
+        <div style={{ background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.4)", borderRadius: 8, padding: "10px 14px", color: "#fca5a5", fontSize: 13, marginBottom: 16 }}>
           {error}
         </div>
       )}
       {message && (
-        <div style={{ background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 8, padding: "10px 14px", color: "#166534", fontSize: 13, marginBottom: 16 }}>
+        <div style={{ background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.4)", borderRadius: 8, padding: "10px 14px", color: "#6ee7b7", fontSize: 13, marginBottom: 16 }}>
           {message}
         </div>
       )}
 
       {loading ? (
-        <div style={{ color: "#64748b", fontSize: 14 }}>Caricamento scenari…</div>
+        <div style={{ color: "var(--text-secondary)", fontSize: 14 }}>Caricamento scenari…</div>
       ) : (
         <>
-          <section style={{ marginBottom: 24, border: "1px solid #e5e7eb", borderRadius: 10, background: "#fff", padding: "16px" }}>
+          <section style={{ marginBottom: 24, border: "1px solid var(--border)", borderRadius: 10, background: "var(--bg-card)", padding: "16px" }}>
             <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-              <label htmlFor="test-scenario-select" style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>
+              <label htmlFor="test-scenario-select" style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
                 Scenario disponibile:
               </label>
               <select
@@ -213,7 +213,7 @@ export default function AdminTestScenario() {
                 value={selectedScenarioId ?? ""}
                 onChange={(e) => setSelectedScenarioId(e.target.value || null)}
                 disabled={scenarios.length === 0 || initializing || clearing || savingScenario}
-                style={{ border: "1px solid #d1d5db", borderRadius: 8, padding: "8px 10px", minWidth: 320, fontSize: 13 }}
+                style={{ border: "1px solid var(--border)", borderRadius: 8, padding: "8px 10px", minWidth: 320, fontSize: 13 }}
               >
                 {scenarios.length === 0 && <option value="">Nessuno scenario disponibile</option>}
                 {scenarios.map((scenario) => (
@@ -227,7 +227,7 @@ export default function AdminTestScenario() {
                 type="button"
                 onClick={handleInitialize}
                 disabled={!selectedScenarioId || initializing || clearing || savingScenario}
-                style={{ ...buttonStyle, background: "#ecfdf5", borderColor: "#86efac", color: "#166534" }}
+                style={{ ...buttonStyle, background: "rgba(16,185,129,0.12)", borderColor: "rgba(16,185,129,0.4)", color: "#6ee7b7" }}
               >
                 {initializing ? "Inizializzazione…" : "Inizializza scenario"}
               </button>
@@ -236,7 +236,7 @@ export default function AdminTestScenario() {
                 type="button"
                 onClick={handleClearScenario}
                 disabled={!selectedScenarioId || clearing || initializing || savingScenario}
-                style={{ ...buttonStyle, background: "#fef2f2", borderColor: "#fca5a5", color: "#b91c1c" }}
+                style={{ ...buttonStyle, background: "rgba(239,68,68,0.12)", borderColor: "rgba(239,68,68,0.4)", color: "#fca5a5" }}
               >
                 {clearing ? "Svuotamento…" : "Svuota scenario"}
               </button>
@@ -245,7 +245,7 @@ export default function AdminTestScenario() {
                 type="button"
                 onClick={handleCreateScenario}
                 disabled={initializing || clearing || savingScenario}
-                style={{ ...buttonStyle, background: "#eff6ff", borderColor: "#93c5fd", color: "#1d4ed8" }}
+                style={{ ...buttonStyle, background: "rgba(59,130,246,0.12)", borderColor: "rgba(59,130,246,0.4)", color: "#93c5fd" }}
               >
                 + Nuovo scenario
               </button>
@@ -263,7 +263,7 @@ export default function AdminTestScenario() {
                 type="button"
                 onClick={handleDeleteScenario}
                 disabled={!selectedScenarioId || initializing || clearing || savingScenario}
-                style={{ ...buttonStyle, background: "#fff1f2", borderColor: "#fda4af", color: "#be123c" }}
+                style={{ ...buttonStyle, background: "rgba(239,68,68,0.12)", borderColor: "rgba(239,68,68,0.35)", color: "#fca5a5" }}
               >
                 Elimina scenario
               </button>
@@ -279,14 +279,14 @@ export default function AdminTestScenario() {
             </div>
           </section>
 
-          <section style={{ border: "1px solid #e5e7eb", borderRadius: 10, background: "#fff", overflowX: "auto" }}>
-            <div style={{ padding: "12px 16px", borderBottom: "1px solid #e5e7eb", fontSize: 13, color: "#374151", fontWeight: 600 }}>
+          <section style={{ border: "1px solid var(--border)", borderRadius: 10, background: "var(--bg-card)", overflowX: "auto" }}>
+            <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", fontSize: 13, color: "var(--text-primary)", fontWeight: 600 }}>
               {selectedScenario ? `Candidature test per: ${selectedScenario.name}` : "Candidature test scenario"}
-              <span style={{ marginLeft: 8, color: "#6b7280", fontWeight: 500 }}>({applications.length})</span>
+              <span style={{ marginLeft: 8, color: "var(--text-secondary)", fontWeight: 500 }}>({applications.length})</span>
             </div>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
               <thead>
-                <tr style={{ background: "#f8fafc" }}>
+                <tr style={{ background: "var(--bg-card-alt)" }}>
                   <th style={thStyle}>ID candidatura</th>
                   <th style={thStyle}>Utente</th>
                   <th style={thStyle}>Posizione</th>
@@ -296,7 +296,7 @@ export default function AdminTestScenario() {
               <tbody>
                 {applications.length === 0 ? (
                   <tr>
-                    <td colSpan={4} style={{ padding: "18px 12px", textAlign: "center", color: "#6b7280" }}>
+                    <td colSpan={4} style={{ padding: "18px 12px", textAlign: "center", color: "var(--text-secondary)" }}>
                       Nessuna candidatura nel test scenario selezionato.
                     </td>
                   </tr>
@@ -320,10 +320,10 @@ export default function AdminTestScenario() {
 }
 
 const buttonStyle: CSSProperties = {
-  border: "1px solid #d1d5db",
+  border: "1px solid var(--border)",
   borderRadius: 8,
-  background: "#f9fafb",
-  color: "#111827",
+  background: "var(--bg-card-alt)",
+  color: "var(--text-primary)",
   padding: "8px 12px",
   fontSize: 13,
   fontWeight: 600,
@@ -333,14 +333,14 @@ const buttonStyle: CSSProperties = {
 const thStyle: CSSProperties = {
   textAlign: "left",
   padding: "9px 12px",
-  borderBottom: "1px solid #e5e7eb",
-  color: "#374151",
+  borderBottom: "1px solid var(--border)",
+  color: "var(--text-primary)",
   fontWeight: 700,
 };
 
 const tdStyle: CSSProperties = {
   textAlign: "left",
   padding: "8px 12px",
-  borderBottom: "1px solid #f1f5f9",
-  color: "#111827",
+  borderBottom: "1px solid var(--border)",
+  color: "var(--text-primary)",
 };

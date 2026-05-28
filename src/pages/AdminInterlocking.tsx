@@ -23,14 +23,14 @@ type RightPanelTab = "PEOPLE" | "CHAINS";
 
 /** Palette colori per le prime 8 catene (border, bg, dot) */
 const CHAIN_COLORS = [
-    { border: "#16A34A", bg: "#F0FDF4", dot: "#22C55E", marker: "#22C55E" },  // verde
-    { border: "#CA8A04", bg: "#FEFCE8", dot: "#EAB308", marker: "#EAB308" },  // giallo
-    { border: "#DC2626", bg: "#FEF2F2", dot: "#EF4444", marker: "#EF4444" },  // rosso
-    { border: "#7C3AED", bg: "#F5F3FF", dot: "#8B5CF6", marker: "#8B5CF6" },  // viola
-    { border: "#0284C7", bg: "#F0F9FF", dot: "#38BDF8", marker: "#38BDF8" },  // azzurro
-    { border: "#6B7280", bg: "#F9FAFB", dot: "#9CA3AF", marker: "#9CA3AF" },  // grigio
-    { border: "#DB2777", bg: "#FDF2F8", dot: "#EC4899", marker: "#EC4899" },  // fucsia
-    { border: "#EA580C", bg: "#FFF7ED", dot: "#F97316", marker: "#F97316" },  // arancione
+    { border: "#16A34A", bg: "rgba(22,163,74,0.15)", dot: "#22C55E", marker: "#22C55E" },  // verde
+    { border: "#CA8A04", bg: "rgba(202,138,4,0.15)", dot: "#EAB308", marker: "#EAB308" },  // giallo
+    { border: "#DC2626", bg: "rgba(220,38,38,0.15)", dot: "#EF4444", marker: "#EF4444" },  // rosso
+    { border: "#7C3AED", bg: "rgba(124,58,237,0.15)", dot: "#8B5CF6", marker: "#8B5CF6" },  // viola
+    { border: "#0284C7", bg: "rgba(2,132,199,0.15)", dot: "#38BDF8", marker: "#38BDF8" },  // azzurro
+    { border: "var(--text-secondary)", bg: "rgba(107,114,128,0.15)", dot: "var(--text-muted)", marker: "var(--text-muted)" },  // grigio
+    { border: "#DB2777", bg: "rgba(219,39,119,0.15)", dot: "#EC4899", marker: "#EC4899" },  // fucsia
+    { border: "#EA580C", bg: "rgba(234,88,12,0.15)", dot: "#F97316", marker: "#F97316" },  // arancione
 ];
 
 const getChainColor = (index: number) => CHAIN_COLORS[index % CHAIN_COLORS.length];
@@ -185,20 +185,18 @@ const normalizeChainPayload = (chain: Record<string, unknown>): InterlockingChai
 
 const pageStyle: React.CSSProperties = {
     padding: "26px",
-    background:
-        "#F9FAFB",
+    background: "var(--bg-base)",
     minHeight: "100%",
-    color: "#111827",
+    color: "var(--text-primary)",
     fontFamily:
         'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
 };
 
 const panelStyle: React.CSSProperties = {
-    background:
-        "#FFFFFF",
-    border: "1px solid #E5E7EB",
+    background: "var(--bg-card)",
+    border: "1px solid var(--border)",
     borderRadius: "24px",
-    boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+    boxShadow: "0 1px 3px rgba(0,0,0,0.3)",
     overflow: "hidden",
     position: "relative",
 };
@@ -211,19 +209,19 @@ const sectionTitleStyle: React.CSSProperties = {
     margin: 0,
     fontSize: "15px",
     fontWeight: 600,
-    color: "#111827",
+    color: "var(--text-primary)",
 };
 
 const sectionSubtitleStyle: React.CSSProperties = {
     marginTop: "4px",
     fontSize: "12px",
-    color: "#6B7280",
+    color: "var(--text-secondary)",
 };
 
 const ghostButtonStyle: React.CSSProperties = {
-    border: "1px solid #E5E7EB",
-    background: "#FFFFFF",
-    color: "#374151",
+    border: "1px solid var(--border)",
+    background: "var(--bg-card)",
+    color: "var(--text-primary)",
     borderRadius: "12px",
     padding: "10px 14px",
     cursor: "pointer",
@@ -234,8 +232,8 @@ const ghostButtonStyle: React.CSSProperties = {
 
 
 const subtleCardStyle: React.CSSProperties = {
-    background: "#F9FAFB",
-    border: "1px solid #E5E7EB",
+    background: "var(--bg-card-alt)",
+    border: "1px solid var(--border)",
     borderRadius: "18px",
 };
 
@@ -1402,9 +1400,9 @@ const AdminInterlocking = () => {
                     width: "34px",
                     height: "34px",
                     borderRadius: "12px",
-                    background: "#FFFFFF",
-                    border: "1px solid #E5E7EB",
-                    color: "#111827",
+                    background: "var(--bg-card)",
+                    border: "1px solid var(--border)",
+                    color: "var(--text-primary)",
                     cursor: "pointer",
                     fontSize: "15px",
                     display: "flex",
@@ -1426,7 +1424,7 @@ const AdminInterlocking = () => {
                     style={{
                         position: "fixed",
                         inset: 0,
-                        background: "rgba(255,255,255,0.7)",
+                        background: "rgba(0,0,0,0.6)",
                         backdropFilter: "blur(4px)",
                         zIndex: 70,
                     }}
@@ -1436,7 +1434,7 @@ const AdminInterlocking = () => {
             <div style={{ position: "relative", zIndex: 71, display: "grid", gap: "20px" }}>
                 {/* ── Page header ── */}
                 <div style={{ marginBottom: "2px" }}>
-                    <div style={{ fontSize: "31px", fontWeight: 700, letterSpacing: "-0.02em", color: "#111827" }}>
+                    <div style={{ fontSize: "31px", fontWeight: 700, letterSpacing: "-0.02em", color: "var(--text-primary)" }}>
                         Interlocking Analytics
                     </div>
                     <div style={{ ...sectionSubtitleStyle, fontSize: "13px", marginTop: "6px" }}>
@@ -1446,9 +1444,9 @@ const AdminInterlocking = () => {
                 {isRestrictedReadOnly && (
                     <div
                         style={{
-                            border: "1px solid #FCD34D",
-                            background: "#FFFBEB",
-                            color: "#92400E",
+                            border: "1px solid rgba(245,158,11,0.4)",
+                            background: "rgba(245,158,11,0.1)",
+                            color: "#fbbf24",
                             borderRadius: "12px",
                             padding: "10px 14px",
                             fontSize: "13px",
@@ -1461,15 +1459,15 @@ const AdminInterlocking = () => {
 
                 {/* ── Campaign status strip ── */}
                 {canManageCampaign && (
-                    <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "10px 16px", background: "#FFFFFF", border: "1px solid #E5E7EB", borderRadius: "14px" }}
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "10px 16px", background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: "14px" }}
                         onClick={(e) => e.stopPropagation()}
                     >
                         {selectedCampaign && (
                             <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-                                <span style={{ fontSize: "12px", color: "#374151", fontWeight: 700 }}>
+                                <span style={{ fontSize: "12px", color: "var(--text-primary)", fontWeight: 700 }}>
                                     Campagna selezionata: {campaignSelectionOptions.get(selectedCampaign.id) ?? selectedCampaign.id}
                                 </span>
-                                <span style={{ fontSize: "12px", color: "#6B7280", fontWeight: 500 }}>
+                                <span style={{ fontSize: "12px", color: "var(--text-secondary)", fontWeight: 500 }}>
                                     Snapshot selezionato · {selectedCampaign.total_applications_count} candidature
                                 </span>
                                 <span style={{
@@ -1479,9 +1477,9 @@ const AdminInterlocking = () => {
                                     borderRadius: "999px",
                                     fontSize: "11px",
                                     fontWeight: 700,
-                                    border: "1px solid #d1d5db",
-                                    background: "#f9fafb",
-                                    color: "#374151",
+                                    border: "1px solid var(--border)",
+                                    background: "var(--bg-card-alt)",
+                                    color: "var(--text-primary)",
                                 }}>
                                     campaign_closed
                                 </span>
@@ -1489,29 +1487,29 @@ const AdminInterlocking = () => {
                         )}
                         {campaignStatus !== null && reservationsStatus !== null && (
                             <>
-                                <span style={{ fontSize: "13px", fontWeight: 600, color: "#374151" }}>Campagna live:</span>
+                                <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-primary)" }}>Campagna live:</span>
                                 <div style={{
                                     display: "inline-flex", alignItems: "center", gap: "5px",
                                     padding: "3px 10px", borderRadius: "999px", fontSize: "12px", fontWeight: 700,
-                                    background: campaignStatus === "open" ? "#ecfdf5" : "#eff6ff",
-                                    color: campaignStatus === "open" ? "#059669" : "#1d4ed8",
-                                    border: `1px solid ${campaignStatus === "open" ? "#a7f3d0" : "#93c5fd"}`,
+                                    background: campaignStatus === "open" ? "rgba(16,185,129,0.12)" : "rgba(59,130,246,0.12)",
+                                    color: campaignStatus === "open" ? "#6ee7b7" : "#93c5fd",
+                                    border: `1px solid ${campaignStatus === "open" ? "rgba(16,185,129,0.4)" : "rgba(59,130,246,0.4)"}`,
                                 }}>
                                     <div style={{ width: 7, height: 7, borderRadius: "50%", background: campaignStatus === "open" ? "#10b981" : "#3b82f6" }} />
                                     {campaignStatus === "open" ? "Aperta" : "Chiusa"}
                                 </div>
-                                <span style={{ fontSize: "13px", fontWeight: 600, color: "#374151" }}>Prenotazioni:</span>
+                                <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-primary)" }}>Prenotazioni:</span>
                                 <div style={{
                                     display: "inline-flex", alignItems: "center", gap: "5px",
                                     padding: "3px 10px", borderRadius: "999px", fontSize: "12px", fontWeight: 700,
-                                    background: reservationsStatus === "open" ? "#ecfdf5" : "#f3f4f6",
-                                    color: reservationsStatus === "open" ? "#059669" : "#374151",
-                                    border: `1px solid ${reservationsStatus === "open" ? "#a7f3d0" : "#d1d5db"}`,
+                                    background: reservationsStatus === "open" ? "rgba(16,185,129,0.12)" : "var(--bg-card-alt)",
+                                    color: reservationsStatus === "open" ? "#6ee7b7" : "var(--text-secondary)",
+                                    border: `1px solid ${reservationsStatus === "open" ? "rgba(16,185,129,0.4)" : "var(--border)"}`,
                                 }}>
-                                    <div style={{ width: 7, height: 7, borderRadius: "50%", background: reservationsStatus === "open" ? "#10b981" : "#6b7280" }} />
+                                    <div style={{ width: 7, height: 7, borderRadius: "50%", background: reservationsStatus === "open" ? "#10b981" : "var(--text-muted)" }} />
                                     {reservationsStatus === "open" ? "Aperte" : "Chiuse"}
                                 </div>
-                                <span style={{ fontSize: "12px", color: "#6B7280", fontWeight: 500 }}>
+                                <span style={{ fontSize: "12px", color: "var(--text-secondary)", fontWeight: 500 }}>
                                     {reservedUsersCount} prenotat{reservedUsersCount === 1 ? "o" : "i"}
                                 </span>
                             </>
@@ -1519,7 +1517,7 @@ const AdminInterlocking = () => {
                         <button
                             type="button"
                             onClick={openCampaignManagement}
-                            style={{ marginLeft: "auto", fontSize: "12px", color: "#2563eb", fontWeight: 600, textDecoration: "none", background: "transparent", border: "none", padding: 0, cursor: "pointer" }}
+                            style={{ marginLeft: "auto", fontSize: "12px", color: "#60a5fa", fontWeight: 600, textDecoration: "none", background: "transparent", border: "none", padding: 0, cursor: "pointer" }}
                         >
                             Gestisci campagna →
                         </button>
@@ -1534,58 +1532,58 @@ const AdminInterlocking = () => {
                             gap: "10px",
                         }}
                     >
-                        <div style={{ border: "1px solid #E5E7EB", borderRadius: "12px", background: "#fff", padding: "10px 12px" }}>
-                            <div style={{ fontSize: "11px", color: "#6B7280", fontWeight: 600, textTransform: "uppercase" }}>Numero catene</div>
-                            <div style={{ fontSize: "22px", fontWeight: 700, color: "#111827" }}>{activeScenarioSummary.totalChains}</div>
-                            <div style={{ fontSize: "11px", color: "#9CA3AF" }}>Scenario {activeScenario ? "attivo" : "non selezionato"}</div>
+                        <div style={{ border: "1px solid var(--border)", borderRadius: "12px", background: "var(--bg-card)", padding: "10px 12px" }}>
+                            <div style={{ fontSize: "11px", color: "var(--text-secondary)", fontWeight: 600, textTransform: "uppercase" }}>Numero catene</div>
+                            <div style={{ fontSize: "22px", fontWeight: 700, color: "var(--text-primary)" }}>{activeScenarioSummary.totalChains}</div>
+                            <div style={{ fontSize: "11px", color: "var(--text-muted)" }}>Scenario {activeScenario ? "attivo" : "non selezionato"}</div>
                         </div>
-                        <div style={{ border: "1px solid #E5E7EB", borderRadius: "12px", background: "#fff", padding: "10px 12px" }}>
-                            <div style={{ fontSize: "11px", color: "#6B7280", fontWeight: 600, textTransform: "uppercase" }}>Persone coinvolte</div>
-                            <div style={{ fontSize: "22px", fontWeight: 700, color: "#111827" }}>{activeScenarioSummary.uniquePeople}</div>
-                            <div style={{ fontSize: "11px", color: "#9CA3AF" }}>Scenario {activeScenario ? "attivo" : "non selezionato"}</div>
+                        <div style={{ border: "1px solid var(--border)", borderRadius: "12px", background: "var(--bg-card)", padding: "10px 12px" }}>
+                            <div style={{ fontSize: "11px", color: "var(--text-secondary)", fontWeight: 600, textTransform: "uppercase" }}>Persone coinvolte</div>
+                            <div style={{ fontSize: "22px", fontWeight: 700, color: "var(--text-primary)" }}>{activeScenarioSummary.uniquePeople}</div>
+                            <div style={{ fontSize: "11px", color: "var(--text-muted)" }}>Scenario {activeScenario ? "attivo" : "non selezionato"}</div>
                         </div>
-                        <div style={{ border: "1px solid #E5E7EB", borderRadius: "12px", background: "#fff", padding: "10px 12px" }}>
-                            <div style={{ fontSize: "11px", color: "#6B7280", fontWeight: 600, textTransform: "uppercase" }}>Avg priority</div>
-                            <div style={{ fontSize: "22px", fontWeight: 700, color: "#111827" }}>
+                        <div style={{ border: "1px solid var(--border)", borderRadius: "12px", background: "var(--bg-card)", padding: "10px 12px" }}>
+                            <div style={{ fontSize: "11px", color: "var(--text-secondary)", fontWeight: 600, textTransform: "uppercase" }}>Avg priority</div>
+                            <div style={{ fontSize: "22px", fontWeight: 700, color: "var(--text-primary)" }}>
                                 {activeScenarioSummary.avgPriority == null ? "—" : formatNumber(activeScenarioSummary.avgPriority, 2)}
                             </div>
-                            <div style={{ fontSize: "11px", color: "#9CA3AF" }}>Scenario {activeScenario ? "attivo" : "non selezionato"}</div>
+                            <div style={{ fontSize: "11px", color: "var(--text-muted)" }}>Scenario {activeScenario ? "attivo" : "non selezionato"}</div>
                         </div>
                     </div>
                 )}
                 {!canManageCampaign && campaignStatus !== null && reservationsStatus !== null && (
-                    <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "10px 16px", background: "#FFFFFF", border: "1px solid #E5E7EB", borderRadius: "14px" }}
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "10px 16px", background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: "14px" }}
                         onClick={(e) => e.stopPropagation()}
                     >
-                        <span style={{ fontSize: "13px", fontWeight: 600, color: "#374151" }}>Campagna:</span>
+                        <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-primary)" }}>Campagna:</span>
                         <div style={{
                             display: "inline-flex", alignItems: "center", gap: "5px",
                             padding: "3px 10px", borderRadius: "999px", fontSize: "12px", fontWeight: 700,
-                            background: campaignStatus === "open" ? "#ecfdf5" : "#eff6ff",
-                            color: campaignStatus === "open" ? "#059669" : "#1d4ed8",
-                            border: `1px solid ${campaignStatus === "open" ? "#a7f3d0" : "#93c5fd"}`,
+                            background: campaignStatus === "open" ? "rgba(16,185,129,0.12)" : "rgba(59,130,246,0.12)",
+                            color: campaignStatus === "open" ? "#6ee7b7" : "#93c5fd",
+                            border: `1px solid ${campaignStatus === "open" ? "rgba(16,185,129,0.4)" : "rgba(59,130,246,0.4)"}`,
                         }}>
                             <div style={{ width: 7, height: 7, borderRadius: "50%", background: campaignStatus === "open" ? "#10b981" : "#3b82f6" }} />
                             {campaignStatus === "open" ? "Aperta" : "Chiusa"}
                         </div>
-                        <span style={{ fontSize: "13px", fontWeight: 600, color: "#374151" }}>Prenotazioni:</span>
+                        <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-primary)" }}>Prenotazioni:</span>
                         <div style={{
                             display: "inline-flex", alignItems: "center", gap: "5px",
                             padding: "3px 10px", borderRadius: "999px", fontSize: "12px", fontWeight: 700,
-                            background: reservationsStatus === "open" ? "#ecfdf5" : "#f3f4f6",
-                            color: reservationsStatus === "open" ? "#059669" : "#374151",
-                            border: `1px solid ${reservationsStatus === "open" ? "#a7f3d0" : "#d1d5db"}`,
+                            background: reservationsStatus === "open" ? "rgba(16,185,129,0.12)" : "var(--bg-card-alt)",
+                            color: reservationsStatus === "open" ? "#6ee7b7" : "var(--text-secondary)",
+                            border: `1px solid ${reservationsStatus === "open" ? "rgba(16,185,129,0.4)" : "var(--border)"}`,
                         }}>
-                            <div style={{ width: 7, height: 7, borderRadius: "50%", background: reservationsStatus === "open" ? "#10b981" : "#6b7280" }} />
+                            <div style={{ width: 7, height: 7, borderRadius: "50%", background: reservationsStatus === "open" ? "#10b981" : "var(--text-muted)" }} />
                             {reservationsStatus === "open" ? "Aperte" : "Chiuse"}
                         </div>
-                        <span style={{ fontSize: "12px", color: "#6B7280", fontWeight: 500 }}>
+                        <span style={{ fontSize: "12px", color: "var(--text-secondary)", fontWeight: 500 }}>
                             {reservedUsersCount} prenotat{reservedUsersCount === 1 ? "o" : "i"}
                         </span>
                         <button
                             type="button"
                             onClick={openCampaignManagement}
-                            style={{ marginLeft: "auto", fontSize: "12px", color: "#2563eb", fontWeight: 600, textDecoration: "none", background: "transparent", border: "none", padding: 0, cursor: "pointer" }}
+                            style={{ marginLeft: "auto", fontSize: "12px", color: "#60a5fa", fontWeight: 600, textDecoration: "none", background: "transparent", border: "none", padding: 0, cursor: "pointer" }}
                         >
                             Gestisci campagna →
                         </button>
@@ -1627,15 +1625,15 @@ const AdminInterlocking = () => {
                             {/* ── Selector 1: Campagne da visualizzare ── */}
                             {campaigns.length > 0 && (
                                 <div style={{ marginBottom: "14px", display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }} onClick={(e) => e.stopPropagation()}>
-                                    <span style={{ fontSize: "12px", fontWeight: 600, color: "#4B5563" }}>Campagne da visualizzare:</span>
+                                    <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-secondary)" }}>Campagne da visualizzare:</span>
                                     <div style={{ position: "relative" }}>
                                         <button
                                             onClick={() => setViewSelectorOpen((p) => !p)}
                                             style={{
                                                 display: "flex", alignItems: "center", gap: "6px",
                                                 padding: "6px 12px", borderRadius: "8px",
-                                                border: "1px solid #D1D5DB", background: "#FFF",
-                                                color: "#111827", fontSize: "12px", cursor: "pointer",
+                                                border: "1px solid var(--border)", background: "var(--bg-card)",
+                                                color: "var(--text-primary)", fontSize: "12px", cursor: "pointer",
                                             }}
                                         >
                                             {viewCampaignIds.size === 0
@@ -1648,18 +1646,18 @@ const AdminInterlocking = () => {
                                         {viewSelectorOpen && (
                                             <div style={{
                                                 position: "absolute", top: "calc(100% + 4px)", left: 0, zIndex: 200,
-                                                background: "#FFF", border: "1px solid #E5E7EB", borderRadius: "10px",
+                                                background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: "10px",
                                                 boxShadow: "0 4px 16px rgba(0,0,0,0.12)", minWidth: "360px", padding: "8px 0",
                                             }}>
                                                 <label
-                                                    style={{ display: "flex", alignItems: "center", gap: "8px", padding: "7px 14px", cursor: "pointer", fontSize: "12px", fontWeight: 700, borderBottom: "1px solid #F3F4F6" }}
+                                                    style={{ display: "flex", alignItems: "center", gap: "8px", padding: "7px 14px", cursor: "pointer", fontSize: "12px", fontWeight: 700, borderBottom: "1px solid var(--bg-card-alt)" }}
                                                     onClick={() => {
                                                         setViewCampaignIds(viewCampaignIds.size === campaigns.length
                                                             ? new Set()
                                                             : new Set(campaigns.map((c) => c.id)));
                                                     }}
                                                 >
-                                                    <input type="checkbox" readOnly checked={viewCampaignIds.size === campaigns.length} style={{ accentColor: "#6366F1" }} />
+                                                    <input type="checkbox" readOnly checked={viewCampaignIds.size === campaigns.length} style={{ accentColor: "var(--accent-purple)" }} />
                                                     Tutte le campagne
                                                 </label>
                                                 {campaigns.map((c) => {
@@ -1675,13 +1673,13 @@ const AdminInterlocking = () => {
                                                                 });
                                                             }}
                                                         >
-                                                            <input type="checkbox" readOnly checked={checked} style={{ accentColor: "#6366F1" }} />
+                                                            <input type="checkbox" readOnly checked={checked} style={{ accentColor: "var(--accent-purple)" }} />
                                                             {label}
                                                         </label>
                                                     );
                                                 })}
-                                                <div style={{ padding: "6px 14px", borderTop: "1px solid #F3F4F6" }}>
-                                                    <button onClick={() => setViewSelectorOpen(false)} style={{ fontSize: "12px", color: "#6366F1", background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}>
+                                                <div style={{ padding: "6px 14px", borderTop: "1px solid var(--bg-card-alt)" }}>
+                                                    <button onClick={() => setViewSelectorOpen(false)} style={{ fontSize: "12px", color: "var(--accent-purple)", background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}>
                                                         Chiudi
                                                     </button>
                                                 </div>
@@ -1699,9 +1697,9 @@ const AdminInterlocking = () => {
                             style={{
                                         display: "flex", alignItems: "center", gap: "6px",
                                         padding: "9px 16px", borderRadius: "12px",
-                                        border: "1px solid #E8511A",
-                                        background: showNewSimPanel ? "#FEF2EB" : "#FFFFFF",
-                                        color: "#E8511A", fontSize: "13px", fontWeight: 600, cursor: "pointer",
+                                        border: "1px solid var(--accent-purple)",
+                                        background: showNewSimPanel ? "rgba(124,58,237,0.15)" : "var(--bg-card)",
+                                        color: "var(--accent-purple)", fontSize: "13px", fontWeight: 600, cursor: "pointer",
                                     }}
                                 >
                                     <span style={{ fontSize: "16px", lineHeight: 1 }}>+</span> Nuova simulazione
@@ -1711,14 +1709,14 @@ const AdminInterlocking = () => {
                                     <div
                                         style={{
                                             marginTop: "10px", padding: "16px",
-                                            background: "#F9FAFB", border: "1px solid #E5E7EB",
+                                            background: "var(--bg-card-alt)", border: "1px solid var(--border)",
                                             borderRadius: "16px", display: "grid", gap: "14px",
                                         }}
                                         onClick={(e) => e.stopPropagation()}
                                     >
                                         {/* Step 0: mandatory campaign selection */}
                                         <div style={{ display: "grid", gap: "6px", maxWidth: "640px" }}>
-                                            <label style={{ fontSize: "12px", color: "#4B5563", fontWeight: 600 }}>
+                                            <label style={{ fontSize: "12px", color: "var(--text-secondary)", fontWeight: 600 }}>
                                                 Campagna da simulare (obbligatoria)
                                             </label>
                                             <select
@@ -1726,9 +1724,9 @@ const AdminInterlocking = () => {
                                                 onChange={(e) => setSelectedCampaignId(e.target.value || null)}
                                                 disabled={loadingCampaigns || campaigns.length === 0}
                                                 style={{
-                                                    background: "#FFF",
-                                                    color: "#111827",
-                                                    border: "1px solid #E5E7EB",
+                                                    background: "var(--bg-card)",
+                                                    color: "var(--text-primary)",
+                                                    border: "1px solid var(--border)",
                                                     borderRadius: "10px",
                                                     padding: "9px 12px",
                                                     outline: "none",
@@ -1743,7 +1741,7 @@ const AdminInterlocking = () => {
                                                 ))}
                                             </select>
                                             {!selectedCampaignId && (
-                                                <div style={{ fontSize: "12px", color: "#92400E", fontWeight: 600 }}>
+                                                <div style={{ fontSize: "12px", color: "var(--accent-orange)", fontWeight: 600 }}>
                                                     Seleziona una campagna chiusa prima di preparare o analizzare la simulazione.
                                                 </div>
                                             )}
@@ -1756,16 +1754,16 @@ const AdminInterlocking = () => {
                                                 disabled={loadingGraph || isRestrictedReadOnly || !selectedCampaignId}
                                                 style={{
                                                     ...ghostButtonStyle,
-                                                    background: buildResult ? "#ECFDF5" : "#FFFFFF",
-                                                    border: buildResult ? "1px solid #A7F3D0" : "1px solid #E5E7EB",
-                                                    color: buildResult ? "#065F46" : "#374151",
+                                                    background: buildResult ? "rgba(16,185,129,0.12)" : "var(--bg-card)",
+                                                    border: buildResult ? "1px solid rgba(16,185,129,0.4)" : "1px solid var(--border)",
+                                                    color: buildResult ? "var(--accent-green)" : "var(--text-primary)",
                                                     fontWeight: 600, minWidth: "185px",
                                                 }}
                                             >
                                                 {loadingGraph ? "Preparazione…" : buildResult ? "✓ Simulazione pronta" : "Prepara simulazione"}
                                             </button>
                                             {buildResult && (
-                                                <div style={{ fontSize: "13px", color: "#059669" }}>
+                                                <div style={{ fontSize: "13px", color: "var(--accent-green)" }}>
                                                     <strong>{buildResult.nodes}</strong> persone · <strong>{buildResult.relationships}</strong> candidature
                                                 </div>
                                             )}
@@ -1781,33 +1779,33 @@ const AdminInterlocking = () => {
                                                 transition: "opacity 0.3s",
                                             }}
                                         >
-                                            <label style={{ display: "grid", gap: "6px", fontSize: "12px", color: "#4B5563" }}>
+                                            <label style={{ display: "grid", gap: "6px", fontSize: "12px", color: "var(--text-secondary)" }}>
                                                 Strategia
                                                 <select value={strategy} onChange={(e) => setStrategy(e.target.value as UiStrategy)}
-                                                    style={{ background: "#FFF", color: "#111827", border: "1px solid #E5E7EB", borderRadius: "10px", padding: "9px 12px", outline: "none", fontSize: "13px" }}>
+                                                    style={{ background: "var(--bg-card)", color: "var(--text-primary)", border: "1px solid var(--border)", borderRadius: "10px", padding: "9px 12px", outline: "none", fontSize: "13px" }}>
                                                     <option value="NONE">Nessuna</option>
                                                     <option value="MAX_IMPACT">Massimo impatto</option>
                                                     <option value="QUALITY_FIRST">Qualità delle scelte</option>
                                                 </select>
                                             </label>
-                                            <label style={{ display: "grid", gap: "6px", fontSize: "12px", color: "#4B5563" }}>
+                                            <label style={{ display: "grid", gap: "6px", fontSize: "12px", color: "var(--text-secondary)" }}>
                                                 MaxLen
                                                 <select value={maxLen} onChange={(e) => setMaxLen(Number(e.target.value))}
-                                                    style={{ background: "#FFF", color: "#111827", border: "1px solid #E5E7EB", borderRadius: "10px", padding: "9px 12px", outline: "none", fontSize: "13px" }}>
+                                                    style={{ background: "var(--bg-card)", color: "var(--text-primary)", border: "1px solid var(--border)", borderRadius: "10px", padding: "9px 12px", outline: "none", fontSize: "13px" }}>
                                                     {[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15].map((n) => <option key={n} value={n}>{n}</option>)}
                                                 </select>
                                             </label>
                                             <button
                                                 onClick={handleAnalyzeScenarios}
                                                 disabled={loadingAnalyze || !buildResult || isRestrictedReadOnly || !selectedCampaignId}
-                                                style={{ ...ghostButtonStyle, background: "#6366F1", color: "#FFFFFF", border: "1px solid #4F46E5", fontWeight: 600, whiteSpace: "nowrap" }}
+                                                style={{ ...ghostButtonStyle, background: "var(--accent-purple)", color: "#FFFFFF", border: "1px solid var(--accent-purple)", fontWeight: 600, whiteSpace: "nowrap" }}
                                             >
                                                 {loadingAnalyze ? "Analisi…" : "Analizza scenari"}
                                             </button>
                                         </div>
 
                                         {error && (
-                                            <div style={{ fontSize: "12px", color: "#B91C1C", padding: "8px 12px", background: "#FEF2F2", borderRadius: "8px", border: "1px solid #FECACA" }}>
+                                            <div style={{ fontSize: "12px", color: "#fca5a5", padding: "8px 12px", background: "rgba(239,68,68,0.12)", borderRadius: "8px", border: "1px solid rgba(239,68,68,0.3)" }}>
                                                 {error}
                                             </div>
                                         )}
@@ -1821,10 +1819,10 @@ const AdminInterlocking = () => {
                                     display: "grid",
                                     gridTemplateColumns: "32px 1fr 1.2fr 1.4fr 0.65fr 0.65fr 0.65fr 0.7fr 0.65fr 0.9fr 0.95fr 56px 32px",
                                     gap: "6px", padding: "9px 10px",
-                                    fontSize: "10px", fontWeight: 700, color: "#92400E",
+                                    fontSize: "10px", fontWeight: 700, color: "var(--accent-orange)",
                                     textTransform: "uppercase", letterSpacing: "0.06em",
                                     alignItems: "center", textAlign: "left",
-                                    background: "#FEF3C7", borderRadius: "10px", marginBottom: "8px",
+                                    background: "rgba(245,158,11,0.1)", borderRadius: "10px", marginBottom: "8px",
                                 }}
                             >
                                 <div /><div>ID</div><div>Data e ora</div><div>Campagna</div><div>Catene</div>
@@ -1835,27 +1833,27 @@ const AdminInterlocking = () => {
                             {/* ── Scenario rows ── */}
                             <div style={{ display: "grid", gap: "8px", maxHeight: expandedBox === "scenarios" ? "calc(100vh - 320px)" : "420px", overflowY: "auto", paddingRight: "2px" }}>
                                 {loadingScenarios ? (
-                                    <div style={{ color: "#9CA3AF", fontSize: "13px" }}>Caricamento scenari...</div>
+                                    <div style={{ color: "var(--text-muted)", fontSize: "13px" }}>Caricamento scenari...</div>
                                 ) : isRestrictedReadOnly ? (
-                                    <div style={{ color: "#9CA3AF", fontSize: "13px" }}>
+                                    <div style={{ color: "var(--text-muted)", fontSize: "13px" }}>
                                         Disponibile solo per Admin del perimetro.
                                     </div>
                                 ) : scenarios.length === 0 ? (
-                                    <div style={{ color: "#9CA3AF", fontSize: "13px" }}>Nessuno scenario disponibile.</div>
+                                    <div style={{ color: "var(--text-muted)", fontSize: "13px" }}>Nessuno scenario disponibile.</div>
                                 ) : (
                                     groupedScenarios.flatMap(({ campaign, scenarios: groupScenarios }) => {
                                         const campaignLabel = campaignSelectionOptions.get(campaign.id) ?? campaign.id.slice(0, 8);
                                         const groupHeader = (
                                             <div key={`hdr-${campaign.id}`} style={{
                                                 padding: "6px 10px", borderRadius: "8px", marginBottom: "4px",
-                                                background: "linear-gradient(90deg, #EEF2FF 0%, #F5F3FF 100%)",
-                                                border: "1px solid #C7D2FE",
-                                                fontSize: "11px", fontWeight: 700, color: "#4338CA",
+                                                background: "linear-gradient(90deg, rgba(99,102,241,0.1) 0%, rgba(124,58,237,0.1) 100%)",
+                                                border: "1px solid rgba(124,58,237,0.3)",
+                                                fontSize: "11px", fontWeight: 700, color: "var(--accent-purple)",
                                                 display: "flex", alignItems: "center", gap: "8px",
                                             }}>
                                                 <span>📋</span>
                                                 <span>{campaignLabel}</span>
-                                                <span style={{ fontWeight: 400, color: "#6366F1" }}>({groupScenarios.length} scenari)</span>
+                                                <span style={{ fontWeight: 400, color: "var(--accent-purple)" }}>({groupScenarios.length} scenari)</span>
                                             </div>
                                         );
                                         const rows = groupScenarios.map((scenario) => {
@@ -1872,9 +1870,9 @@ const AdminInterlocking = () => {
                                                 key={scenario.id}
                                                 onClick={() => handleScenarioRowClick(scenario.id)}
                                                 style={{
-                                                    border: isActive ? "1px solid #6366F1" : "1px solid #E5E7EB",
+                                                    border: isActive ? "1px solid var(--accent-purple)" : "1px solid var(--border)",
                                                     borderRadius: "12px",
-                                                    background: isActive ? "#EFF6FF" : isSelected ? "#F3F4F6" : "#FFFFFF",
+                                                    background: isActive ? "rgba(124,58,237,0.1)" : isSelected ? "var(--bg-card-alt)" : "var(--bg-card)",
                                                     cursor: isRestrictedReadOnly ? "not-allowed" : "pointer", overflow: "hidden",
                                                     boxShadow: isActive ? "0 0 0 1px rgba(99,102,241,0.2), 0 4px 6px -1px rgba(0,0,0,0.08)" : "none",
                                                 }}
@@ -1895,20 +1893,20 @@ const AdminInterlocking = () => {
                                                         ) : null}
                                                     </div>
                                                     <div style={{ fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{scenario.scenario_code}</div>
-                                                    <div style={{ color: "#6B7280", fontSize: "11px", display: "flex", alignItems: "center", gap: "6px" }}>
+                                                    <div style={{ color: "var(--text-secondary)", fontSize: "11px", display: "flex", alignItems: "center", gap: "6px" }}>
                                                         <span>{formatDateTime(scenario.generated_at)}</span>
                                                         {isActive && (
-                                                            <span style={{ fontSize: "10px", fontWeight: 700, color: "#065F46", background: "#D1FAE5", border: "1px solid #6EE7B7", borderRadius: "999px", padding: "1px 6px" }}>
+                                                            <span style={{ fontSize: "10px", fontWeight: 700, color: "#6ee7b7", background: "rgba(16,185,129,0.15)", border: "1px solid rgba(16,185,129,0.4)", borderRadius: "999px", padding: "1px 6px" }}>
                                                                 attivo
                                                             </span>
                                                         )}
                                                         {isSelected && !isActive && (
-                                                            <span style={{ fontSize: "10px", fontWeight: 700, color: "#1D4ED8", background: "#DBEAFE", border: "1px solid #93C5FD", borderRadius: "999px", padding: "1px 6px" }}>
+                                                            <span style={{ fontSize: "10px", fontWeight: 700, color: "#93c5fd", background: "rgba(59,130,246,0.15)", border: "1px solid rgba(59,130,246,0.4)", borderRadius: "999px", padding: "1px 6px" }}>
                                                                 selezionato
                                                             </span>
                                                         )}
                                                     </div>
-                                                    <div style={{ color: "#374151", fontSize: "11px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                                    <div style={{ color: "var(--text-primary)", fontSize: "11px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                                         {formatScenarioCampaignLabel(scenario.campaign_id)}
                                                     </div>
                                                     <div>{visibleChains.length || scenario.total_chains || 0}</div>
@@ -1917,7 +1915,7 @@ const AdminInterlocking = () => {
                                                     <div>{formatNumber(scenario.avg_length, 2)}</div>
                                                     <div>{scenario.max_length ?? "—"}</div>
                                                     <div>{formatNumber(scenario.avg_priority, 2)}</div>
-                                                    <div style={{ color: "#6B7280", fontSize: "11px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{getStrategyLabel(scenario.strategy)}</div>
+                                                    <div style={{ color: "var(--text-secondary)", fontSize: "11px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{getStrategyLabel(scenario.strategy)}</div>
                                                     <div>
                                                         <button onClick={(e) => { e.stopPropagation(); exportScenarioCsv(scenario); }}
                                                             disabled={isRestrictedReadOnly}
@@ -1962,14 +1960,14 @@ const AdminInterlocking = () => {
                                                 </div>
 
                                                 {isExpSc && (
-                                                    <div style={{ borderTop: "1px solid #E5E7EB", background: "#F9FAFB", padding: "10px 12px 14px" }}
+                                                    <div style={{ borderTop: "1px solid var(--border)", background: "var(--bg-card-alt)", padding: "10px 12px 14px" }}
                                                         onClick={(e) => e.stopPropagation()}>
-                                                        <div style={{ display: "grid", gridTemplateColumns: "14px 60px 1fr 110px 90px", gap: "8px", padding: "0 0 10px 0", fontSize: "10px", color: "#6B7280", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                                                        <div style={{ display: "grid", gridTemplateColumns: "14px 60px 1fr 110px 90px", gap: "8px", padding: "0 0 10px 0", fontSize: "10px", color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
                                                             <div /><div>ID</div><div>Persone coinvolte</div><div>Priorità</div><div>Lungh.</div>
                                                         </div>
                                                         <div style={{ display: "grid", gap: "8px" }}>
                                                             {visibleChains.length === 0 ? (
-                                                                <div style={{ color: "#9CA3AF", fontSize: "13px" }}>Nessuna catena disponibile.</div>
+                                                                <div style={{ color: "var(--text-muted)", fontSize: "13px" }}>Nessuna catena disponibile.</div>
                                                             ) : (
                                                                 visibleChains.map((chain: { peopleNames?: string[]; avgPriority?: number | null; length?: number }, index: number) => {
                                                                     const cc = getChainColor(index);
@@ -1996,7 +1994,7 @@ const AdminInterlocking = () => {
                                                                                 gap: "8px",
                                                                                 alignItems: "center",
                                                                                 padding: "9px 8px",
-                                                                                borderTop: "1px solid #E5E7EB",
+                                                                                borderTop: "1px solid var(--border)",
                                                                                 fontSize: "13px",
                                                                                 cursor: "pointer",
                                                                                 borderRadius: isChainActive ? "8px" : "0",
@@ -2056,9 +2054,9 @@ const AdminInterlocking = () => {
                                             }}
                                             style={{
                                                 ...ghostButtonStyle,
-                                                background: viewMode === "peopleList" ? "#EFF6FF" : "#FFFFFF",
-                                                border: viewMode === "peopleList" ? "1px solid #6366F1" : "1px solid #E5E7EB",
-                                                color: viewMode === "peopleList" ? "#4F46E5" : "#374151",
+                                                background: viewMode === "peopleList" ? "rgba(124,58,237,0.1)" : "var(--bg-card)",
+                                                border: viewMode === "peopleList" ? "1px solid var(--accent-purple)" : "1px solid var(--border)",
+                                                color: viewMode === "peopleList" ? "var(--accent-purple)" : "var(--text-primary)",
                                                 fontWeight: 600, fontSize: "13px",
                                             }}
                                         >
@@ -2087,12 +2085,12 @@ const AdminInterlocking = () => {
                                     {/* Mappa: sempre montata, nascosta solo in peopleList mode */}
                                     <div style={{
                                         position: "absolute", inset: 0,
-                                        background: "#F3F4F6",
+                                        background: "var(--bg-card-alt)",
                                         visibility: viewMode === "map" ? "visible" : "hidden",
                                         pointerEvents: viewMode === "map" ? "auto" : "none",
                                     }}>
                                         {isRestrictedReadOnly ? (
-                                            <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#9CA3AF", padding: "20px", textAlign: "center" }}>
+                                            <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)", padding: "20px", textAlign: "center" }}>
                                                 Disponibile solo per Admin del perimetro.
                                             </div>
                                         ) : displayedMapMarkers.length > 0 ? (
@@ -2120,7 +2118,7 @@ const AdminInterlocking = () => {
                                                         fillOpacity = 0.88; weight = 3;
                                                         radius = 12 + Math.min(marker.peopleCount, 5);
                                                     } else if (chainHighlightActive && !inChain) {
-                                                        color = "#D1D5DB"; fillColor = "#E5E7EB";
+                                                        color = "#555b70"; fillColor = "#555b70";
                                                         fillOpacity = 0.45; weight = 1; radius = 7;
                                                     } else if (marker.colorMode === "scenario-red") {
                                                         color = "#F43F5E"; fillColor = "#F43F5E";
@@ -2142,7 +2140,7 @@ const AdminInterlocking = () => {
                                                                             const peopleHere = activeScenarioPeople.filter((p) => p.locationId === marker.locationId);
                                                                             return (
                                                                                 <>
-                                                                                    <div style={{ fontSize: "11px", color: "#6B7280", marginBottom: "6px" }}>
+                                                                                    <div style={{ fontSize: "11px", color: "var(--text-secondary)", marginBottom: "6px" }}>
                                                                                         {marker.peopleCount} person{marker.peopleCount === 1 ? "a" : "e"} coinvolt{marker.peopleCount === 1 ? "a" : "e"}
                                                                                         {chainHighlightActive && inChain && ` · ${count} in catena`}
                                                                                     </div>
@@ -2151,10 +2149,10 @@ const AdminInterlocking = () => {
                                                                                             const userDetail = usersById.get(person.id);
                                                                                             const orgUnit = userDetail?.org_unit_name ?? null;
                                                                                             return (
-                                                                                                <div key={person.id} style={{ borderTop: "1px solid #F3F4F6", paddingTop: "5px" }}>
+                                                                                                <div key={person.id} style={{ borderTop: "1px solid var(--bg-card-alt)", paddingTop: "5px" }}>
                                                                                                     <div style={{ fontWeight: 600, fontSize: "12px" }}>{person.name}</div>
-                                                                                                    <div style={{ fontSize: "11px", color: "#6B7280" }}>{person.role}</div>
-                                                                                                    {orgUnit && <div style={{ fontSize: "11px", color: "#6B7280" }}>{orgUnit}</div>}
+                                                                                                    <div style={{ fontSize: "11px", color: "var(--text-secondary)" }}>{person.role}</div>
+                                                                                                    {orgUnit && <div style={{ fontSize: "11px", color: "var(--text-secondary)" }}>{orgUnit}</div>}
                                                                                                 </div>
                                                                                             );
                                                                                         })}
@@ -2162,7 +2160,7 @@ const AdminInterlocking = () => {
                                                                                 </>
                                                                             );
                                                                         })() : (
-                                                                            <div style={{ fontSize: "12px", color: "#6B7280" }}>Sede disponibile nel perimetro aziendale</div>
+                                                                            <div style={{ fontSize: "12px", color: "var(--text-secondary)" }}>Sede disponibile nel perimetro aziendale</div>
                                                                         )}
                                                                     </div>
                                                                 </Popup>
@@ -2183,7 +2181,7 @@ const AdminInterlocking = () => {
                                                 })}
                                             </MapContainer>
                                         ) : (
-                                            <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#9CA3AF", padding: "20px", textAlign: "center" }}>
+                                            <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)", padding: "20px", textAlign: "center" }}>
                                                 Nessuna sede geolocalizzata disponibile.
                                             </div>
                                         )}
@@ -2193,14 +2191,14 @@ const AdminInterlocking = () => {
                                     {viewMode === "peopleList" && activeScenario && !isRestrictedReadOnly && (() => {
                                         const cc = selectedChainIndex !== null ? getChainColor(selectedChainIndex) : null;
                                         return (
-                                            <div style={{ position: "absolute", inset: 0, background: "#FFFFFF", display: "grid", gridTemplateRows: "auto auto auto 1fr", overflow: "hidden" }}>
+                                            <div style={{ position: "absolute", inset: 0, background: "var(--bg-card)", display: "grid", gridTemplateRows: "auto auto auto 1fr", overflow: "hidden" }}>
                                                 {/* Header */}
-                                                <div style={{ padding: "14px 18px", borderBottom: "1px solid #E5E7EB", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
+                                                <div style={{ padding: "14px 18px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
                                                     <div>
-                                                        <div style={{ fontWeight: 700, fontSize: "15px", color: "#111827" }}>
+                                                        <div style={{ fontWeight: 700, fontSize: "15px", color: "var(--text-primary)" }}>
                                                             {selectedChainIndex !== null ? `Catena #${selectedChainIndex + 1}` : "Persone dello scenario"}
                                                         </div>
-                                                        <div style={{ fontSize: "12px", color: "#6B7280", marginTop: "2px" }}>
+                                                        <div style={{ fontSize: "12px", color: "var(--text-secondary)", marginTop: "2px" }}>
                                                             {peopleListToShow.length} {selectedChainIndex !== null ? "persone nella catena" : "persone nello scenario"}
                                                         </div>
                                                     </div>
@@ -2229,7 +2227,7 @@ const AdminInterlocking = () => {
                                                         </span>
                                                         <button
                                                             onClick={() => setSelectedChainIndex(null)}
-                                                            style={{ fontSize: "11px", color: "#6B7280", background: "none", border: "none", cursor: "pointer", textDecoration: "underline", padding: 0 }}
+                                                            style={{ fontSize: "11px", color: "var(--text-secondary)", background: "none", border: "none", cursor: "pointer", textDecoration: "underline", padding: 0 }}
                                                         >
                                                             Rimuovi filtro
                                                         </button>
@@ -2237,7 +2235,7 @@ const AdminInterlocking = () => {
                                                 )}
 
                                                 {/* Intestazioni colonne */}
-                                                <div style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr 1fr 1fr 0.6fr", gap: "10px", padding: "9px 18px", fontSize: "10px", color: "#6B7280", textTransform: "uppercase", letterSpacing: "0.08em", borderBottom: "1px solid #E5E7EB", background: "#F9FAFB", flexShrink: 0 }}>
+                                                <div style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr 1fr 1fr 0.6fr", gap: "10px", padding: "9px 18px", fontSize: "10px", color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.08em", borderBottom: "1px solid var(--border)", background: "var(--bg-card-alt)", flexShrink: 0 }}>
                                                     <div>Nome</div><div>Ruolo</div><div>Sede</div><div>Responsabile</div><div>PBP</div>
                                                 </div>
 
@@ -2245,16 +2243,16 @@ const AdminInterlocking = () => {
                                                 <div style={{ overflowY: "auto" }}>
                                                     {peopleListToShow.length > 0 ? (
                                                         peopleListToShow.map((person, i) => (
-                                                            <div key={person.id} style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr 1fr 1fr 0.6fr", gap: "10px", padding: "11px 18px", borderBottom: "1px solid #F3F4F6", fontSize: "13px", background: i % 2 === 0 ? "#FFFFFF" : "#FAFAFA" }}>
+                                                            <div key={person.id} style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr 1fr 1fr 0.6fr", gap: "10px", padding: "11px 18px", borderBottom: "1px solid var(--bg-card-alt)", fontSize: "13px", background: i % 2 === 0 ? "var(--bg-card)" : "var(--bg-card-alt)" }}>
                                                                 <div style={{ fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{person.name}</div>
-                                                                <div style={{ color: "#374151", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{person.role}</div>
-                                                                <div style={{ color: "#374151", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{person.locationName}</div>
-                                                                <div style={{ color: "#374151", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{person.responsible}</div>
-                                                                <div style={{ color: "#374151" }}>{person.pbp}</div>
+                                                                <div style={{ color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{person.role}</div>
+                                                                <div style={{ color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{person.locationName}</div>
+                                                                <div style={{ color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{person.responsible}</div>
+                                                                <div style={{ color: "var(--text-primary)" }}>{person.pbp}</div>
                                                             </div>
                                                         ))
                                                     ) : (
-                                                        <div style={{ padding: "20px 18px", color: "#9CA3AF", fontSize: "13px" }}>Nessuna persona trovata.</div>
+                                                        <div style={{ padding: "20px 18px", color: "var(--text-muted)", fontSize: "13px" }}>Nessuna persona trovata.</div>
                                                     )}
                                                 </div>
                                             </div>
@@ -2263,19 +2261,19 @@ const AdminInterlocking = () => {
 
                                 </div>
                                 {/* ── Colonna destra: tab PEOPLE / CHAINS ── */}
-                                <div style={{ borderLeft: "1px solid #E5E7EB", background: "#FFFFFF", height: expandedBox === "insights" ? "calc(100vh - 210px)" : "450px", display: "grid", gridTemplateRows: "auto 1fr", overflow: "hidden" }}>
+                                <div style={{ borderLeft: "1px solid var(--border)", background: "var(--bg-card)", height: expandedBox === "insights" ? "calc(100vh - 210px)" : "450px", display: "grid", gridTemplateRows: "auto 1fr", overflow: "hidden" }}>
 
                                     {/* Tab bar interna */}
-                                    <div style={{ display: "flex", gap: "4px", padding: "10px 12px 0px", borderBottom: "1px solid #E5E7EB", flexShrink: 0 }}>
+                                    <div style={{ display: "flex", gap: "4px", padding: "10px 12px 0px", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
                                         <button
                                             onClick={() => setRightPanelTab("PEOPLE")}
                                             style={{
                                                 padding: "7px 12px", borderRadius: "10px 10px 0 0",
                                                 fontSize: "12px", fontWeight: 600, cursor: "pointer",
                                                 border: "1px solid transparent",
-                                                borderBottom: rightPanelTab === "PEOPLE" ? "2px solid #6366F1" : "1px solid transparent",
+                                                borderBottom: rightPanelTab === "PEOPLE" ? "2px solid var(--accent-purple)" : "1px solid transparent",
                                                 background: "transparent",
-                                                color: rightPanelTab === "PEOPLE" ? "#6366F1" : "#6B7280",
+                                                color: rightPanelTab === "PEOPLE" ? "var(--accent-purple)" : "var(--text-secondary)",
                                                 transition: "color 0.15s",
                                             }}
                                         >
@@ -2287,9 +2285,9 @@ const AdminInterlocking = () => {
                                                 padding: "7px 12px", borderRadius: "10px 10px 0 0",
                                                 fontSize: "12px", fontWeight: 600, cursor: "pointer",
                                                 border: "1px solid transparent",
-                                                borderBottom: rightPanelTab === "CHAINS" ? "2px solid #6366F1" : "1px solid transparent",
+                                                borderBottom: rightPanelTab === "CHAINS" ? "2px solid var(--accent-purple)" : "1px solid transparent",
                                                 background: "transparent",
-                                                color: rightPanelTab === "CHAINS" ? "#6366F1" : "#6B7280",
+                                                color: rightPanelTab === "CHAINS" ? "var(--accent-purple)" : "var(--text-secondary)",
                                                 transition: "color 0.15s",
                                             }}
                                         >
@@ -2326,20 +2324,20 @@ const AdminInterlocking = () => {
                                                                     onClick={() => setFocusedPersonId((prev) => prev === person.id ? null : person.id)}
                                                                     style={{
                                                                         textAlign: "left", padding: "10px 12px", borderRadius: "12px",
-                                                                        border: isFocused ? "1px solid #FCD34D" : isInChain && cc ? `1px solid ${cc.border}` : "1px solid #E5E7EB",
-                                                                        background: isFocused ? "#FEF3C7" : isInChain && cc ? cc.bg : "#FFFFFF",
-                                                                        color: "#111827", cursor: "pointer", width: "100%",
+                                                                        border: isFocused ? "1px solid #FCD34D" : isInChain && cc ? `1px solid ${cc.border}` : "1px solid var(--border)",
+                                                                        background: isFocused ? "rgba(245,158,11,0.1)" : isInChain && cc ? cc.bg : "var(--bg-card)",
+                                                                        color: "var(--text-primary)", cursor: "pointer", width: "100%",
                                                                         opacity: chainActive && !isInChain && !isFocused ? 0.45 : 1,
                                                                         transition: "opacity 0.2s, border 0.2s, background 0.2s",
                                                                     }}>
                                                                     <div style={{ fontWeight: 600, fontSize: "13px", lineHeight: 1.2 }}>{person.name}</div>
-                                                                    <div style={{ marginTop: "4px", fontSize: "11px", color: "#6B7280" }}>{person.role !== "—" ? person.role : "Ruolo non disponibile"}</div>
-                                                                    <div style={{ marginTop: "2px", fontSize: "11px", color: "#9CA3AF" }}>{person.locationName}</div>
+                                                                    <div style={{ marginTop: "4px", fontSize: "11px", color: "var(--text-secondary)" }}>{person.role !== "—" ? person.role : "Ruolo non disponibile"}</div>
+                                                                    <div style={{ marginTop: "2px", fontSize: "11px", color: "var(--text-muted)" }}>{person.locationName}</div>
                                                                 </button>
                                                             );
                                                         })
                                                     ) : (
-                                                        <div style={{ color: "#9CA3AF", fontSize: "13px" }}>Nessuna persona disponibile.</div>
+                                                        <div style={{ color: "var(--text-muted)", fontSize: "13px" }}>Nessuna persona disponibile.</div>
                                                     )
                                                 ) : globalLocationMarkers.length > 0 ? (
                                                     globalLocationMarkers.map((loc) => {
@@ -2347,17 +2345,17 @@ const AdminInterlocking = () => {
                                                         return (
                                                             <button key={loc.locationId}
                                                                 onClick={() => setFocusedLocationId((prev) => prev === loc.locationId ? null : loc.locationId)}
-                                                                style={{ textAlign: "left", padding: "10px 12px", borderRadius: "12px", border: isLocFocused ? "1px solid #FCD34D" : "1px solid #E5E7EB", background: isLocFocused ? "#FEF3C7" : "#FFFFFF", color: "#111827", fontSize: "13px", cursor: "pointer", width: "100%" }}>
+                                                                style={{ textAlign: "left", padding: "10px 12px", borderRadius: "12px", border: isLocFocused ? "1px solid var(--accent-orange)" : "1px solid var(--border)", background: isLocFocused ? "rgba(245,158,11,0.1)" : "var(--bg-card)", color: "var(--text-primary)", fontSize: "13px", cursor: "pointer", width: "100%" }}>
                                                                 {loc.locationName}
                                                             </button>
                                                         );
                                                     })
                                                 ) : (
-                                                    <div style={{ color: "#9CA3AF", fontSize: "13px" }}>Nessuna sede disponibile.</div>
+                                                    <div style={{ color: "var(--text-muted)", fontSize: "13px" }}>Nessuna sede disponibile.</div>
                                                 )}
                                                 {!activeScenario && focusedLocationId && (
                                                     <button onClick={() => setFocusedLocationId(null)}
-                                                        style={{ fontSize: "11px", color: "#6B7280", background: "none", border: "none", cursor: "pointer", textDecoration: "underline", padding: 0 }}>
+                                                        style={{ fontSize: "11px", color: "var(--text-secondary)", background: "none", border: "none", cursor: "pointer", textDecoration: "underline", padding: 0 }}>
                                                         Deseleziona sede
                                                     </button>
                                                 )}
@@ -2375,7 +2373,7 @@ const AdminInterlocking = () => {
                                                     {selectedChainIndex !== null && (
                                                         <button
                                                             onClick={() => setSelectedChainIndex(null)}
-                                                            style={{ fontSize: "11px", color: "#6B7280", background: "none", border: "none", cursor: "pointer", textDecoration: "underline", padding: 0, flexShrink: 0 }}
+                                                            style={{ fontSize: "11px", color: "var(--text-secondary)", background: "none", border: "none", cursor: "pointer", textDecoration: "underline", padding: 0, flexShrink: 0 }}
                                                         >
                                                             ✕ reset
                                                         </button>
@@ -2383,9 +2381,9 @@ const AdminInterlocking = () => {
                                                 </div>
 
                                                 {!activeScenario ? (
-                                                    <div style={{ color: "#9CA3AF", fontSize: "13px", paddingTop: "8px" }}>Seleziona uno scenario per vedere le catene.</div>
+                                                    <div style={{ color: "var(--text-muted)", fontSize: "13px", paddingTop: "8px" }}>Seleziona uno scenario per vedere le catene.</div>
                                                 ) : getScenarioViewChains(activeScenario).length === 0 ? (
-                                                    <div style={{ color: "#9CA3AF", fontSize: "13px", paddingTop: "8px" }}>Nessuna catena disponibile.</div>
+                                                    <div style={{ color: "var(--text-muted)", fontSize: "13px", paddingTop: "8px" }}>Nessuna catena disponibile.</div>
                                                 ) : (
                                                     getScenarioViewChains(activeScenario).map((chain, idx) => {
                                                         const cc = getChainColor(idx);
@@ -2399,7 +2397,7 @@ const AdminInterlocking = () => {
                                                                     padding: "10px 12px 10px 15px",
                                                                     borderRadius: "12px",
                                                                     border: isSelected ? `2px solid ${cc.border}` : `1px solid ${cc.border}40`,
-                                                                    background: isSelected ? cc.bg : "#FFFFFF",
+                                                                    background: isSelected ? cc.bg : "var(--bg-card)",
                                                                     cursor: "pointer",
                                                                     display: "grid",
                                                                     gridTemplateColumns: "12px 1fr",
@@ -2416,11 +2414,11 @@ const AdminInterlocking = () => {
                                                                     boxShadow: isSelected ? `0 0 0 3px ${cc.dot}40` : "none",
                                                                 }} />
                                                                 <div>
-                                                                    <div style={{ fontSize: "12px", fontWeight: 600, color: "#111827", lineHeight: 1.4 }}>
+                                                                    <div style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-primary)", lineHeight: 1.4 }}>
                                                                         {chain.peopleNames.slice(0, 5).join(" → ")}
                                                                         {chain.peopleNames.length > 5 && ` → +${chain.peopleNames.length - 5}`}
                                                                     </div>
-                                                                    <div style={{ marginTop: "5px", display: "flex", gap: "10px", fontSize: "11px", color: "#6B7280" }}>
+                                                                    <div style={{ marginTop: "5px", display: "flex", gap: "10px", fontSize: "11px", color: "var(--text-secondary)" }}>
                                                                         <span>#{idx + 1}</span>
                                                                         <span>Lung. {chain.length}</span>
                                                                         {chain.avgPriority != null && (
@@ -2438,7 +2436,7 @@ const AdminInterlocking = () => {
                                 </div>
                             </div>
 
-                            <div style={{ marginTop: "10px", display: "flex", gap: "16px", flexWrap: "wrap", fontSize: "12px", color: "#9CA3AF" }}>
+                            <div style={{ marginTop: "10px", display: "flex", gap: "16px", flexWrap: "wrap", fontSize: "12px", color: "var(--text-muted)" }}>
                                 <div>Scenario attivo: {activeScenario?.scenario_code ?? "—"}</div>
                                 <div>Persone coinvolte: {activeScenario ? activeScenarioPeople.length : "—"}</div>
                                 <div>Sedi evidenziate: {displayedMapMarkers.length}</div>
@@ -2457,10 +2455,10 @@ const AdminInterlocking = () => {
                                 <div style={sectionSubtitleStyle}>Andamento scenari in base alla metrica selezionata</div>
                             </div>
                             <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                                <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "12px", color: "#6B7280" }}>
+                                <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "12px", color: "var(--text-secondary)" }}>
                                     Scegli analisi:
                                     <select value={analyticsMetric} onChange={(e) => setAnalyticsMetric(e.target.value as AnalyticsMetric)}
-                                        style={{ background: "#FFFFFF", color: "#111827", border: "1px solid #E5E7EB", borderRadius: "12px", padding: "10px 12px", outline: "none" }}>
+                                        style={{ background: "var(--bg-card)", color: "var(--text-primary)", border: "1px solid var(--border)", borderRadius: "12px", padding: "10px 12px", outline: "none" }}>
                                         <option value="avg_length">Lung media</option>
                                         <option value="unique_people">Persone coinvolte</option>
                                         <option value="total_chains">Num catene</option>
@@ -2475,32 +2473,32 @@ const AdminInterlocking = () => {
                         <div style={{ ...subtleCardStyle, padding: "16px 18px 12px 18px", minHeight: expandedBox === "analytics" ? "calc(100vh - 160px)" : "200px", display: "grid", gridTemplateRows: "auto 1fr auto", gap: "12px" }}>
                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                                 <div>
-                                    <div style={{ fontSize: "13px", color: "#6B7280" }}>Metrica attiva</div>
-                                    <div style={{ marginTop: "4px", fontSize: "22px", fontWeight: 700, color: "#111827" }}>{getAnalyticsMetricLabel(analyticsMetric)}</div>
+                                    <div style={{ fontSize: "13px", color: "var(--text-secondary)" }}>Metrica attiva</div>
+                                    <div style={{ marginTop: "4px", fontSize: "22px", fontWeight: 700, color: "var(--text-primary)" }}>{getAnalyticsMetricLabel(analyticsMetric)}</div>
                                 </div>
-                                <div style={{ fontSize: "12px", color: "#6B7280" }}>{analyticsSeries.length} scenari</div>
+                                <div style={{ fontSize: "12px", color: "var(--text-secondary)" }}>{analyticsSeries.length} scenari</div>
                             </div>
 
-                            <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.max(analyticsSeries.length, 1)}, minmax(28px, 1fr))`, gap: "14px", alignItems: "end", minHeight: expandedBox === "analytics" ? "380px" : "120px", paddingTop: "16px", borderTop: "1px solid #E5E7EB" }}>
+                            <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.max(analyticsSeries.length, 1)}, minmax(28px, 1fr))`, gap: "14px", alignItems: "end", minHeight: expandedBox === "analytics" ? "380px" : "120px", paddingTop: "16px", borderTop: "1px solid var(--border)" }}>
                                 {isRestrictedReadOnly ? (
-                                    <div style={{ color: "#9CA3AF", fontSize: "13px" }}>Disponibile solo per Admin del perimetro.</div>
+                                    <div style={{ color: "var(--text-muted)", fontSize: "13px" }}>Disponibile solo per Admin del perimetro.</div>
                                 ) : analyticsSeries.length > 0 ? (
                                     analyticsSeries.map((item) => (
                                         <div key={item.id} style={{ display: "grid", gap: "10px", alignItems: "end", cursor: "pointer" }}
                                             onClick={(e) => { e.stopPropagation(); setActiveScenarioId((prev) => prev === item.id ? null : item.id); setFocusedPersonId(null); }}
                                             title={`${item.label} • ${formatNumber(item.value, analyticsMetric === "avg_length" || analyticsMetric === "avg_priority" || analyticsMetric === "coverage" ? 2 : 0)}`}>
                                             <div style={{ height: expandedBox === "analytics" ? "300px" : "100px", display: "flex", alignItems: "end", justifyContent: "center" }}>
-                                                <div style={{ width: "100%", maxWidth: "34px", height: `${item.heightPct}%`, minHeight: "16px", borderRadius: "14px 14px 8px 8px", background: item.isActive ? "#E8511A" : "#F5C4B0", boxShadow: item.isActive ? "0 4px 6px -1px rgba(232,81,26,0.4)" : "none" }} />
+                                                <div style={{ width: "100%", maxWidth: "34px", height: `${item.heightPct}%`, minHeight: "16px", borderRadius: "14px 14px 8px 8px", background: item.isActive ? "var(--accent-purple)" : "rgba(124,58,237,0.3)", boxShadow: item.isActive ? "0 4px 6px -1px rgba(124,58,237,0.4)" : "none" }} />
                                             </div>
-                                            <div style={{ textAlign: "center", fontSize: "11px", color: item.isActive ? "#111827" : "#6B7280" }}>{item.shortLabel}</div>
+                                            <div style={{ textAlign: "center", fontSize: "11px", color: item.isActive ? "var(--text-primary)" : "var(--text-secondary)" }}>{item.shortLabel}</div>
                                         </div>
                                     ))
                                 ) : (
-                                    <div style={{ color: "#9CA3AF", fontSize: "13px" }}>Nessuno scenario disponibile.</div>
+                                    <div style={{ color: "var(--text-muted)", fontSize: "13px" }}>Nessuno scenario disponibile.</div>
                                 )}
                             </div>
 
-                            <div style={{ display: "flex", justifyContent: "space-between", gap: "12px", flexWrap: "wrap", fontSize: "12px", color: "#6B7280", borderTop: "1px solid #E5E7EB", paddingTop: "10px" }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", gap: "12px", flexWrap: "wrap", fontSize: "12px", color: "var(--text-secondary)", borderTop: "1px solid var(--border)", paddingTop: "10px" }}>
                                 <div>Scenario attivo: {activeScenario?.scenario_code ?? "—"}</div>
                                 <div>Valore attivo: {activeScenario ? formatNumber(getScenarioMetricValue(activeScenario, analyticsMetric), analyticsMetric === "avg_length" || analyticsMetric === "avg_priority" || analyticsMetric === "coverage" ? 2 : 0) : "—"}</div>
                             </div>

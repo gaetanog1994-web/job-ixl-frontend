@@ -152,13 +152,13 @@ const AdminRolesManager = () => {
             </div>
 
             {error && (
-                <div style={{ margin: "16px 20px", padding: "10px", background: "#fef2f2", color: "#b91c1c", border: "1px solid #fecaca", borderRadius: "8px", fontSize: "13px" }}>
+                <div style={{ margin: "16px 20px", padding: "10px", background: "rgba(239,68,68,0.12)", color: "#fca5a5", border: "1px solid rgba(239,68,68,0.4)", borderRadius: "8px", fontSize: "13px" }}>
                     {error}
                 </div>
             )}
 
             {success && (
-                <div style={{ margin: "16px 20px", padding: "10px", background: "#f0fdf4", color: "#166534", border: "1px solid #86efac", borderRadius: "8px", fontSize: "13px" }}>
+                <div style={{ margin: "16px 20px", padding: "10px", background: "rgba(16,185,129,0.12)", color: "#6ee7b7", border: "1px solid rgba(16,185,129,0.4)", borderRadius: "8px", fontSize: "13px" }}>
                     {success}
                 </div>
             )}
@@ -272,9 +272,9 @@ const AdminRolesManager = () => {
                                                     key={`${role.id}-${compat.compatible_role_id}`}
                                                     style={{
                                                         padding: "4px 10px",
-                                                        background: "#eff6ff",
-                                                        color: "#2563eb",
-                                                        border: "1px solid #bfdbfe",
+                                                        background: "rgba(124,58,237,0.12)",
+                                                        color: "#c4b5fd",
+                                                        border: "1px solid rgba(124,58,237,0.3)",
                                                         borderRadius: "20px",
                                                         fontSize: "11px",
                                                         fontWeight: 600,
@@ -286,7 +286,7 @@ const AdminRolesManager = () => {
                                                     {compat.compatible_role_name}
                                                     <button
                                                         onClick={() => deleteCompatibility(role.id, compat.compatible_role_id)}
-                                                        style={{ border: "none", background: "transparent", cursor: "pointer", color: "#3b82f6", padding: 0 }}
+                                                        style={{ border: "none", background: "transparent", cursor: "pointer", color: "#a78bfa", padding: 0 }}
                                                         title="Rimuovi compatibilità"
                                                         disabled={loading}
                                                     >

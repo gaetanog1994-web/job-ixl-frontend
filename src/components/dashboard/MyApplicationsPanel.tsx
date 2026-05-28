@@ -439,7 +439,7 @@ const MyApplicationsPanel: React.FC<MyApplicationsPanelProps> = ({
                     </SortableRow>
                     {expandedRowKey === row.key && (
                       <tr className="db-mobile-only-row">
-                        <td colSpan={11} style={{ padding: "10px 14px", background: "#f8fafc", borderBottom: "1px solid var(--border)" }}>
+                        <td colSpan={11} style={{ padding: "10px 14px", background: "var(--bg-card-alt)", borderBottom: "1px solid var(--border)" }}>
                           <div style={{ fontSize: "12px", color: "var(--text-secondary)", display: "grid", gap: "6px" }}>
                             <div><strong>Responsabile:</strong> {row.responsabiliNames.length > 0 ? row.responsabiliNames.join(", ") : "—"}</div>
                             <div><strong>HR:</strong> {row.hrManagerNames.length > 0 ? row.hrManagerNames.join(", ") : "—"}</div>

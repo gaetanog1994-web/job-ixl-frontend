@@ -77,10 +77,12 @@ const AdminHome: React.FC = () => {
 };
 
 const boxStyle: React.CSSProperties = {
-    border: "1px solid #ccc",
+    border: "1px solid var(--border)",
     borderRadius: "8px",
     padding: "30px",
     cursor: "pointer",
+    background: "var(--bg-card)",
+    color: "var(--text-primary)",
     transition: "all 0.2s ease",
 };
 
