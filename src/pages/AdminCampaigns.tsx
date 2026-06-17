@@ -53,9 +53,9 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 const STATUS_COLOR: Record<string, { bg: string; color: string; border: string; dot: string }> = {
-    reservations_open: { bg: "rgba(59,130,246,0.12)", color: "#93c5fd", border: "rgba(59,130,246,0.4)", dot: "#3b82f6" },
+    reservations_open: { bg: "rgba(59,130,246,0.12)", color: "#2563eb", border: "rgba(59,130,246,0.4)", dot: "#3b82f6" },
     reservations_closed: { bg: "rgba(107,114,128,0.12)", color: "var(--text-muted)", border: "rgba(107,114,128,0.4)", dot: "var(--text-secondary)" },
-    campaign_open: { bg: "rgba(16,185,129,0.12)", color: "#6ee7b7", border: "rgba(16,185,129,0.4)", dot: "#10b981" },
+    campaign_open: { bg: "rgba(16,185,129,0.12)", color: "#059669", border: "rgba(16,185,129,0.4)", dot: "#10b981" },
     campaign_closed: { bg: "rgba(107,114,128,0.12)", color: "var(--text-muted)", border: "rgba(107,114,128,0.4)", dot: "var(--text-secondary)" },
 };
 
@@ -158,7 +158,7 @@ function CampaignRow({
                 <span style={{
                     fontSize: 11,
                     fontWeight: 800,
-                    color: "#fbbf24",
+                    color: "#d97706",
                     background: "rgba(245,158,11,0.12)",
                     border: "1px solid rgba(245,158,11,0.4)",
                     borderRadius: 999,
@@ -222,7 +222,7 @@ function CampaignRow({
 
                     {isClosed && !loadingDetail && detail && (
                         <div style={{ padding: "0 18px", marginBottom: 12 }}>
-                            <span style={{ fontSize: 12, color: "#93c5fd", background: "rgba(59,130,246,0.12)", border: "1px solid rgba(59,130,246,0.4)", borderRadius: 8, padding: "4px 10px", display: "inline-block" }}>
+                            <span style={{ fontSize: 12, color: "#2563eb", background: "rgba(59,130,246,0.12)", border: "1px solid rgba(59,130,246,0.4)", borderRadius: 8, padding: "4px 10px", display: "inline-block" }}>
                                 Snapshot: <b>{detail.applications.length}</b> candidature archiviate
                             </span>
                         </div>
@@ -297,7 +297,7 @@ function CampaignRow({
                                                     </td>
                                                     <td style={scenarioTdStyle}>{formatDate(sc.generated_at)}</td>
                                                     <td style={scenarioTdStyle}>
-                                                        <span style={{ padding: "2px 7px", borderRadius: 6, background: "rgba(124,58,237,0.15)", color: "#c4b5fd", fontWeight: 600, fontSize: 11 }}>
+                                                        <span style={{ padding: "2px 7px", borderRadius: 6, background: "rgba(124,58,237,0.15)", color: "#7c3aed", fontWeight: 600, fontSize: 11 }}>
                                                             {sc.strategy ?? "NONE"}
                                                         </span>
                                                     </td>
@@ -832,7 +832,7 @@ export default function AdminCampaigns() {
         <div style={{ padding: "16px 40px 28px", paddingTop: "72px", fontFamily: "'Inter', sans-serif", maxWidth: 1400 }}>
 
             {error && (
-                <div style={{ background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.4)", borderRadius: 8, padding: "10px 14px", color: "#fca5a5", fontSize: 13, marginBottom: 20 }}>
+                <div style={{ background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.4)", borderRadius: 8, padding: "10px 14px", color: "#dc2626", fontSize: 13, marginBottom: 20 }}>
                     {error}
                 </div>
             )}
@@ -879,7 +879,7 @@ export default function AdminCampaigns() {
                                     borderRadius: 8,
                                     border: `1px solid ${lifecyclePhase === step.key ? "var(--accent-purple)" : "var(--border)"}`,
                                     background: lifecyclePhase === step.key ? "rgba(124,58,237,0.15)" : "var(--bg-card)",
-                                    color: lifecyclePhase === step.key ? "#c4b5fd" : "var(--text-secondary)",
+                                    color: lifecyclePhase === step.key ? "#7c3aed" : "var(--text-secondary)",
                                     boxShadow: lifecyclePhase === step.key
                                         ? "0 0 0 1px rgba(124,58,237,0.35), 0 0 18px rgba(124,58,237,0.28)"
                                         : (stepActionByKey[step.key] && hoveredStep === step.key)
@@ -963,7 +963,7 @@ export default function AdminCampaigns() {
                                         borderRadius: 999,
                                         border: `1px solid ${isActive ? "var(--accent-purple)" : "var(--border)"}`,
                                         background: isActive ? "rgba(124,58,237,0.15)" : "var(--bg-card)",
-                                        color: isActive ? "#c4b5fd" : "var(--text-primary)",
+                                        color: isActive ? "#7c3aed" : "var(--text-primary)",
                                         fontSize: 12,
                                         fontWeight: 700,
                                         padding: "6px 12px",
@@ -1213,7 +1213,7 @@ export default function AdminCampaigns() {
                                                         borderRadius: 999,
                                                         border: `1px solid ${mapDirection === "from" ? "rgba(59,130,246,0.5)" : "var(--border)"}`,
                                                         background: mapDirection === "from" ? "rgba(59,130,246,0.12)" : "var(--bg-card)",
-                                                        color: mapDirection === "from" ? "#93c5fd" : "var(--text-secondary)",
+                                                        color: mapDirection === "from" ? "#2563eb" : "var(--text-secondary)",
                                                         fontSize: 11,
                                                         fontWeight: 700,
                                                         padding: "4px 10px",
@@ -1229,7 +1229,7 @@ export default function AdminCampaigns() {
                                                         borderRadius: 999,
                                                         border: `1px solid ${mapDirection === "to" ? "rgba(239,68,68,0.5)" : "var(--border)"}`,
                                                         background: mapDirection === "to" ? "rgba(239,68,68,0.12)" : "var(--bg-card)",
-                                                        color: mapDirection === "to" ? "#fca5a5" : "var(--text-secondary)",
+                                                        color: mapDirection === "to" ? "#dc2626" : "var(--text-secondary)",
                                                         fontSize: 11,
                                                         fontWeight: 700,
                                                         padding: "4px 10px",
@@ -1405,7 +1405,7 @@ const candidateGroupHeaderStyle: React.CSSProperties = {
     padding: "10px 10px 6px",
     fontSize: 10.5,
     fontWeight: 700,
-    color: "#fbbf24",
+    color: "#d97706",
     textTransform: "uppercase",
     letterSpacing: "0.08em",
     borderBottom: "2px solid rgba(245,158,11,0.4)",
@@ -1418,7 +1418,7 @@ const targetGroupHeaderStyle: React.CSSProperties = {
     padding: "10px 10px 6px",
     fontSize: 10.5,
     fontWeight: 700,
-    color: "#93c5fd",
+    color: "#2563eb",
     textTransform: "uppercase",
     letterSpacing: "0.08em",
     borderBottom: "2px solid rgba(59,130,246,0.4)",
@@ -1443,7 +1443,7 @@ const candidatePillStyle: React.CSSProperties = {
     padding: "3px 8px",
     borderRadius: 8,
     background: "rgba(245,158,11,0.12)",
-    color: "#fbbf24",
+    color: "#d97706",
     fontSize: 11,
     fontWeight: 600,
 };
@@ -1453,7 +1453,7 @@ const targetPillStyle: React.CSSProperties = {
     padding: "3px 8px",
     borderRadius: 8,
     background: "rgba(59,130,246,0.12)",
-    color: "#93c5fd",
+    color: "#2563eb",
     fontSize: 11,
     fontWeight: 600,
 };
@@ -1466,7 +1466,7 @@ const priorityBadgeStyle: React.CSSProperties = {
     alignItems: "center",
     justifyContent: "center",
     background: "rgba(245,158,11,0.15)",
-    color: "#fbbf24",
+    color: "#d97706",
     fontSize: 12,
     fontWeight: 700,
 };

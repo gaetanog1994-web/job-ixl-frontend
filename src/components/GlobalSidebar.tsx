@@ -147,15 +147,16 @@ const GlobalSidebar: React.FC = () => {
           display: "flex",
           flexDirection: "column",
           fontFamily: "var(--font, 'Inter', sans-serif)",
-          background: "var(--sidebar-bg, #0f172a)",
-          boxShadow: isOpen ? "4px 0 24px rgba(0,0,0,0.25)" : "none",
+          background: "var(--sidebar-bg, #ffffff)",
+          boxShadow: isOpen ? "4px 0 24px rgba(15,23,42,0.12)" : "none",
+          borderRight: "1px solid var(--border, #e2e8f0)",
           overflowY: "auto",
         }}
       >
         {/* ---- Logo + Close ---- */}
         <div style={{
           padding: "20px 16px 16px",
-          borderBottom: "1px solid rgba(255,255,255,0.06)",
+          borderBottom: "1px solid var(--border, #e2e8f0)",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
@@ -165,16 +166,17 @@ const GlobalSidebar: React.FC = () => {
               width: 36, height: 36, background: "#FFFFFF",
               borderRadius: 9, display: "flex", alignItems: "center",
               justifyContent: "center", flexShrink: 0,
-              boxShadow: "0 2px 8px rgba(0,0,0,0.2)",
-              overflow: "hidden"
+              boxShadow: "0 2px 8px rgba(15,23,42,0.1)",
+              overflow: "hidden",
+              border: "1px solid var(--border, #e2e8f0)"
             }}>
               <img src="/jip-logo-icon.jpg" alt="JIP Logo" style={{ width: "80%", height: "80%", objectFit: "contain" }} />
             </div>
             <div>
-              <div style={{ fontSize: 16, fontWeight: 800, color: "#fff", letterSpacing: "0.01em" }}>
+              <div style={{ fontSize: 16, fontWeight: 800, color: "var(--text-primary, #1e293b)", letterSpacing: "0.01em" }}>
                 JIP
               </div>
-              <div style={{ fontSize: 11, color: "var(--sidebar-text, #94a3b8)", marginTop: 1 }}>
+              <div style={{ fontSize: 11, color: "var(--sidebar-text, #64748b)", marginTop: 1 }}>
                 Mobility Platform
               </div>
             </div>
@@ -185,19 +187,19 @@ const GlobalSidebar: React.FC = () => {
             id="sidebar-close-btn"
             onClick={close}
             style={{
-              background: "rgba(255,255,255,0.06)",
-              border: "none",
+              background: "rgba(0,0,0,0.04)",
+              border: "1px solid var(--border, #e2e8f0)",
               borderRadius: 8,
               width: 30, height: 30,
               display: "flex", alignItems: "center", justifyContent: "center",
               cursor: "pointer",
-              color: "var(--sidebar-text, #94a3b8)",
+              color: "var(--text-secondary, #64748b)",
               fontSize: 16,
               flexShrink: 0,
               transition: "background 0.15s",
             }}
-            onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.12)")}
-            onMouseLeave={e => (e.currentTarget.style.background = "rgba(255,255,255,0.06)")}
+            onMouseEnter={e => (e.currentTarget.style.background = "rgba(0,0,0,0.08)")}
+            onMouseLeave={e => (e.currentTarget.style.background = "rgba(0,0,0,0.04)")}
           >
             ✕
           </button>
@@ -207,8 +209,8 @@ const GlobalSidebar: React.FC = () => {
         <nav style={{ flex: 1, padding: "14px 10px", overflowY: "auto" }}>
           <div
             style={{
-              border: "1px solid rgba(255,255,255,0.1)",
-              background: "rgba(255,255,255,0.03)",
+              border: "1px solid var(--border, #e2e8f0)",
+              background: "var(--bg-card-alt, #f8fafc)",
               borderRadius: 10,
               padding: "8px 10px",
               marginBottom: 10,
@@ -216,14 +218,14 @@ const GlobalSidebar: React.FC = () => {
               gap: 3,
             }}
           >
-            <div style={{ fontSize: 11, color: "#e2e8f0", fontWeight: 700 }}>Ambito corrente</div>
-            <div style={{ fontSize: 11, color: "var(--sidebar-text)" }}>
+            <div style={{ fontSize: 11, color: "var(--text-primary, #1e293b)", fontWeight: 700 }}>Ambito corrente</div>
+            <div style={{ fontSize: 11, color: "var(--sidebar-text, #64748b)" }}>
               Company: {activeAccess?.currentCompanyName ?? "Non selezionata"}
             </div>
-            <div style={{ fontSize: 11, color: "var(--sidebar-text)" }}>
+            <div style={{ fontSize: 11, color: "var(--sidebar-text, #64748b)" }}>
               Perimeter: {activeAccess?.currentPerimeterName ?? "Non selezionato"}
             </div>
-            <div style={{ fontSize: 11, color: "var(--sidebar-text)" }}>
+            <div style={{ fontSize: 11, color: "var(--sidebar-text, #64748b)" }}>
               Access: {accessRoleLabel}
             </div>
           </div>
@@ -232,7 +234,7 @@ const GlobalSidebar: React.FC = () => {
         {/* ---- Footer ---- */}
         <div style={{
           padding: "12px 10px 16px",
-          borderTop: "1px solid rgba(255,255,255,0.06)",
+          borderTop: "1px solid var(--border, #e2e8f0)",
           display: "flex",
           flexDirection: "column",
           gap: 8,

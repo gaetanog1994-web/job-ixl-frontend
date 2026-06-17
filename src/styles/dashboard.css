@@ -1,5 +1,5 @@
 /* ==========================================================================
-   JOB IXL — Mobility Dashboard Design System
+   JOB IXL — Mobility Dashboard Design System · Light Theme
    ========================================================================== */
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -7,37 +7,37 @@
 :root {
   /* Sidebar */
   --sidebar-width: 228px;
-  --sidebar-bg: #13151f;
+  --sidebar-bg: #ffffff;
   --sidebar-accent: #7c3aed;
-  --sidebar-text: #8b92a5;
-  --sidebar-text-active: #ffffff;
-  --sidebar-item-hover: rgba(255, 255, 255, 0.06);
-  --sidebar-item-active: rgba(124, 58, 237, 0.18);
+  --sidebar-text: #64748b;
+  --sidebar-text-active: #1e293b;
+  --sidebar-item-hover: rgba(0, 0, 0, 0.04);
+  --sidebar-item-active: rgba(124, 58, 237, 0.09);
 
   /* Topbar */
   --topbar-height: 60px;
 
   /* Surfaces */
-  --bg-base: #0f1117;
-  --bg-card: #1a1d2e;
-  --bg-card-alt: #16192a;
-  --bg-sidebar: #13151f;
-  --bg-input: #1e2235;
-  --surface: #0f1117;
-  --card-bg: #1a1d2e;
+  --bg-base: #f1f5fb;
+  --bg-card: #ffffff;
+  --bg-card-alt: #f8fafc;
+  --bg-sidebar: #ffffff;
+  --bg-input: #f1f5f9;
+  --surface: #f1f5fb;
+  --card-bg: #ffffff;
   --card-radius: 16px;
-  --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.3), 0 4px 16px rgba(0, 0, 0, 0.4);
-  --border: #2a2d3e;
+  --card-shadow: 0 1px 3px rgba(15, 23, 42, 0.06), 0 4px 16px rgba(15, 23, 42, 0.06);
+  --border: #e2e8f0;
 
   /* Text */
-  --text-primary: #ffffff;
-  --text-secondary: #8b92a5;
-  --text-muted: #555b70;
+  --text-primary: #1e293b;
+  --text-secondary: #64748b;
+  --text-muted: #94a3b8;
 
   /* Brand */
   --brand: #7c3aed;
   --brand-hover: #6d28d9;
-  --brand-light: rgba(124, 58, 237, 0.12);
+  --brand-light: rgba(124, 58, 237, 0.08);
 
   /* Accent */
   --accent-purple: #7c3aed;
@@ -46,9 +46,9 @@
   --accent-red: #ef4444;
 
   /* Status */
-  --available-color: #10b981;
-  --inactive-color: #555b70;
-  --warning-color: #f59e0b;
+  --available-color: #059669;
+  --inactive-color: #94a3b8;
+  --warning-color: #d97706;
 
   /* Right panel */
   --right-panel-width: 288px;
@@ -87,12 +87,13 @@
   overflow: hidden;
   position: relative;
   z-index: 20;
+  border-right: 1px solid var(--border);
 }
 
 /* Logo area */
 .db-sidebar-logo {
   padding: 22px 18px 18px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid var(--border);
 }
 
 .db-sidebar-logo-mark {
@@ -111,7 +112,7 @@
   justify-content: center;
   font-size: 17px;
   flex-shrink: 0;
-  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.35);
+  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.28);
 }
 
 .db-sidebar-logo-text {
@@ -123,7 +124,7 @@
 .db-sidebar-logo-name {
   font-size: 13px;
   font-weight: 700;
-  color: #ffffff;
+  color: var(--text-primary);
   letter-spacing: 0.01em;
   line-height: 1.2;
 }
@@ -150,7 +151,7 @@
 .db-section-label {
   font-size: 10px;
   font-weight: 600;
-  color: rgba(148, 163, 184, 0.45);
+  color: var(--text-muted);
   letter-spacing: 0.09em;
   text-transform: uppercase;
   padding: 10px 10px 5px;
@@ -179,12 +180,12 @@
 
 .db-nav-item:hover {
   background: var(--sidebar-item-hover);
-  color: #ffffff;
+  color: var(--sidebar-text-active);
 }
 
 .db-nav-item.active {
   background: var(--sidebar-item-active);
-  color: #ffffff;
+  color: var(--sidebar-text-active);
 }
 
 .db-nav-item.active .db-nav-icon {
@@ -198,7 +199,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  opacity: 0.85;
+  opacity: 0.8;
 }
 
 .db-nav-item.active .db-nav-icon {
@@ -242,13 +243,13 @@
 }
 
 .db-admin-sub-item:hover {
-  background: rgba(255, 255, 255, 0.05);
-  color: #e2e8f0;
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--sidebar-text-active);
 }
 
 .db-admin-sub-item.active {
-  background: rgba(124, 58, 237, 0.18);
-  color: #ffffff;
+  background: rgba(124, 58, 237, 0.09);
+  color: var(--brand);
 }
 
 .db-super-company-block + .db-super-company-block {
@@ -263,7 +264,7 @@
 /* Sidebar footer */
 .db-sidebar-footer {
   padding: 12px 10px 14px;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  border-top: 1px solid var(--border);
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -275,7 +276,8 @@
   gap: 10px;
   padding: 9px 12px;
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--bg-card-alt);
+  border: 1px solid var(--border);
 }
 
 .db-user-avatar {
@@ -301,7 +303,7 @@
 .db-user-name {
   font-size: 13px;
   font-weight: 600;
-  color: #ffffff;
+  color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -322,15 +324,16 @@
   border-radius: 10px;
   cursor: pointer;
   transition: background 0.15s;
-  border: none;
-  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  background: var(--bg-card-alt);
   width: 100%;
   text-align: left;
   font-family: var(--font);
 }
 
 .db-sidebar-availability:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.1);
 }
 
 .db-avail-dot {
@@ -343,7 +346,7 @@
 
 .db-avail-dot.available {
   background: var(--available-color);
-  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+  box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.18);
 }
 
 .db-avail-dot.inactive {
@@ -374,13 +377,13 @@
   width: 100%;
   text-align: left;
   font-family: var(--font);
-  color: #ef4444;
+  color: #dc2626;
   font-size: 13px;
   font-weight: 500;
 }
 
 .db-logout-btn:hover {
-  background: rgba(239, 68, 68, 0.1);
+  background: rgba(239, 68, 68, 0.08);
 }
 
 .db-floating-hamburger {
@@ -396,13 +399,13 @@
   cursor: pointer;
   font-size: 18px;
   z-index: 901;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.12);
   transition: background 0.15s ease, border-color 0.15s ease;
 }
 
 .db-floating-hamburger:hover {
   background: var(--bg-card-alt);
-  border-color: var(--border);
+  border-color: var(--text-muted);
 }
 
 /* ==========================================================================
@@ -415,7 +418,7 @@
   left: 0;
   right: 0;
   height: 48px;
-  background: rgba(19, 21, 31, 0.97);
+  background: rgba(255, 255, 255, 0.97);
   backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--border);
   display: flex;
@@ -425,6 +428,7 @@
   padding: 0 12px;
   z-index: 950;
   font-family: var(--font);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
 }
 
 .app-topbar-slim-left,
@@ -475,7 +479,7 @@
 .app-topbar-hamburger:hover {
   background: var(--bg-card-alt);
   color: var(--text-primary);
-  border-color: var(--border);
+  border-color: var(--text-muted);
 }
 
 .app-topbar-primary-nav {
@@ -536,7 +540,7 @@
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: 10px;
-  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12), 0 2px 6px rgba(15, 23, 42, 0.06);
   padding: 6px;
   z-index: 960;
 }
@@ -583,8 +587,8 @@
 .app-topbar-tree-toggle.expanded {
   transform: rotate(90deg);
   color: var(--brand);
-  border-color: rgba(124, 58, 237, 0.4);
-  background: rgba(124, 58, 237, 0.1);
+  border-color: rgba(124, 58, 237, 0.35);
+  background: rgba(124, 58, 237, 0.08);
 }
 
 .app-topbar-tree-children {
@@ -683,8 +687,8 @@
 }
 
 .app-context-box-btn.open {
-  background: rgba(124, 58, 237, 0.12);
-  border-color: rgba(124, 58, 237, 0.4);
+  background: rgba(124, 58, 237, 0.08);
+  border-color: rgba(124, 58, 237, 0.35);
 }
 
 .app-topbar-context-pill {
@@ -719,9 +723,9 @@
 }
 
 .app-topbar-context-pill-btn.open {
-  background: rgba(124, 58, 237, 0.12);
-  border-color: rgba(124, 58, 237, 0.4);
-  color: #a78bfa;
+  background: rgba(124, 58, 237, 0.08);
+  border-color: rgba(124, 58, 237, 0.35);
+  color: var(--brand);
 }
 
 .app-topbar-ctx-btn,
@@ -744,12 +748,12 @@
 }
 
 .app-topbar-logout-btn {
-  border-color: rgba(239, 68, 68, 0.4);
-  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.35);
+  color: #dc2626;
 }
 
 .app-topbar-logout-btn:hover {
-  background: rgba(239, 68, 68, 0.1);
+  background: rgba(239, 68, 68, 0.08);
 }
 
 @media (max-width: 1260px) {
@@ -824,7 +828,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  background: var(--surface);
+  background: var(--bg-input);
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 0 12px;
@@ -834,6 +838,7 @@
 
 .db-topbar-search:focus-within {
   border-color: var(--brand);
+  background: var(--bg-card);
 }
 
 .db-topbar-search-icon {
@@ -881,24 +886,25 @@
 }
 
 .db-btn-outline {
-  background: transparent;
+  background: var(--bg-card);
   color: var(--text-secondary);
   border-color: var(--border);
 }
 
 .db-btn-outline:hover {
-  background: var(--surface);
+  background: var(--bg-card-alt);
   color: var(--text-primary);
+  border-color: var(--text-muted);
 }
 
 .db-btn-danger {
   background: transparent;
-  color: #ef4444;
-  border-color: rgba(239, 68, 68, 0.35);
+  color: #dc2626;
+  border-color: rgba(239, 68, 68, 0.3);
 }
 
 .db-btn-danger:hover {
-  background: rgba(239, 68, 68, 0.1);
+  background: rgba(239, 68, 68, 0.07);
 }
 
 /* ==========================================================================
@@ -954,8 +960,8 @@
 
 .owner-company-card:hover {
   transform: translateY(-2px);
-  border-color: rgba(124, 58, 237, 0.3);
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.4);
+  border-color: rgba(124, 58, 237, 0.25);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.1);
 }
 
 .owner-company-card-head {
@@ -1025,7 +1031,7 @@
 }
 
 .owner-flow-step.done {
-  color: var(--accent-green);
+  color: var(--available-color);
   font-weight: 600;
 }
 
@@ -1049,7 +1055,7 @@
 
 .owner-back-link:hover {
   color: var(--text-primary);
-  border-color: #cbd5e1;
+  border-color: var(--text-muted);
 }
 
 .owner-super-admin-panel {
@@ -1100,10 +1106,10 @@
 }
 
 .owner-inline-note {
-  border: 1px solid rgba(245, 158, 11, 0.4);
+  border: 1px solid rgba(245, 158, 11, 0.35);
   border-radius: 10px;
-  background: rgba(245, 158, 11, 0.1);
-  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.08);
+  color: #d97706;
   font-size: 12px;
   padding: 10px 12px;
 }
@@ -1248,18 +1254,19 @@
   padding: 8px 10px;
   border-radius: 9px;
   border: 1px solid var(--border);
-  background: var(--surface);
+  background: var(--bg-input);
   color: var(--text-primary);
   font-size: 13px;
   font-family: var(--font);
   cursor: pointer;
   outline: none;
-  transition: border-color 0.15s;
+  transition: border-color 0.15s, background 0.15s;
   appearance: auto;
 }
 
 .db-filter-select:focus {
   border-color: var(--brand);
+  background: var(--bg-card);
 }
 
 .db-filter-reset {
@@ -1278,8 +1285,9 @@
 }
 
 .db-filter-reset:hover {
-  background: var(--surface);
+  background: var(--bg-card-alt);
   color: var(--text-primary);
+  border-color: var(--text-muted);
 }
 
 /* ==========================================================================
@@ -1366,9 +1374,9 @@
 }
 
 .db-status-badge.available {
-  background: rgba(16, 185, 129, 0.12);
+  background: rgba(5, 150, 105, 0.1);
   color: var(--available-color);
-  border: 1px solid rgba(16, 185, 129, 0.3);
+  border: 1px solid rgba(5, 150, 105, 0.25);
 }
 
 .db-status-badge.inactive {
@@ -1508,7 +1516,7 @@
   font-size: 12px;
   font-family: var(--font);
   color: var(--text-primary);
-  background: var(--surface);
+  background: var(--bg-input);
   cursor: pointer;
   outline: none;
   transition: border-color 0.15s;
@@ -1516,6 +1524,7 @@
 
 .db-priority-select:focus {
   border-color: var(--brand);
+  background: var(--bg-card);
 }
 
 /* Role / location text */
@@ -1541,13 +1550,15 @@
 }
 
 .db-fixed-badge.yes {
-  background: rgba(245, 158, 11, 0.12);
-  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.1);
+  color: #d97706;
+  border: 1px solid rgba(245, 158, 11, 0.25);
 }
 
 .db-fixed-badge.no {
   background: var(--bg-card-alt);
   color: var(--text-muted);
+  border: 1px solid var(--border);
 }
 
 /* Action buttons */
@@ -1568,21 +1579,21 @@
 }
 
 .db-action-btn-map {
-  color: #60a5fa;
+  color: #2563eb;
 }
 
 .db-action-btn-map:hover {
-  background: rgba(96, 165, 250, 0.1);
-  border-color: rgba(96, 165, 250, 0.3);
+  background: rgba(37, 99, 235, 0.08);
+  border-color: rgba(37, 99, 235, 0.25);
 }
 
 .db-action-btn-delete {
-  color: #ef4444;
+  color: #dc2626;
 }
 
 .db-action-btn-delete:hover {
-  background: rgba(239, 68, 68, 0.1);
-  border-color: rgba(239, 68, 68, 0.3);
+  background: rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.25);
 }
 
 .db-mobile-only-inline {

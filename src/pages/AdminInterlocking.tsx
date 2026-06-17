@@ -1446,7 +1446,7 @@ const AdminInterlocking = () => {
                         style={{
                             border: "1px solid rgba(245,158,11,0.4)",
                             background: "rgba(245,158,11,0.1)",
-                            color: "#fbbf24",
+                            color: "#d97706",
                             borderRadius: "12px",
                             padding: "10px 14px",
                             fontSize: "13px",
@@ -1492,7 +1492,7 @@ const AdminInterlocking = () => {
                                     display: "inline-flex", alignItems: "center", gap: "5px",
                                     padding: "3px 10px", borderRadius: "999px", fontSize: "12px", fontWeight: 700,
                                     background: campaignStatus === "open" ? "rgba(16,185,129,0.12)" : "rgba(59,130,246,0.12)",
-                                    color: campaignStatus === "open" ? "#6ee7b7" : "#93c5fd",
+                                    color: campaignStatus === "open" ? "#059669" : "#2563eb",
                                     border: `1px solid ${campaignStatus === "open" ? "rgba(16,185,129,0.4)" : "rgba(59,130,246,0.4)"}`,
                                 }}>
                                     <div style={{ width: 7, height: 7, borderRadius: "50%", background: campaignStatus === "open" ? "#10b981" : "#3b82f6" }} />
@@ -1503,7 +1503,7 @@ const AdminInterlocking = () => {
                                     display: "inline-flex", alignItems: "center", gap: "5px",
                                     padding: "3px 10px", borderRadius: "999px", fontSize: "12px", fontWeight: 700,
                                     background: reservationsStatus === "open" ? "rgba(16,185,129,0.12)" : "var(--bg-card-alt)",
-                                    color: reservationsStatus === "open" ? "#6ee7b7" : "var(--text-secondary)",
+                                    color: reservationsStatus === "open" ? "#059669" : "var(--text-secondary)",
                                     border: `1px solid ${reservationsStatus === "open" ? "rgba(16,185,129,0.4)" : "var(--border)"}`,
                                 }}>
                                     <div style={{ width: 7, height: 7, borderRadius: "50%", background: reservationsStatus === "open" ? "#10b981" : "var(--text-muted)" }} />
@@ -1517,7 +1517,7 @@ const AdminInterlocking = () => {
                         <button
                             type="button"
                             onClick={openCampaignManagement}
-                            style={{ marginLeft: "auto", fontSize: "12px", color: "#60a5fa", fontWeight: 600, textDecoration: "none", background: "transparent", border: "none", padding: 0, cursor: "pointer" }}
+                            style={{ marginLeft: "auto", fontSize: "12px", color: "#2563eb", fontWeight: 600, textDecoration: "none", background: "transparent", border: "none", padding: 0, cursor: "pointer" }}
                         >
                             Gestisci campagna →
                         </button>
@@ -1560,7 +1560,7 @@ const AdminInterlocking = () => {
                             display: "inline-flex", alignItems: "center", gap: "5px",
                             padding: "3px 10px", borderRadius: "999px", fontSize: "12px", fontWeight: 700,
                             background: campaignStatus === "open" ? "rgba(16,185,129,0.12)" : "rgba(59,130,246,0.12)",
-                            color: campaignStatus === "open" ? "#6ee7b7" : "#93c5fd",
+                            color: campaignStatus === "open" ? "#059669" : "#2563eb",
                             border: `1px solid ${campaignStatus === "open" ? "rgba(16,185,129,0.4)" : "rgba(59,130,246,0.4)"}`,
                         }}>
                             <div style={{ width: 7, height: 7, borderRadius: "50%", background: campaignStatus === "open" ? "#10b981" : "#3b82f6" }} />
@@ -1571,7 +1571,7 @@ const AdminInterlocking = () => {
                             display: "inline-flex", alignItems: "center", gap: "5px",
                             padding: "3px 10px", borderRadius: "999px", fontSize: "12px", fontWeight: 700,
                             background: reservationsStatus === "open" ? "rgba(16,185,129,0.12)" : "var(--bg-card-alt)",
-                            color: reservationsStatus === "open" ? "#6ee7b7" : "var(--text-secondary)",
+                            color: reservationsStatus === "open" ? "#059669" : "var(--text-secondary)",
                             border: `1px solid ${reservationsStatus === "open" ? "rgba(16,185,129,0.4)" : "var(--border)"}`,
                         }}>
                             <div style={{ width: 7, height: 7, borderRadius: "50%", background: reservationsStatus === "open" ? "#10b981" : "var(--text-muted)" }} />
@@ -1583,7 +1583,7 @@ const AdminInterlocking = () => {
                         <button
                             type="button"
                             onClick={openCampaignManagement}
-                            style={{ marginLeft: "auto", fontSize: "12px", color: "#60a5fa", fontWeight: 600, textDecoration: "none", background: "transparent", border: "none", padding: 0, cursor: "pointer" }}
+                            style={{ marginLeft: "auto", fontSize: "12px", color: "#2563eb", fontWeight: 600, textDecoration: "none", background: "transparent", border: "none", padding: 0, cursor: "pointer" }}
                         >
                             Gestisci campagna →
                         </button>
@@ -1805,7 +1805,7 @@ const AdminInterlocking = () => {
                                         </div>
 
                                         {error && (
-                                            <div style={{ fontSize: "12px", color: "#fca5a5", padding: "8px 12px", background: "rgba(239,68,68,0.12)", borderRadius: "8px", border: "1px solid rgba(239,68,68,0.3)" }}>
+                                            <div style={{ fontSize: "12px", color: "#dc2626", padding: "8px 12px", background: "rgba(239,68,68,0.12)", borderRadius: "8px", border: "1px solid rgba(239,68,68,0.3)" }}>
                                                 {error}
                                             </div>
                                         )}
@@ -1896,12 +1896,12 @@ const AdminInterlocking = () => {
                                                     <div style={{ color: "var(--text-secondary)", fontSize: "11px", display: "flex", alignItems: "center", gap: "6px" }}>
                                                         <span>{formatDateTime(scenario.generated_at)}</span>
                                                         {isActive && (
-                                                            <span style={{ fontSize: "10px", fontWeight: 700, color: "#6ee7b7", background: "rgba(16,185,129,0.15)", border: "1px solid rgba(16,185,129,0.4)", borderRadius: "999px", padding: "1px 6px" }}>
+                                                            <span style={{ fontSize: "10px", fontWeight: 700, color: "#059669", background: "rgba(16,185,129,0.15)", border: "1px solid rgba(16,185,129,0.4)", borderRadius: "999px", padding: "1px 6px" }}>
                                                                 attivo
                                                             </span>
                                                         )}
                                                         {isSelected && !isActive && (
-                                                            <span style={{ fontSize: "10px", fontWeight: 700, color: "#93c5fd", background: "rgba(59,130,246,0.15)", border: "1px solid rgba(59,130,246,0.4)", borderRadius: "999px", padding: "1px 6px" }}>
+                                                            <span style={{ fontSize: "10px", fontWeight: 700, color: "#2563eb", background: "rgba(59,130,246,0.15)", border: "1px solid rgba(59,130,246,0.4)", borderRadius: "999px", padding: "1px 6px" }}>
                                                                 selezionato
                                                             </span>
                                                         )}

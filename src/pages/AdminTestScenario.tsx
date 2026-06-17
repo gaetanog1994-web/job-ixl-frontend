@@ -189,12 +189,12 @@ export default function AdminTestScenario() {
       </p>
 
       {error && (
-        <div style={{ background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.4)", borderRadius: 8, padding: "10px 14px", color: "#fca5a5", fontSize: 13, marginBottom: 16 }}>
+        <div style={{ background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.4)", borderRadius: 8, padding: "10px 14px", color: "#dc2626", fontSize: 13, marginBottom: 16 }}>
           {error}
         </div>
       )}
       {message && (
-        <div style={{ background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.4)", borderRadius: 8, padding: "10px 14px", color: "#6ee7b7", fontSize: 13, marginBottom: 16 }}>
+        <div style={{ background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.4)", borderRadius: 8, padding: "10px 14px", color: "#059669", fontSize: 13, marginBottom: 16 }}>
           {message}
         </div>
       )}
@@ -227,7 +227,7 @@ export default function AdminTestScenario() {
                 type="button"
                 onClick={handleInitialize}
                 disabled={!selectedScenarioId || initializing || clearing || savingScenario}
-                style={{ ...buttonStyle, background: "rgba(16,185,129,0.12)", borderColor: "rgba(16,185,129,0.4)", color: "#6ee7b7" }}
+                style={{ ...buttonStyle, background: "rgba(16,185,129,0.12)", borderColor: "rgba(16,185,129,0.4)", color: "#059669" }}
               >
                 {initializing ? "Inizializzazione…" : "Inizializza scenario"}
               </button>
@@ -236,7 +236,7 @@ export default function AdminTestScenario() {
                 type="button"
                 onClick={handleClearScenario}
                 disabled={!selectedScenarioId || clearing || initializing || savingScenario}
-                style={{ ...buttonStyle, background: "rgba(239,68,68,0.12)", borderColor: "rgba(239,68,68,0.4)", color: "#fca5a5" }}
+                style={{ ...buttonStyle, background: "rgba(239,68,68,0.12)", borderColor: "rgba(239,68,68,0.4)", color: "#dc2626" }}
               >
                 {clearing ? "Svuotamento…" : "Svuota scenario"}
               </button>
@@ -245,7 +245,7 @@ export default function AdminTestScenario() {
                 type="button"
                 onClick={handleCreateScenario}
                 disabled={initializing || clearing || savingScenario}
-                style={{ ...buttonStyle, background: "rgba(59,130,246,0.12)", borderColor: "rgba(59,130,246,0.4)", color: "#93c5fd" }}
+                style={{ ...buttonStyle, background: "rgba(59,130,246,0.12)", borderColor: "rgba(59,130,246,0.4)", color: "#2563eb" }}
               >
                 + Nuovo scenario
               </button>
@@ -263,7 +263,7 @@ export default function AdminTestScenario() {
                 type="button"
                 onClick={handleDeleteScenario}
                 disabled={!selectedScenarioId || initializing || clearing || savingScenario}
-                style={{ ...buttonStyle, background: "rgba(239,68,68,0.12)", borderColor: "rgba(239,68,68,0.35)", color: "#fca5a5" }}
+                style={{ ...buttonStyle, background: "rgba(239,68,68,0.12)", borderColor: "rgba(239,68,68,0.35)", color: "#dc2626" }}
               >
                 Elimina scenario
               </button>

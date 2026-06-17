@@ -584,7 +584,7 @@ const ManagerTab = ({
               </div>
             </div>
             {createError && (
-              <div style={{ marginTop: "12px", padding: "10px", border: "1px solid rgba(239,68,68,0.4)", background: "rgba(239,68,68,0.12)", color: "#fca5a5", borderRadius: "8px" }}>
+              <div style={{ marginTop: "12px", padding: "10px", border: "1px solid rgba(239,68,68,0.4)", background: "rgba(239,68,68,0.12)", color: "#dc2626", borderRadius: "8px" }}>
                 {createError}
               </div>
             )}
@@ -618,7 +618,7 @@ const ManagerTab = ({
             </div>
 
             {detailError && (
-              <div style={{ marginBottom: "12px", padding: "10px", border: "1px solid rgba(239,68,68,0.4)", background: "rgba(239,68,68,0.12)", color: "#fca5a5", borderRadius: "8px" }}>
+              <div style={{ marginBottom: "12px", padding: "10px", border: "1px solid rgba(239,68,68,0.4)", background: "rgba(239,68,68,0.12)", color: "#dc2626", borderRadius: "8px" }}>
                 {detailError}
               </div>
             )}
@@ -1231,7 +1231,7 @@ const AdminTestUsers = () => {
       {/* Page content */}
       <div style={{ padding: "20px 24px" }}>
         {topError && (
-          <div style={{ marginBottom: "14px", padding: "12px 16px", border: "1px solid rgba(239,68,68,0.4)", background: "rgba(239,68,68,0.12)", borderRadius: "10px", color: "#fca5a5", fontSize: "13px", display: "flex", alignItems: "center", gap: "8px" }}>
+          <div style={{ marginBottom: "14px", padding: "12px 16px", border: "1px solid rgba(239,68,68,0.4)", background: "rgba(239,68,68,0.12)", borderRadius: "10px", color: "#dc2626", fontSize: "13px", display: "flex", alignItems: "center", gap: "8px" }}>
             <span style={{ fontSize: "16px" }}>⚠️</span>
             {topError}
           </div>
@@ -1356,12 +1356,12 @@ const AdminTestUsers = () => {
               {orgUnitModalEditId ? "Modifica unità" : orgUnitModalParentId ? "Aggiungi sotto-unità" : "Aggiungi unità radice"}
             </h3>
             {orgUnitError && (
-              <div style={{ marginBottom: "12px", padding: "8px 12px", border: "1px solid rgba(239,68,68,0.4)", background: "rgba(239,68,68,0.12)", color: "#fca5a5", borderRadius: "8px", fontSize: "13px" }}>
+              <div style={{ marginBottom: "12px", padding: "8px 12px", border: "1px solid rgba(239,68,68,0.4)", background: "rgba(239,68,68,0.12)", color: "#dc2626", borderRadius: "8px", fontSize: "13px" }}>
                 {orgUnitError}
               </div>
             )}
             {orgUnitModalParentId && !orgUnitModalEditId && (
-              <div style={{ marginBottom: "12px", padding: "8px 12px", background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.4)", borderRadius: "8px", fontSize: "12px", color: "#fbbf24" }}>
+              <div style={{ marginBottom: "12px", padding: "8px 12px", background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.4)", borderRadius: "8px", fontSize: "12px", color: "#d97706" }}>
                 Nodo padre: <strong>{departments.find(d => d.id === orgUnitModalParentId)?.name ?? orgUnitModalParentId}</strong>
               </div>
             )}
@@ -1517,7 +1517,7 @@ const AdminTestUsers = () => {
             </div>
 
             {addUserError && (
-              <div style={{ marginTop: "16px", padding: "12px 16px", border: "1px solid rgba(239,68,68,0.4)", background: "rgba(239,68,68,0.12)", color: "#fca5a5", borderRadius: "10px", fontSize: "13px", display: "flex", gap: "8px", alignItems: "center" }}>
+              <div style={{ marginTop: "16px", padding: "12px 16px", border: "1px solid rgba(239,68,68,0.4)", background: "rgba(239,68,68,0.12)", color: "#dc2626", borderRadius: "10px", fontSize: "13px", display: "flex", gap: "8px", alignItems: "center" }}>
                 <span>⚠️</span>{addUserError}
               </div>
             )}
@@ -1557,7 +1557,7 @@ const AdminTestUsers = () => {
                   </h3>
                   <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "3px" }}>
                     <span style={{ fontSize: "12px", color: "var(--text-secondary)" }}>{selectedUser.email}</span>
-                    <span style={{ display: "inline-flex", alignItems: "center", padding: "2px 8px", borderRadius: "999px", fontSize: "11px", fontWeight: 600, background: selectedUser.user_state === "available" ? "rgba(16,185,129,0.12)" : selectedUser.user_state === "reserved" ? "rgba(245,158,11,0.12)" : "var(--bg-card-alt)", color: selectedUser.user_state === "available" ? "#6ee7b7" : selectedUser.user_state === "reserved" ? "#fbbf24" : "var(--text-muted)", border: `1px solid ${selectedUser.user_state === "available" ? "rgba(16,185,129,0.4)" : selectedUser.user_state === "reserved" ? "rgba(245,158,11,0.4)" : "var(--border)"}` }}>
+                    <span style={{ display: "inline-flex", alignItems: "center", padding: "2px 8px", borderRadius: "999px", fontSize: "11px", fontWeight: 600, background: selectedUser.user_state === "available" ? "rgba(16,185,129,0.12)" : selectedUser.user_state === "reserved" ? "rgba(245,158,11,0.12)" : "var(--bg-card-alt)", color: selectedUser.user_state === "available" ? "#059669" : selectedUser.user_state === "reserved" ? "#d97706" : "var(--text-muted)", border: `1px solid ${selectedUser.user_state === "available" ? "rgba(16,185,129,0.4)" : selectedUser.user_state === "reserved" ? "rgba(245,158,11,0.4)" : "var(--border)"}` }}>
                       {stateLabel(selectedUser)}
                     </span>
                     {(selectedUser.application_count ?? 0) > 0 && (
@@ -1771,7 +1771,7 @@ const AdminTestUsers = () => {
             </div>
 
             {editUserError && (
-              <div style={{ marginTop: "16px", padding: "12px 16px", border: "1px solid rgba(239,68,68,0.4)", background: "rgba(239,68,68,0.12)", color: "#fca5a5", borderRadius: "10px", fontSize: "13px", display: "flex", alignItems: "center", gap: "8px" }}>
+              <div style={{ marginTop: "16px", padding: "12px 16px", border: "1px solid rgba(239,68,68,0.4)", background: "rgba(239,68,68,0.12)", color: "#dc2626", borderRadius: "10px", fontSize: "13px", display: "flex", alignItems: "center", gap: "8px" }}>
                 <span>⚠️</span> {editUserError}
               </div>
             )}

@@ -186,7 +186,7 @@ const MobilityDashboard: React.FC = () => {
             background: "rgba(59,130,246,0.1)",
             border: "1px solid rgba(59,130,246,0.4)",
             borderRadius: "10px",
-            color: "#93c5fd",
+            color: "#2563eb",
             fontSize: "13px",
             fontWeight: 600,
           }}>
@@ -201,7 +201,7 @@ const MobilityDashboard: React.FC = () => {
             background: "rgba(16,185,129,0.1)",
             border: "1px solid rgba(16,185,129,0.4)",
             borderRadius: "10px",
-            color: "#6ee7b7",
+            color: "#059669",
             fontSize: "13px",
             fontWeight: 600,
             display: "flex",
@@ -227,7 +227,7 @@ const MobilityDashboard: React.FC = () => {
             background: "rgba(245,158,11,0.1)",
             border: "1px solid rgba(245,158,11,0.4)",
             borderRadius: "10px",
-            color: "#fbbf24",
+            color: "#d97706",
             fontSize: "13px",
             fontWeight: 600,
           }}>
@@ -242,7 +242,7 @@ const MobilityDashboard: React.FC = () => {
             background: "rgba(245,158,11,0.1)",
             border: "1px solid rgba(245,158,11,0.4)",
             borderRadius: "10px",
-            color: "#fbbf24",
+            color: "#d97706",
             fontSize: "13px",
             fontWeight: 600,
           }}>

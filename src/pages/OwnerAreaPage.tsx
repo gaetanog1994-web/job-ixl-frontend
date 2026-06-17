@@ -284,7 +284,7 @@ const OwnerAreaPage: React.FC = () => {
       </div>
 
       {error && (
-        <div style={{ marginTop: "14px", color: "#fca5a5", fontSize: "13px" }}>
+        <div style={{ marginTop: "14px", color: "#dc2626", fontSize: "13px" }}>
           {error}
         </div>
       )}

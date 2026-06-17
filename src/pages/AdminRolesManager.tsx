@@ -152,13 +152,13 @@ const AdminRolesManager = () => {
             </div>
 
             {error && (
-                <div style={{ margin: "16px 20px", padding: "10px", background: "rgba(239,68,68,0.12)", color: "#fca5a5", border: "1px solid rgba(239,68,68,0.4)", borderRadius: "8px", fontSize: "13px" }}>
+                <div style={{ margin: "16px 20px", padding: "10px", background: "rgba(239,68,68,0.12)", color: "#dc2626", border: "1px solid rgba(239,68,68,0.4)", borderRadius: "8px", fontSize: "13px" }}>
                     {error}
                 </div>
             )}
 
             {success && (
-                <div style={{ margin: "16px 20px", padding: "10px", background: "rgba(16,185,129,0.12)", color: "#6ee7b7", border: "1px solid rgba(16,185,129,0.4)", borderRadius: "8px", fontSize: "13px" }}>
+                <div style={{ margin: "16px 20px", padding: "10px", background: "rgba(16,185,129,0.12)", color: "#059669", border: "1px solid rgba(16,185,129,0.4)", borderRadius: "8px", fontSize: "13px" }}>
                     {success}
                 </div>
             )}
@@ -273,7 +273,7 @@ const AdminRolesManager = () => {
                                                     style={{
                                                         padding: "4px 10px",
                                                         background: "rgba(124,58,237,0.12)",
-                                                        color: "#c4b5fd",
+                                                        color: "#7c3aed",
                                                         border: "1px solid rgba(124,58,237,0.3)",
                                                         borderRadius: "20px",
                                                         fontSize: "11px",

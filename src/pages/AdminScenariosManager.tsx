@@ -258,7 +258,7 @@ const AdminScenariosManager = ({
                 )}
             </div>
 
-            {error && <div style={{ margin: "16px 20px", padding: "10px", background: "rgba(239,68,68,0.12)", color: "#fca5a5", border: "1px solid rgba(239,68,68,0.4)", borderRadius: "8px", fontSize: "13px" }}>{error}</div>}
+            {error && <div style={{ margin: "16px 20px", padding: "10px", background: "rgba(239,68,68,0.12)", color: "#dc2626", border: "1px solid rgba(239,68,68,0.4)", borderRadius: "8px", fontSize: "13px" }}>{error}</div>}
 
             {/* LISTA SCENARI */}
             {view === "list" && (

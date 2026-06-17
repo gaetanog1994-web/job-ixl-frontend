@@ -32,7 +32,7 @@ function AppShell({ showTopBar }: { showTopBar: boolean }) {
 
       <div style={{ paddingTop: showTopBar ? "48px" : "0" }}>
         {waitingContext && (
-          <div style={{ padding: "24px", fontFamily: "'Inter', sans-serif", color: contextError ? "#fca5a5" : "var(--text-secondary)" }}>
+          <div style={{ padding: "24px", fontFamily: "'Inter', sans-serif", color: contextError ? "#dc2626" : "var(--text-secondary)" }}>
             {contextError ?? "Caricamento contesto..."}
           </div>
         )}

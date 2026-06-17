@@ -190,7 +190,7 @@ const AdminCandidatures = () => {
     stats.campaign_status === "open"
       ? {
         background: applications.length > 0 ? "rgba(16,185,129,0.12)" : "rgba(245,158,11,0.12)",
-        color: applications.length > 0 ? "#6ee7b7" : "#fbbf24",
+        color: applications.length > 0 ? "#059669" : "#d97706",
         border: applications.length > 0 ? "rgba(16,185,129,0.4)" : "rgba(245,158,11,0.4)",
       }
       : { background: "var(--bg-card-alt)", color: "var(--text-secondary)", border: "var(--border)" };
@@ -241,7 +241,7 @@ const AdminCandidatures = () => {
         </div>
       )}
       {loadError && (
-        <div style={{ marginBottom: "16px", border: "1px solid rgba(239,68,68,0.4)", background: "rgba(239,68,68,0.12)", color: "#fca5a5", borderRadius: "10px", padding: "10px 12px", fontSize: "12px" }}>
+        <div style={{ marginBottom: "16px", border: "1px solid rgba(239,68,68,0.4)", background: "rgba(239,68,68,0.12)", color: "#dc2626", borderRadius: "10px", padding: "10px 12px", fontSize: "12px" }}>
           {loadError}
         </div>
       )}
