@@ -895,6 +895,23 @@ const AdminInterlocking = () => {
             });
         }
 
+        // optimal_chains_json missing/empty for non-NONE strategy: re-solve from chains_json
+        if (scenario.strategy !== "NONE" && scenario.chains_json.length > 0) {
+            const candidates = buildCandidatesForSolver(scenario.chains_json);
+            const { selectedChains } = solveOptimalChains(
+                candidates,
+                scenario.strategy as OptimizationStrategy
+            );
+            if (selectedChains.length > 0) {
+                return selectedChains.map((c) => ({
+                    userIds: c.nodeIds,
+                    peopleNames: c.nodeIds.map((id) => usersById.get(id)?.full_name ?? id),
+                    avgPriority: c.avgPriority ?? null,
+                    length: c.length ?? c.nodeIds.length,
+                }));
+            }
+        }
+
         return scenario.chains_json.map((c, idx) => {
             const userIds = Array.isArray(c.users) ? c.users : [];
             const rawPeopleNames = Array.isArray(c.peopleNames) ? c.peopleNames : [];
@@ -914,10 +931,17 @@ const AdminInterlocking = () => {
     };
 
 
+    // Memoized view chains for active scenario — solver runs at most once per scenario/users change
+    const activeScenarioChainViews = useMemo<ScenarioChainView[]>(
+        () => getScenarioViewChains(activeScenario),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [activeScenario, usersById, usersByNormalizedName]
+    );
+
     const activeScenarioPeople = useMemo<ScenarioPersonRow[]>(() => {
         if (!activeScenario) return [];
 
-        const chains = getScenarioViewChains(activeScenario);
+        const chains = activeScenarioChainViews;
         const namesFromChains = new Map<string, string>();
 
         for (const chain of chains) {
@@ -954,20 +978,18 @@ const AdminInterlocking = () => {
             };
         });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [activeScenario, usersById, locationsById, locationsDirectory]);
+    }, [activeScenarioChainViews, usersById, locationsById, locationsDirectory]);
 
     /**
      * Set degli userId appartenenti alla catena selezionata.
      * Usato sia per colorare i marker sia per enfatizzare la lista persone.
      */
     const selectedChainUserIds = useMemo<Set<string>>(() => {
-        if (selectedChainIndex === null || !activeScenario) return new Set();
-        const chains = getScenarioViewChains(activeScenario);
-        const chain = chains[selectedChainIndex];
+        if (selectedChainIndex === null) return new Set();
+        const chain = activeScenarioChainViews[selectedChainIndex];
         if (!chain) return new Set();
         return new Set(chain.userIds);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [selectedChainIndex, activeScenario, usersById]);
+    }, [selectedChainIndex, activeScenarioChainViews]);
 
     const peopleListToShow = useMemo<ScenarioPersonRow[]>(() => {
         if (!activeScenario) return [];
@@ -1860,10 +1882,17 @@ const AdminInterlocking = () => {
                                         const isExpSc = expandedScenarioIds.includes(scenario.id);
                                         const isSelected = selectedScenarioIds.includes(scenario.id);
                                         const isActive = activeScenarioId === scenario.id;
-                                        const visibleChains =
+                                        // List view: prefer optimal_chains_json for display (no solver re-run in list)
+                                        const visibleChains: { peopleNames?: string[]; avgPriority?: number | null; length?: number }[] =
                                             scenario.strategy !== "NONE" && scenario.optimal_chains_json && scenario.optimal_chains_json.length > 0
                                                 ? scenario.optimal_chains_json.map((c) => ({ peopleNames: c.nodeIds.map((id) => usersById.get(id)?.full_name ?? id), avgPriority: c.avgPriority ?? null, length: c.length ?? c.nodeIds.length }))
                                                 : scenario.chains_json;
+                                        const visibleChainsCount =
+                                            scenario.strategy !== "NONE"
+                                                ? (scenario.optimal_chains_json && scenario.optimal_chains_json.length > 0
+                                                    ? scenario.optimal_chains_json.length
+                                                    : scenario.total_chains || visibleChains.length)
+                                                : visibleChains.length;
 
                                         return (
                                             <div
@@ -1909,7 +1938,7 @@ const AdminInterlocking = () => {
                                                     <div style={{ color: "var(--text-primary)", fontSize: "11px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                                         {formatScenarioCampaignLabel(scenario.campaign_id)}
                                                     </div>
-                                                    <div>{visibleChains.length || scenario.total_chains || 0}</div>
+                                                    <div>{visibleChainsCount || 0}</div>
                                                     <div>{scenario.unique_people}</div>
                                                     <div>{formatNumber(scenario.coverage, 1)}%</div>
                                                     <div>{formatNumber(scenario.avg_length, 2)}</div>
@@ -2291,7 +2320,7 @@ const AdminInterlocking = () => {
                                                 transition: "color 0.15s",
                                             }}
                                         >
-                                            Catene trovate{activeScenario ? ` (${getScenarioViewChains(activeScenario).length})` : ""}
+                                            Catene trovate{activeScenario ? ` (${activeScenarioChainViews.length})` : ""}
                                             {selectedChainIndex !== null && (
                                                 <span style={{ marginLeft: 5, display: "inline-block", width: 7, height: 7, borderRadius: "50%", background: getChainColor(selectedChainIndex).dot, verticalAlign: "middle" }} />
                                             )}
@@ -2367,7 +2396,7 @@ const AdminInterlocking = () => {
                                                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                                                     <div style={sectionSubtitleStyle}>
                                                         {activeScenario
-                                                            ? `${getScenarioViewChains(activeScenario).length} catene — click per evidenziare sulla mappa`
+                                                            ? `${activeScenarioChainViews.length} catene — click per evidenziare sulla mappa`
                                                             : "Seleziona uno scenario per vedere le catene"}
                                                     </div>
                                                     {selectedChainIndex !== null && (
@@ -2382,10 +2411,10 @@ const AdminInterlocking = () => {
 
                                                 {!activeScenario ? (
                                                     <div style={{ color: "var(--text-muted)", fontSize: "13px", paddingTop: "8px" }}>Seleziona uno scenario per vedere le catene.</div>
-                                                ) : getScenarioViewChains(activeScenario).length === 0 ? (
+                                                ) : activeScenarioChainViews.length === 0 ? (
                                                     <div style={{ color: "var(--text-muted)", fontSize: "13px", paddingTop: "8px" }}>Nessuna catena disponibile.</div>
                                                 ) : (
-                                                    getScenarioViewChains(activeScenario).map((chain, idx) => {
+                                                    activeScenarioChainViews.map((chain, idx) => {
                                                         const cc = getChainColor(idx);
                                                         const isSelected = selectedChainIndex === idx;
                                                         return (
