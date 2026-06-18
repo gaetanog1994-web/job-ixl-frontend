@@ -452,13 +452,20 @@ const AdminInterlocking = () => {
         sourceChains: InterlockingChain[]
     ): ChainCandidate[] => {
         return sourceChains
-            .filter((c) => Array.isArray(c.users) && c.users.length > 1)
-            .map((c, index) => ({
-                id: `chain_${index + 1}`,
-                nodeIds: c.users!,
-                avgPriority: c.avgPriority ?? 999,
-                length: c.length ?? c.users!.length,
-            }));
+            .map((c, index) => {
+                const users = Array.isArray(c.users) ? c.users : [];
+                const names = Array.isArray(c.peopleNames) ? c.peopleNames : [];
+                // Prefer UUID-based nodeIds; fall back to names if users is empty/too short.
+                const nodeIds = users.length > 1 ? users : (names.length > 1 ? names : []);
+                if (nodeIds.length < 2) return null;
+                return {
+                    id: `chain_${index + 1}`,
+                    nodeIds,
+                    avgPriority: c.avgPriority ?? 999,
+                    length: c.length ?? nodeIds.length,
+                };
+            })
+            .filter((c): c is ChainCandidate => c !== null);
     };
 
     const computeStatsFromChains = (
@@ -822,12 +829,29 @@ const AdminInterlocking = () => {
                 avgPriority: null as number | null,
             };
         }
+        // Prefer recomputed values from chain views to handle stale/wrong DB stats.
+        const views = activeScenarioChainViews;
+        if (views.length > 0) {
+            const seen = new Set<string>();
+            for (const cv of views) {
+                for (const id of cv.userIds) seen.add(id);
+                // fallback: count peopleNames if no userIds resolved
+                if (cv.userIds.length === 0) {
+                    for (const n of (cv.peopleNames ?? [])) seen.add(n);
+                }
+            }
+            return {
+                totalChains: views.length,
+                uniquePeople: seen.size,
+                avgPriority: activeScenario.avg_priority ?? null,
+            };
+        }
         return {
             totalChains: activeScenario.total_chains ?? 0,
             uniquePeople: activeScenario.unique_people ?? 0,
             avgPriority: activeScenario.avg_priority ?? null,
         };
-    }, [activeScenario]);
+    }, [activeScenario, activeScenarioChainViews]);
 
     const getScenarioViewChains = (scenario: SavedScenario | null): ScenarioChainView[] => {
         if (!scenario) return [];
@@ -1216,7 +1240,7 @@ const AdminInterlocking = () => {
 
             const stats = computeStatsFromChains(
                 statsSource,
-                buildResult?.nodes ?? null
+                currentBuild.nodes ?? null
             );
 
             const payload = {
@@ -1887,12 +1911,24 @@ const AdminInterlocking = () => {
                                             scenario.strategy !== "NONE" && scenario.optimal_chains_json && scenario.optimal_chains_json.length > 0
                                                 ? scenario.optimal_chains_json.map((c) => ({ peopleNames: c.nodeIds.map((id) => usersById.get(id)?.full_name ?? id), avgPriority: c.avgPriority ?? null, length: c.length ?? c.nodeIds.length }))
                                                 : scenario.chains_json;
+                                        // CATENE: for optimized strategies, use optimal count (not raw fallback).
                                         const visibleChainsCount =
                                             scenario.strategy !== "NONE"
                                                 ? (scenario.optimal_chains_json && scenario.optimal_chains_json.length > 0
                                                     ? scenario.optimal_chains_json.length
-                                                    : scenario.total_chains || visibleChains.length)
+                                                    : (scenario.total_chains ?? 0))
                                                 : visibleChains.length;
+                                        // PERSONE: recompute from optimal nodeIds when available (handles stale unique_people=0).
+                                        const visibleUniquePeople = (() => {
+                                            if (scenario.strategy !== "NONE" && scenario.optimal_chains_json && scenario.optimal_chains_json.length > 0) {
+                                                const s = new Set<string>();
+                                                for (const c of scenario.optimal_chains_json) {
+                                                    for (const id of c.nodeIds) s.add(id);
+                                                }
+                                                return s.size > 0 ? s.size : scenario.unique_people;
+                                            }
+                                            return scenario.unique_people;
+                                        })();
 
                                         return (
                                             <div
@@ -1939,7 +1975,7 @@ const AdminInterlocking = () => {
                                                         {formatScenarioCampaignLabel(scenario.campaign_id)}
                                                     </div>
                                                     <div>{visibleChainsCount || 0}</div>
-                                                    <div>{scenario.unique_people}</div>
+                                                    <div>{visibleUniquePeople}</div>
                                                     <div>{formatNumber(scenario.coverage, 1)}%</div>
                                                     <div>{formatNumber(scenario.avg_length, 2)}</div>
                                                     <div>{scenario.max_length ?? "—"}</div>

@@ -38,12 +38,29 @@ function betterThan(
     return sa.sumPriority < sb.sumPriority;
 }
 
+// Greedy fallback: O(N log N), not optimal but always fast and correct.
+function solveGreedy(
+    ordered: ChainCandidate[]
+): ChainCandidate[] {
+    const used = new Set<string>();
+    const result: ChainCandidate[] = [];
+    for (const c of ordered) {
+        if (c.nodeIds.length > 0 && c.nodeIds.every((n) => !used.has(n))) {
+            result.push(c);
+            c.nodeIds.forEach((n) => used.add(n));
+        }
+    }
+    return result;
+}
+
 export function solveOptimalChains(
     candidates: ChainCandidate[],
     strategy: OptimizationStrategy
 ) {
     let best: ChainCandidate[] = [];
     let explored = 0;
+    // Safety: if candidates are too many, skip expensive backtracking and go greedy.
+    const MAX_EXPLORED = 200_000;
 
     const used = new Set<string>();
     const chosen: ChainCandidate[] = [];
@@ -55,7 +72,7 @@ export function solveOptimalChains(
     });
 
     function canAdd(c: ChainCandidate) {
-        return c.nodeIds.every((n) => !used.has(n));
+        return c.nodeIds.length > 0 && c.nodeIds.every((n) => !used.has(n));
     }
     function add(c: ChainCandidate) {
         c.nodeIds.forEach((n) => used.add(n));
@@ -65,6 +82,7 @@ export function solveOptimalChains(
     }
 
     function search(i: number) {
+        if (explored > MAX_EXPLORED) return;
         explored++;
 
         // Count-based pruning is safe only for MAX_IMPACT.
@@ -95,6 +113,12 @@ export function solveOptimalChains(
     }
 
     search(0);
+
+    // If backtracking was cut short or returned nothing, use greedy as fallback.
+    if (best.length === 0 || explored > MAX_EXPLORED) {
+        const greedy = solveGreedy(ordered);
+        if (betterThan(greedy, best, strategy)) best = greedy;
+    }
 
     return {
         selectedChains: best,
