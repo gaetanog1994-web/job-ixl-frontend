@@ -451,21 +451,21 @@ const AdminInterlocking = () => {
     const buildCandidatesForSolver = (
         sourceChains: InterlockingChain[]
     ): ChainCandidate[] => {
-        return sourceChains
-            .map((c, index) => {
-                const users = Array.isArray(c.users) ? c.users : [];
-                const names = Array.isArray(c.peopleNames) ? c.peopleNames : [];
-                // Prefer UUID-based nodeIds; fall back to names if users is empty/too short.
-                const nodeIds = users.length > 1 ? users : (names.length > 1 ? names : []);
-                if (nodeIds.length < 2) return null;
-                return {
-                    id: `chain_${index + 1}`,
-                    nodeIds,
-                    avgPriority: c.avgPriority ?? 999,
-                    length: c.length ?? nodeIds.length,
-                };
-            })
-            .filter((c): c is ChainCandidate => c !== null);
+        const result: ChainCandidate[] = [];
+        sourceChains.forEach((c, index) => {
+            const users = Array.isArray(c.users) ? c.users : [];
+            const names = Array.isArray(c.peopleNames) ? c.peopleNames : [];
+            // Prefer UUID-based nodeIds; fall back to names if users is empty/too short.
+            const nodeIds = users.length > 1 ? users : (names.length > 1 ? names : []);
+            if (nodeIds.length < 2) return;
+            result.push({
+                id: `chain_${index + 1}`,
+                nodeIds,
+                avgPriority: c.avgPriority ?? 999,
+                length: c.length ?? nodeIds.length,
+            });
+        });
+        return result;
     };
 
     const computeStatsFromChains = (
@@ -821,38 +821,6 @@ const AdminInterlocking = () => {
         const suffix = qs.toString() ? `?${qs.toString()}` : "";
         navigate(`/admin/campagne${suffix}`);
     };
-    const activeScenarioSummary = useMemo(() => {
-        if (!activeScenario) {
-            return {
-                totalChains: 0,
-                uniquePeople: 0,
-                avgPriority: null as number | null,
-            };
-        }
-        // Prefer recomputed values from chain views to handle stale/wrong DB stats.
-        const views = activeScenarioChainViews;
-        if (views.length > 0) {
-            const seen = new Set<string>();
-            for (const cv of views) {
-                for (const id of cv.userIds) seen.add(id);
-                // fallback: count peopleNames if no userIds resolved
-                if (cv.userIds.length === 0) {
-                    for (const n of (cv.peopleNames ?? [])) seen.add(n);
-                }
-            }
-            return {
-                totalChains: views.length,
-                uniquePeople: seen.size,
-                avgPriority: activeScenario.avg_priority ?? null,
-            };
-        }
-        return {
-            totalChains: activeScenario.total_chains ?? 0,
-            uniquePeople: activeScenario.unique_people ?? 0,
-            avgPriority: activeScenario.avg_priority ?? null,
-        };
-    }, [activeScenario, activeScenarioChainViews]);
-
     const getScenarioViewChains = (scenario: SavedScenario | null): ScenarioChainView[] => {
         if (!scenario) return [];
 
@@ -961,6 +929,37 @@ const AdminInterlocking = () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
         [activeScenario, usersById, usersByNormalizedName]
     );
+
+    const activeScenarioSummary = useMemo(() => {
+        if (!activeScenario) {
+            return {
+                totalChains: 0,
+                uniquePeople: 0,
+                avgPriority: null as number | null,
+            };
+        }
+        // Prefer recomputed values from chain views to handle stale/wrong DB stats.
+        const views = activeScenarioChainViews;
+        if (views.length > 0) {
+            const seen = new Set<string>();
+            for (const cv of views) {
+                for (const id of cv.userIds) seen.add(id);
+                if (cv.userIds.length === 0) {
+                    for (const n of (cv.peopleNames ?? [])) seen.add(n);
+                }
+            }
+            return {
+                totalChains: views.length,
+                uniquePeople: seen.size,
+                avgPriority: activeScenario.avg_priority ?? null,
+            };
+        }
+        return {
+            totalChains: activeScenario.total_chains ?? 0,
+            uniquePeople: activeScenario.unique_people ?? 0,
+            avgPriority: activeScenario.avg_priority ?? null,
+        };
+    }, [activeScenario, activeScenarioChainViews]);
 
     const activeScenarioPeople = useMemo<ScenarioPersonRow[]>(() => {
         if (!activeScenario) return [];
