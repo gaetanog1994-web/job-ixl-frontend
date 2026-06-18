@@ -864,17 +864,15 @@ const AdminInterlocking = () => {
 
                 const nodeIds: string[] = Array.isArray(c.nodeIds) ? c.nodeIds : [];
 
-                /*
-                 * Prova a risolvere ogni nodeId:
-                 * - se il nodeId esiste come userId in usersById → usalo diretto
-                 * - altrimenti cerca nei chains_json una catena che contenga
-                 *   questo nodeId come elemento della sequenza (occupied_by, etc.)
-                 * Fallback: usa il nodeId così com'è (preserva comportamento legacy)
-                 */
+                // Resolve nodeId → userId:
+                // 1. Direct UUID hit in usersById (current path after graph-service fix)
+                // 2. Name → UUID via usersByNormalizedName (legacy: nodeIds are names when
+                //    chains were built before user_id was populated in Neo4j)
+                // 3. Fallback: use nodeId as-is
                 const userIds = nodeIds.map((nodeId) => {
                     if (usersById.has(nodeId)) return nodeId;
-                    // Cerca tra gli userId noti se uno corrisponde al nodeId
-                    // (es: il nodeId potrebbe essere nel formato "userId_positionIdx")
+                    const byName = usersByNormalizedName.get(String(nodeId).trim().toLowerCase());
+                    if (byName) return byName;
                     return nodeId;
                 });
 
@@ -895,12 +893,20 @@ const AdminInterlocking = () => {
                 scenario.strategy as OptimizationStrategy
             );
             if (selectedChains.length > 0) {
-                return selectedChains.map((c) => ({
-                    userIds: c.nodeIds,
-                    peopleNames: c.nodeIds.map((id) => usersById.get(id)?.full_name ?? id),
-                    avgPriority: c.avgPriority ?? null,
-                    length: c.length ?? c.nodeIds.length,
-                }));
+                return selectedChains.map((c) => {
+                    const userIds = c.nodeIds.map((nodeId) => {
+                        if (usersById.has(nodeId)) return nodeId;
+                        const byName = usersByNormalizedName.get(String(nodeId).trim().toLowerCase());
+                        if (byName) return byName;
+                        return nodeId;
+                    });
+                    return {
+                        userIds,
+                        peopleNames: userIds.map((id) => usersById.get(id)?.full_name ?? id),
+                        avgPriority: c.avgPriority ?? null,
+                        length: c.length ?? c.nodeIds.length,
+                    };
+                });
             }
         }
 
