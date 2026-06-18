@@ -1159,11 +1159,6 @@ const AdminInterlocking = () => {
             setLoadingGraph(true);
             setError(null);
 
-            await appApi.adminWarmupNeo4j();
-
-            // piccolo tempo di assestamento dopo il warmup
-            await sleep(1200);
-
             const json = await appApi.syncGraph(selectedCampaignId);
 
             setBuildResult({
